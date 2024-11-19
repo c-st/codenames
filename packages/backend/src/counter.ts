@@ -41,10 +41,10 @@ export class Counter extends DurableObject {
     await Promise.all(promises);
   }
 
+  // Counter logic
   async incrementValue() {
     let value = (await this.ctx.storage.get<number>("value")) || 0;
-    value++;
-    await this.ctx.storage.put("value", value);
+    await this.ctx.storage.put("value", value + 1);
   }
 
   async getValue(): Promise<number> {
