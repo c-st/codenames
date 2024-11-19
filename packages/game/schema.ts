@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { isValid, z } from "zod";
 
 const playerSchema = z.object({
   id: z.string(),
@@ -13,17 +13,32 @@ const wordCardSchema = z.object({
   revealed: z.boolean(),
 });
 
-// Define the schema for the game state
-const gameStateSchema = z.object({
-  id: z.string(),
-  players: z.array(playerSchema),
-  board: z.array(wordCardSchema),
-  turn: z.enum(["red", "blue"]),
-  status: z.enum(["waiting", "in-progress", "finished"]),
-  winner: z.enum(["red", "blue"]).optional(),
+const hintSchema = z.object({
+  word: z.string(),
+  count: z.number(),
 });
+
+const turnSchema = z.object({
+  team: z.string(),
+  until: z.coerce.date(),
+});
+
+const gameStateSchema = z
+  .object({
+    id: z.string(),
+    players: z.array(playerSchema),
+    teams: z.array(z.string()),
+    board: z.array(wordCardSchema),
+    turn: turnSchema.optional(),
+    hint: hintSchema.optional(),
+    winner: z.enum(["red", "blue"]).optional(),
+  })
+  .refine((data) => !data.turn || data.teams.includes(data.turn.team), {
+    message: "Value must be one of teams",
+    path: ["turn", "team"],
+  });
 
 export type GameState = z.infer<typeof gameStateSchema>;
 
-export const toGameState = (json: string): GameState =>
-  gameStateSchema.parse(JSON.parse(json));
+export const toGameState = (object: unknown): GameState =>
+  gameStateSchema.parse(object);

@@ -3,6 +3,7 @@ import { toGameState, GameState } from "./schema";
 
 const exampleGameState: GameState = {
   id: "game-123",
+  teams: ["red", "blue"],
   players: [
     { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
     { id: "player-2", name: "Bob", team: "red", role: "operative" },
@@ -15,36 +16,45 @@ const exampleGameState: GameState = {
     { word: "car", type: "neutral", revealed: false },
     { word: "bomb", type: "assassin", revealed: false },
   ],
-  turn: "red",
-  status: "in-progress",
+  turn: { team: "red", until: new Date() },
   winner: undefined,
 };
 
 describe("toGameState", () => {
   it("parses valid JSON to GameState", () => {
-    const json = JSON.stringify(exampleGameState);
+    const gameState = toGameState(exampleGameState);
 
-    const gameState: GameState = toGameState(json);
     expect(gameState.id).toBe("game-123");
     expect(gameState.players.length).toBe(4);
     expect(gameState.board.length).toBe(4);
-    expect(gameState.turn).toBe("red");
-    expect(gameState.status).toBe("in-progress");
+    expect(gameState.turn).toStrictEqual({
+      team: "red",
+      until: expect.any(Date),
+    });
     expect(gameState.winner).toBeUndefined();
   });
 
-  it("should throw an error for invalid JSON", () => {
-    const invalidJson = JSON.stringify({
+  it("makes sure that turn is included in teams", () => {
+    const invalidGameState = {
+      ...exampleGameState,
+      teams: ["red", "blue"],
+      turn: "green", // not part of teams
+    };
+
+    expect(() => toGameState(invalidGameState)).toThrow();
+  });
+
+  it("throws an error for invalid JSON", () => {
+    const invalidObject = {
       id: "game-123",
       players: [
         { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
       ],
       board: [{ word: "apple", type: "red", revealed: false }],
       turn: "red",
-      status: "in-progress",
       winner: "none", // invalid
-    });
+    };
 
-    expect(() => toGameState(invalidJson)).toThrow();
+    expect(() => toGameState(invalidObject)).toThrow();
   });
 });

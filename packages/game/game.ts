@@ -15,14 +15,21 @@ const exampleGameState: GameState = {
     { word: "bomb", type: "assassin", revealed: false },
   ],
   turn: "red",
+  hint: { word: "fruit", count: 2 },
   status: "in-progress",
   winner: undefined,
 };
 
-// Validate the example game state
-// const result = gameStateSchema.safeParse(exampleGameState);
-// if (result.success) {
-//   console.log("Game state is valid:", result.data);
-// } else {
-//   console.error("Game state validation failed:", result.error);
-// }
+export class Codenames {
+  constructor() {}
+
+  // update game settings
+
+  // add player, set player name/team/role
+
+  // start a game
+
+  // set a hint
+
+  // reveal a word
+}
