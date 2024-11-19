@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-export class Counter extends DurableObject {
+export class CodenamesGame extends DurableObject {
   async fetch(_request: Request): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
@@ -13,17 +13,13 @@ export class Counter extends DurableObject {
     });
   }
 
-  async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
+  async webSocketMessage(_ws: WebSocket, message: ArrayBuffer | string) {
     await this.incrementValue();
     const currentValue = await this.getValue();
-
-    ws.send(
-      `[Durable Object] message: ${message}, connections: ${
-        this.ctx.getWebSockets().length
-      }, currentValue: ${currentValue}`
+    const memberCount = this.ctx.getWebSockets().length;
+    await this.broadcastMessage(
+      `> ${message} (${currentValue}, ${memberCount})`
     );
-
-    await this.broadcastMessage("Current value is now: " + currentValue);
   }
 
   async webSocketClose(
@@ -32,7 +28,7 @@ export class Counter extends DurableObject {
     _reason: string,
     _wasClean: boolean
   ) {
-    ws.close(code, "Durable Object is closing WebSocket");
+    ws.close(code, "Bye.");
   }
 
   async broadcastMessage(message: string) {

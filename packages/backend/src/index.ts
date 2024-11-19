@@ -1,7 +1,7 @@
-import { Counter } from "./counter";
+import { CodenamesGame } from "./gameServer";
 
 export interface Env {
-  COUNTER: DurableObjectNamespace<Counter>;
+  CODENAMES: DurableObjectNamespace<CodenamesGame>;
 }
 
 export default {
@@ -10,21 +10,30 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
-    console.log("worker.fetch", { request });
+    // Extract session name
+    const url = new URL(request.url);
+    const sessionName = url.pathname.split("/").at(1);
+    if (!sessionName) {
+      // Redirect to a random session
+      const redirectUrl = new URL(url.origin);
+      const randomSessionName = "snazzy-squirrel"; // TODO: make this random
+      redirectUrl.pathname = `/${randomSessionName}`;
+      return Response.redirect(redirectUrl.toString(), 302);
+    }
+
+    // Ensure upgrade header
     const upgradeHeader = request.headers.get("Upgrade");
     if (!upgradeHeader || upgradeHeader !== "websocket") {
-      return new Response("Durable Object expected Upgrade: websocket", {
+      return new Response("Expected websocket upgrade.", {
         status: 426,
       });
     }
 
-    console.log("after update");
-    const id = env.COUNTER.idFromName("A"); // hardcoded (should be game instance)
-    const obj = env.COUNTER.get(id);
+    const id = env.CODENAMES.idFromName(sessionName);
+    const obj = env.CODENAMES.get(id);
 
-    console.log("Calling object", { obj, id });
     return obj.fetch(request);
   },
 };
 
-export { Counter };
+export { CodenamesGame };
