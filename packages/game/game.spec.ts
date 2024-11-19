@@ -21,7 +21,7 @@ const exampleGameState: GameState = {
 };
 
 describe("toGameState", () => {
-  it("should parse valid JSON to GameState", () => {
+  it("parses valid JSON to GameState", () => {
     const json = JSON.stringify(exampleGameState);
 
     const gameState: GameState = toGameState(json);

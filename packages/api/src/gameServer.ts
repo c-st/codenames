@@ -18,7 +18,11 @@ export class CodenamesGame extends DurableObject {
     const currentValue = await this.getValue();
     const memberCount = this.ctx.getWebSockets().length;
     await this.broadcastMessage(
-      `> ${message} (${currentValue}, ${memberCount})`
+      JSON.stringify({
+        message,
+        currentValue,
+        memberCount,
+      })
     );
   }
 
