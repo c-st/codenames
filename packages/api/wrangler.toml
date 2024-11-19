@@ -1,0 +1,30 @@
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "codenames-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-18"
+
+send_metrics = false
+
+[durable_objects]
+bindings = [
+  { name = "CODENAMES", class_name = "CodenamesGame" }
+]
+
+routes = [
+  { pattern = "api.codenam.es", custom_domain = true }
+]
+
+[env.staging]
+name = "codenames-backend-staging"
+workers_dev = true
+
+[[migrations]]
+tag = "v1" # Should be unique for each new migration
+new_classes = ["CodenamesGame"]
+
+[limits]
+cpu_ms = 100
+
+[observability]
+enabled = true
