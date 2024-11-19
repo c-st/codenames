@@ -1,0 +1,25 @@
+name = "codenames-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-18"
+
+[durable_objects]
+bindings = [
+  { name = "COUNTER", class_name = "Counter" }
+]
+
+routes = [
+  { pattern = "api.codenam.es", custom_domain = true}
+]
+
+[[migrations]]
+tag = "v1" # Should be unique for each new migration
+new_classes = ["Counter"]
+
+# compatibility_flags = [ "nodejs_compat" ]
+
+# [vars]
+# MY_VAR = "my-variable"
+
+# [[kv_namespaces]]
+# binding = "MY_KV_NAMESPACE"
+# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
