@@ -1,41 +1,54 @@
-export class Counter {
-  state: DurableObjectState;
-  constructor(state: DurableObjectState) {
-    this.state = state;
+import { DurableObject } from "cloudflare:workers";
+
+export class Counter extends DurableObject {
+  async fetch(_request: Request): Promise<Response> {
+    const webSocketPair = new WebSocketPair();
+    const [client, server] = Object.values(webSocketPair);
+
+    this.ctx.acceptWebSocket(server);
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
   }
 
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    switch (url.pathname) {
-      case "/":
-        return this.value();
-      case "/increment":
-        return this.increment();
-      case "/decrement":
-        return this.decrement();
-      case "/value":
-        return this.value();
-      default:
-        return new Response("Not found", { status: 404 });
-    }
+  async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
+    await this.incrementValue();
+    const currentValue = await this.getValue();
+
+    ws.send(
+      `[Durable Object] message: ${message}, connections: ${
+        this.ctx.getWebSockets().length
+      }, currentValue: ${currentValue}`
+    );
+
+    await this.broadcastMessage("Current value is now: " + currentValue);
   }
 
-  async increment(): Promise<Response> {
-    let value = (await this.state.storage.get<number>("value")) || 0;
+  async webSocketClose(
+    ws: WebSocket,
+    code: number,
+    _reason: string,
+    _wasClean: boolean
+  ) {
+    ws.close(code, "Durable Object is closing WebSocket");
+  }
+
+  async broadcastMessage(message: string) {
+    const websockets = this.ctx.getWebSockets();
+    const promises = websockets.map((ws) => ws.send(message));
+    await Promise.all(promises);
+  }
+
+  async incrementValue() {
+    let value = (await this.ctx.storage.get<number>("value")) || 0;
     value++;
-    await this.state.storage.put("value", value);
-    return new Response(value.toString());
+    await this.ctx.storage.put("value", value);
   }
 
-  async decrement(): Promise<Response> {
-    let value = (await this.state.storage.get<number>("value")) || 0;
-    value--;
-    await this.state.storage.put("value", value);
-    return new Response(value.toString());
-  }
-
-  async value(): Promise<Response> {
-    let value = (await this.state.storage.get<number>("value")) || 0;
-    return new Response(value.toString());
+  async getValue(): Promise<number> {
+    const value = (await this.ctx.storage.get<number>("value")) || 0;
+    return value;
   }
 }
