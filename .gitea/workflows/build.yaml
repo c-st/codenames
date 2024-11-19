@@ -15,6 +15,15 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install pnpm
+        run: npm i pnpm -g
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run tests
+        run: pnpm -r test
+
       # - name: Cache
       #   uses: actions/cache@v4
       #   with:
@@ -24,13 +33,3 @@ jobs:
       #     key: ${{ runner.os }}-cache2-${{ hashFiles('packages/**/package-lock.json', 'src/**/*') }}
       #     restore-keys: |
       #       ${{ runner.os }}-cache-
-
-
-     - name: Install pnpm
-        run: npm i pnpm -g
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Run tests
-        run: pnpm -r test
