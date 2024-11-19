@@ -13,6 +13,7 @@ export default {
     // Extract session name
     const url = new URL(request.url);
     const sessionName = url.pathname.split("/").at(1);
+
     if (!sessionName) {
       // Redirect to a random session
       const redirectUrl = new URL(url.origin);
