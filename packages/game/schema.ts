@@ -1,4 +1,4 @@
-import { isValid, z } from "zod";
+import { z } from "zod";
 
 const playerSchema = z.object({
   id: z.string(),
@@ -7,11 +7,16 @@ const playerSchema = z.object({
   role: z.enum(["spymaster", "operative"]),
 });
 
-const wordCardSchema = z.object({
-  word: z.string(),
-  type: z.enum(["red", "blue", "neutral", "assassin"]),
-  revealed: z.boolean(),
-});
+const wordCardSchema = z
+  .object({
+    word: z.string(),
+    type: z.enum(["team", "neutral", "assassin"]),
+    forTeam: z.string().optional(),
+    revealed: z.boolean(),
+  })
+  .refine((data) => data.type !== "team" || data.forTeam !== undefined, {
+    message: "Team needs to be defined if not neutral/assassin word",
+  });
 
 const hintSchema = z.object({
   word: z.string(),
@@ -21,6 +26,7 @@ const hintSchema = z.object({
 const turnSchema = z.object({
   team: z.string(),
   until: z.coerce.date(),
+  hint: hintSchema.optional(),
 });
 
 const gameStateSchema = z
@@ -30,8 +36,6 @@ const gameStateSchema = z
     teams: z.array(z.string()),
     board: z.array(wordCardSchema),
     turn: turnSchema.optional(),
-    hint: hintSchema.optional(),
-    winner: z.enum(["red", "blue"]).optional(),
   })
   .refine((data) => !data.turn || data.teams.includes(data.turn.team), {
     message: "Value must be one of teams",

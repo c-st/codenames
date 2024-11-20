@@ -9,15 +9,20 @@ const exampleGameState: GameState = {
     { id: "player-4", name: "Dana", team: "blue", role: "operative" },
   ],
   board: [
-    { word: "apple", type: "red", revealed: false },
-    { word: "banana", type: "blue", revealed: false },
+    { word: "apple", type: "team", forTeam: "red", revealed: false },
+    { word: "banana", type: "team", forTeam: "blue", revealed: false },
     { word: "car", type: "neutral", revealed: false },
     { word: "bomb", type: "assassin", revealed: false },
   ],
-  turn: "red",
-  hint: { word: "fruit", count: 2 },
-  status: "in-progress",
-  winner: undefined,
+  teams: ["red", "blue"],
+  turn: {
+    team: "red",
+    until: new Date(),
+    hint: {
+      word: "fruit",
+      count: 2,
+    },
+  },
 };
 
 export class Codenames {

@@ -11,13 +11,12 @@ const exampleGameState: GameState = {
     { id: "player-4", name: "Dana", team: "blue", role: "operative" },
   ],
   board: [
-    { word: "apple", type: "red", revealed: false },
-    { word: "banana", type: "blue", revealed: false },
+    { word: "apple", type: "team", forTeam: "blue", revealed: false },
+    { word: "banana", type: "team", forTeam: "red", revealed: false },
     { word: "car", type: "neutral", revealed: false },
     { word: "bomb", type: "assassin", revealed: false },
   ],
   turn: { team: "red", until: new Date() },
-  winner: undefined,
 };
 
 describe("toGameState", () => {
@@ -31,7 +30,6 @@ describe("toGameState", () => {
       team: "red",
       until: expect.any(Date),
     });
-    expect(gameState.winner).toBeUndefined();
   });
 
   it("makes sure that turn is included in teams", () => {
@@ -39,6 +37,16 @@ describe("toGameState", () => {
       ...exampleGameState,
       teams: ["red", "blue"],
       turn: "green", // not part of teams
+    };
+
+    expect(() => toGameState(invalidGameState)).toThrow();
+  });
+
+  it("makes sure that team words reference a valid team", () => {
+    const invalidGameState = {
+      ...exampleGameState,
+      teams: ["red", "blue"],
+      board: [{ word: "apple", type: "team", revealed: false }],
     };
 
     expect(() => toGameState(invalidGameState)).toThrow();
