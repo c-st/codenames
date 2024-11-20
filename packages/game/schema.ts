@@ -31,7 +31,6 @@ const turnSchema = z.object({
 
 const gameStateSchema = z
   .object({
-    id: z.string(),
     players: z.array(playerSchema),
     teams: z.array(z.string()),
     board: z.array(wordCardSchema),
@@ -43,6 +42,7 @@ const gameStateSchema = z
   });
 
 export type GameState = z.infer<typeof gameStateSchema>;
+export type Hint = z.infer<typeof hintSchema>;
 
 export const toGameState = (object: unknown): GameState =>
   gameStateSchema.parse(object);

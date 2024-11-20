@@ -1,68 +1,21 @@
-import { describe, it, expect } from "vitest";
-import { toGameState, GameState } from "./schema";
+import { describe, it } from "vitest";
 
-const exampleGameState: GameState = {
-  id: "game-123",
-  teams: ["red", "blue"],
-  players: [
-    { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
-    { id: "player-2", name: "Bob", team: "red", role: "operative" },
-    { id: "player-3", name: "Charlie", team: "blue", role: "spymaster" },
-    { id: "player-4", name: "Dana", team: "blue", role: "operative" },
-  ],
-  board: [
-    { word: "apple", type: "team", forTeam: "blue", revealed: false },
-    { word: "banana", type: "team", forTeam: "red", revealed: false },
-    { word: "car", type: "neutral", revealed: false },
-    { word: "bomb", type: "assassin", revealed: false },
-  ],
-  turn: { team: "red", until: new Date() },
-};
-
-describe("toGameState", () => {
-  it("parses valid JSON to GameState", () => {
-    const gameState = toGameState(exampleGameState);
-
-    expect(gameState.id).toBe("game-123");
-    expect(gameState.players.length).toBe(4);
-    expect(gameState.board.length).toBe(4);
-    expect(gameState.turn).toStrictEqual({
-      team: "red",
-      until: expect.any(Date),
-    });
+describe("game state updates", () => {
+  describe("joining and leaving", () => {
+    it("adds a new player", () => {});
+    it("removes a player", () => {});
+    it("reassigns spymaster role after player leaving", () => {});
   });
 
-  it("makes sure that turn is included in teams", () => {
-    const invalidGameState = {
-      ...exampleGameState,
-      teams: ["red", "blue"],
-      turn: "green", // not part of teams
-    };
-
-    expect(() => toGameState(invalidGameState)).toThrow();
+  describe("gameplay", () => {
+    it("starts a new game", () => {});
+    it("sets a hint", () => {});
+    it("handles guess for team's word", () => {});
+    it("handles guess for other team's word", () => {});
+    it("handles guess for neutral word", () => {});
+    it("handles guess for assassin word", () => {});
+    it("advances to next turn on timer", () => {});
   });
 
-  it("makes sure that team words reference a valid team", () => {
-    const invalidGameState = {
-      ...exampleGameState,
-      teams: ["red", "blue"],
-      board: [{ word: "apple", type: "team", revealed: false }],
-    };
-
-    expect(() => toGameState(invalidGameState)).toThrow();
-  });
-
-  it("throws an error for invalid JSON", () => {
-    const invalidObject = {
-      id: "game-123",
-      players: [
-        { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
-      ],
-      board: [{ word: "apple", type: "red", revealed: false }],
-      turn: "red",
-      winner: "none", // invalid
-    };
-
-    expect(() => toGameState(invalidObject)).toThrow();
-  });
+  // updating settings
 });

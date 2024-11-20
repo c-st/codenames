@@ -1,7 +1,6 @@
-import { GameState } from "./schema";
+import { GameState, Hint } from "./schema";
 
 const exampleGameState: GameState = {
-  id: "game-123",
   players: [
     { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
     { id: "player-2", name: "Bob", team: "red", role: "operative" },
@@ -25,16 +24,51 @@ const exampleGameState: GameState = {
   },
 };
 
+type GameParameters = {
+  turnTimeSeconds: number;
+  wordList: string[];
+  // teams: string[];
+};
+
 export class Codenames {
-  constructor() {}
+  private gameState: GameState;
 
-  // update game settings
+  constructor() {
+    this.gameState = {
+      players: [],
+      board: [],
+      teams: [],
+    };
+  }
 
-  // add player, set player name/team/role
+  public addPlayer(): GameState {
+    // add player, set player name/team/role
+    return this.gameState;
+  }
 
-  // start a game
+  public removePlayer(id: string): GameState {
+    // remove player, assign new spymaster if needed
+    return this.gameState;
+  }
 
-  // set a hint
+  public startGame(settings: GameParameters): GameState {
+    // shuffle words, start timer for first turn
+    return this.gameState;
+  }
 
-  // reveal a word
+  public advanceTurn(): GameState {
+    // triggered by timer
+    // advance turn to next team
+    return this.gameState;
+  }
+
+  public setHint(hint: Hint): GameState {
+    //
+    return this.gameState;
+  }
+
+  public makeGuess(word: string): GameState {
+    // return updated game state
+    return this.gameState;
+  }
 }
