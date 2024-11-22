@@ -6,6 +6,7 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["ESNext"],
-    "types": ["@cloudflare/workers-types/2023-07-01"]
-  }
+    "types": ["@cloudflare/workers-types/2023-07-01", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts"]
 }
