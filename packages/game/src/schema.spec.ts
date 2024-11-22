@@ -1,12 +1,11 @@
 import { toGameState, GameState } from "./schema";
 
 const exampleGameState: GameState = {
-  teams: ["red", "blue"],
   players: [
-    { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
-    { id: "player-2", name: "Bob", team: "red", role: "operative" },
-    { id: "player-3", name: "Charlie", team: "blue", role: "spymaster" },
-    { id: "player-4", name: "Dana", team: "blue", role: "operative" },
+    { id: "player-1", name: "Alice", team: 0, role: "spymaster" },
+    { id: "player-2", name: "Bob", team: 0, role: "operative" },
+    { id: "player-3", name: "Charlie", team: 1, role: "spymaster" },
+    { id: "player-4", name: "Dana", team: 1, role: "operative" },
   ],
   board: [
     { word: "apple", isAssassin: false, team: 0, isRevealed: false },
@@ -14,7 +13,7 @@ const exampleGameState: GameState = {
     { word: "car", isAssassin: false, isRevealed: false },
     { word: "bomb", isAssassin: true, isRevealed: false },
   ],
-  turn: { team: "red", until: new Date() },
+  turn: { team: 0, until: new Date() },
 };
 
 describe("toGameState", () => {
@@ -24,19 +23,9 @@ describe("toGameState", () => {
     expect(gameState.players.length).toBe(4);
     expect(gameState.board.length).toBe(4);
     expect(gameState.turn).toStrictEqual({
-      team: "red",
+      team: 0,
       until: expect.any(Date),
     });
-  });
-
-  it("makes sure that turn is included in teams", () => {
-    const invalidGameState = {
-      ...exampleGameState,
-      teams: ["red", "blue"],
-      turn: "green", // not part of teams
-    };
-
-    expect(() => toGameState(invalidGameState)).toThrow();
   });
 
   it("makes sure that team words reference a valid team", () => {

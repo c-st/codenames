@@ -4,10 +4,10 @@ import { classic } from "words";
 
 const exampleGameState: GameState = {
   players: [
-    { id: "player-1", name: "Alice", team: "red", role: "spymaster" },
-    { id: "player-2", name: "Bob", team: "red", role: "operative" },
-    { id: "player-3", name: "Charlie", team: "blue", role: "spymaster" },
-    { id: "player-4", name: "Dana", team: "blue", role: "operative" },
+    { id: "player-1", name: "Alice", team: 0, role: "spymaster" },
+    { id: "player-2", name: "Bob", team: 0, role: "operative" },
+    { id: "player-3", name: "Charlie", team: 1, role: "spymaster" },
+    { id: "player-4", name: "Dana", team: 1, role: "operative" },
   ],
   board: [
     { word: "apple", isAssassin: false, team: 0, isRevealed: false },
@@ -15,9 +15,8 @@ const exampleGameState: GameState = {
     { word: "car", isAssassin: false, isRevealed: false },
     { word: "bomb", isAssassin: true, isRevealed: false },
   ],
-  teams: ["red", "blue"],
   turn: {
-    team: "red",
+    team: 0,
     until: new Date(),
     hint: {
       word: "fruit",
@@ -38,13 +37,13 @@ describe("game state updates", () => {
       game.addOrUpdatePlayer({
         id: "player-1",
         name: "Alice",
-        team: "red",
+        team: 0,
         role: "operative",
       });
       const updatedGameState = game.addOrUpdatePlayer({
         id: "player-2",
         name: "Bob",
-        team: "blue",
+        team: 1,
         role: "spymaster",
       });
 
@@ -52,13 +51,13 @@ describe("game state updates", () => {
         {
           id: "player-1",
           name: "Alice",
-          team: "red",
+          team: 0,
           role: "operative",
         },
         {
           id: "player-2",
           name: "Bob",
-          team: "blue",
+          team: 1,
           role: "spymaster",
         },
       ]);
@@ -70,7 +69,7 @@ describe("game state updates", () => {
       const updatedGameState = game.addOrUpdatePlayer({
         id: "player-1",
         name: "Alice",
-        team: "red",
+        team: 0,
         role: "operative",
       });
 
@@ -92,7 +91,7 @@ describe("game state updates", () => {
       const updatedGameState = game.removePlayer("player-1");
 
       const hasRedSpymaster = updatedGameState.players.some(
-        (player) => player.team === "red" && player.role === "spymaster"
+        (player) => player.team === 0 && player.role === "spymaster"
       );
       expect(hasRedSpymaster).toBeTruthy();
     });
@@ -103,12 +102,12 @@ describe("game state updates", () => {
       const updatedGameState = game.addOrUpdatePlayer({
         id: "player-5",
         name: "Eve",
-        team: "red",
+        team: 0,
         role: "spymaster",
       });
 
       const redSpymasters = updatedGameState.players.filter(
-        (player) => player.team === "red" && player.role === "spymaster"
+        (player) => player.team === 0 && player.role === "spymaster"
       );
 
       expect(redSpymasters).toHaveLength(1);

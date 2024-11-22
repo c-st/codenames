@@ -19,7 +19,6 @@ const defaultParameters: GameParameters = {
 const initialGameState: GameState = {
   players: [],
   board: [],
-  teams: [],
   turn: undefined,
 };
 
