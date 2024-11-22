@@ -1,7 +1,6 @@
 import { GameState } from "./schema";
 import { Codenames } from "./game";
-
-const words = ["person", "camera", "tv", "apple", "banana", "car", "bomb"];
+import { classic } from "words";
 
 const exampleGameState: GameState = {
   players: [
@@ -124,7 +123,7 @@ describe("game state updates", () => {
           ...exampleGameState,
           turn: undefined,
         },
-        words
+        classic
       );
 
       const updatedGameState = game.startGame();
