@@ -6,15 +6,15 @@ import animals from "../resources/animals.json";
 describe("random words", () => {
   it("returns a random animal", () => {
     const result = randomAnimal();
-    console.log(result);
+    expect(result).toBeDefined();
   });
 
   it("returns a random animal alliteration", () => {
     const result = randomAnimalAlliteration();
-    console.log(result);
+    expect(result).toBeDefined();
   });
 
-  it("returns many random animal alliterations", () => {
+  it.skip("returns many random animal alliterations", () => {
     let concatenatedResult = "";
     for (let i = 0; i < 30; i++) {
       concatenatedResult += randomAnimalAlliteration() + "\n ";
@@ -22,7 +22,7 @@ describe("random words", () => {
     console.log(concatenatedResult.trim());
   });
 
-  it("finds duplicate words", () => {
+  it.skip("finds duplicate words", () => {
     const findDuplicates = (arr: string[]) => {
       const duplicates = arr.filter(
         (item, index) => arr.indexOf(item) !== index

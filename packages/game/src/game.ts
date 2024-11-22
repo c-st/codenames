@@ -1,31 +1,32 @@
-import { getRandomIndices, getRandomWords } from "words";
 import { GameState, Hint, Player, WordCard } from "./schema";
 import { setupBoard } from "./setup-board";
+import { advanceDateBySeconds } from "./date";
 
 export type GameParameters = {
-  turnTimeSeconds: number;
+  turnDurationSeconds: number;
   totalWordCount: number;
   wordsToGuessCount: number;
   teamCount: number;
 };
 
 const defaultParameters: GameParameters = {
-  turnTimeSeconds: 120,
+  turnDurationSeconds: 120,
   totalWordCount: 5 * 5,
   wordsToGuessCount: 8,
   teamCount: 2,
 };
 
 const initialGameState: GameState = {
-  players: [],
   board: [],
+  players: [],
   turn: undefined,
 };
 
 export class Codenames {
   constructor(
     private gameState: GameState = initialGameState,
-    private words: string[] = [],
+    private words: string[],
+    private onScheduleCallAdvanceTurn: (date: Date) => void,
     private parameters: GameParameters = defaultParameters
   ) {}
 
@@ -69,27 +70,46 @@ export class Codenames {
   }
 
   public startGame(): GameState {
-    const board = setupBoard(this.parameters, this.words);
-
-    console.log(board);
-
-    //, start timer for first turn
+    this.gameState.board = setupBoard(this.parameters, this.words);
+    this.gameState.turn = {
+      team: 0,
+      until: advanceDateBySeconds(
+        new Date(),
+        this.parameters.turnDurationSeconds
+      ),
+    };
+    this.onScheduleCallAdvanceTurn(this.gameState.turn.until);
     return this.gameState;
   }
 
   public advanceTurn(): GameState {
-    // triggered by timer
-    // advance turn to next team
+    // triggered by timer or by "end turn" command
+    const { teamCount } = this.parameters;
+
+    if (!this.gameState.turn) {
+      throw new GameError("Game has not started yet");
+    }
+
+    const currentTeam = this.gameState.turn.team;
+    const nextTeam = (currentTeam + 1) % teamCount;
+    this.gameState.turn = {
+      team: nextTeam,
+      until: advanceDateBySeconds(
+        new Date(),
+        this.parameters.turnDurationSeconds
+      ),
+    };
+    this.onScheduleCallAdvanceTurn(this.gameState.turn.until);
     return this.gameState;
   }
 
   public setHint(hint: Hint): GameState {
-    //
+    // ...
     return this.gameState;
   }
 
   public makeGuess(word: string): GameState {
-    // return updated game state
+    // ...
     return this.gameState;
   }
 

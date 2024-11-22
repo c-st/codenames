@@ -1,8 +1,8 @@
 import { GameState } from "./schema";
 import { Codenames } from "./game";
-import { classic } from "words";
+import { classic as classicWordList } from "words";
 
-const exampleGameState: GameState = {
+const runningGameState: GameState = {
   players: [
     { id: "player-1", name: "Alice", team: 0, role: "spymaster" },
     { id: "player-2", name: "Bob", team: 0, role: "operative" },
@@ -25,15 +25,25 @@ const exampleGameState: GameState = {
   },
 };
 
+const onScheduleTurnCallback = vi.fn();
+
 describe("game state updates", () => {
+  beforeEach(() => {
+    onScheduleTurnCallback.mockReset();
+  });
+
   describe("joining and leaving", () => {
     it("adds a new player", () => {
       const initialGameState = {
-        ...exampleGameState,
+        ...runningGameState,
         players: [],
       };
 
-      const game = new Codenames(initialGameState);
+      const game = new Codenames(
+        initialGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
       game.addOrUpdatePlayer({
         id: "player-1",
         name: "Alice",
@@ -64,7 +74,11 @@ describe("game state updates", () => {
     });
 
     it("does not add duplicate ids when adding players", () => {
-      const game = new Codenames(exampleGameState);
+      const game = new Codenames(
+        runningGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
 
       const updatedGameState = game.addOrUpdatePlayer({
         id: "player-1",
@@ -77,7 +91,11 @@ describe("game state updates", () => {
     });
 
     it("removes a player", () => {
-      const game = new Codenames(exampleGameState);
+      const game = new Codenames(
+        runningGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
 
       game.removePlayer("player-3");
       const updatedGameState = game.removePlayer("player-1");
@@ -86,7 +104,11 @@ describe("game state updates", () => {
     });
 
     it("reassigns spymaster role after player leaving", () => {
-      const game = new Codenames(exampleGameState);
+      const game = new Codenames(
+        runningGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
 
       const updatedGameState = game.removePlayer("player-1");
 
@@ -97,7 +119,11 @@ describe("game state updates", () => {
     });
 
     it("makes sure there is only one spymaster", () => {
-      const game = new Codenames(exampleGameState);
+      const game = new Codenames(
+        runningGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
 
       const updatedGameState = game.addOrUpdatePlayer({
         id: "player-5",
@@ -119,23 +145,45 @@ describe("game state updates", () => {
     it("starts new game by shuffling words and initializing turn", () => {
       const game = new Codenames(
         {
-          ...exampleGameState,
+          ...runningGameState,
           turn: undefined,
+          board: [],
         },
-        classic
+        classicWordList,
+        onScheduleTurnCallback
       );
 
       const updatedGameState = game.startGame();
 
-      expect(updatedGameState.board).toBeDefined();
-      // expect(updatedGameState.turn).toBeDefined();
+      expect(updatedGameState.board).toHaveLength(25);
+      expect(updatedGameState.turn).toEqual({
+        team: 0,
+        until: expect.any(Date),
+        hint: undefined,
+      });
+      expect(onScheduleTurnCallback).toHaveBeenCalled();
     });
 
-    it("does not start a new game if the players are not complete", () => {
-      // each team needs spymaster and operative
+    it("advances a turn", () => {
+      const game = new Codenames(
+        runningGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.advanceTurn();
+
+      expect(updatedGameState.turn).toEqual({
+        team: 1,
+        until: expect.any(Date),
+        hint: undefined,
+      });
+      expect(onScheduleTurnCallback).toHaveBeenCalled();
     });
 
-    it("sets a hint", () => {});
+    it("sets a hint", () => {
+      //
+    });
 
     it("handles guess for team's word", () => {});
 
@@ -145,8 +193,8 @@ describe("game state updates", () => {
 
     it("handles guess for assassin word", () => {});
 
-    it("advances to next turn on timer", () => {});
+    // it("does not start a new game if the players are not complete", () => {
+    //   // each team needs spymaster and operative
+    // });
   });
-
-  // updating settings
 });
