@@ -42,6 +42,7 @@ const gameStateSchema = z
   });
 
 export type GameState = z.infer<typeof gameStateSchema>;
+export type Player = z.infer<typeof playerSchema>;
 export type Hint = z.infer<typeof hintSchema>;
 
 export const toGameState = (object: unknown): GameState =>
