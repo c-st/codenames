@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { optional, z } from "zod";
 
 const playerSchema = z.object({
   id: z.string(),
@@ -7,16 +7,12 @@ const playerSchema = z.object({
   role: z.enum(["spymaster", "operative"]),
 });
 
-const wordCardSchema = z
-  .object({
-    word: z.string(),
-    type: z.enum(["team", "neutral", "assassin"]),
-    forTeam: z.string().optional(),
-    revealed: z.boolean(),
-  })
-  .refine((data) => data.type !== "team" || data.forTeam !== undefined, {
-    message: "Team needs to be defined if not neutral/assassin word",
-  });
+const wordCardSchema = z.object({
+  word: z.string(),
+  isRevealed: z.boolean(),
+  isAssassin: z.boolean(),
+  team: z.number().optional(),
+});
 
 const hintSchema = z.object({
   word: z.string(),
@@ -42,6 +38,7 @@ const gameStateSchema = z
   });
 
 export type GameState = z.infer<typeof gameStateSchema>;
+export type WordCard = z.infer<typeof wordCardSchema>;
 export type Player = z.infer<typeof playerSchema>;
 export type Hint = z.infer<typeof hintSchema>;
 

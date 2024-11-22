@@ -1,10 +1,13 @@
 import adjectives from "../resources/adjectives.json";
 import animals from "../resources/animals.json";
 
-export const getRandomWord = (words: string[]): string => {
-  const randomIndex = Math.floor(Math.random() * words.length);
-  return words[randomIndex];
-};
+export const getRandomWords = (words: string[], count: number): string[] =>
+  Array.from(new Set(words))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, count);
+
+export const getRandomWord = (words: string[]): string =>
+  getRandomWords(words, 1)[0];
 
 export const randomAnimal = (): string => {
   const randomAdjective = getRandomWord(adjectives);
@@ -18,4 +21,13 @@ export const randomAnimalAlliteration = (): string => {
     adjectives.filter((word) => word.charAt(0) === randomAnimal.charAt(0))
   );
   return `${randomMatchingAdjective}-${randomAnimal}`;
+};
+
+export const getRandomIndices = (count: number, max: number): number[] => {
+  const randomIndices = new Set<number>();
+  while (randomIndices.size < count) {
+    const randomIndex = Math.floor(Math.random() * max);
+    randomIndices.add(randomIndex);
+  }
+  return Array.from(randomIndices);
 };

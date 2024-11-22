@@ -1,4 +1,20 @@
-import { GameState, Hint, Player } from "./schema";
+import { getRandomIndices, getRandomWords } from "words";
+import { GameState, Hint, Player, WordCard } from "./schema";
+import { setupBoard } from "./setup-board";
+
+export type GameParameters = {
+  turnTimeSeconds: number;
+  totalWordCount: number;
+  wordsToGuessCount: number;
+  teamCount: number;
+};
+
+const defaultParameters: GameParameters = {
+  turnTimeSeconds: 120,
+  totalWordCount: 5 * 5,
+  wordsToGuessCount: 8,
+  teamCount: 2,
+};
 
 const initialGameState: GameState = {
   players: [],
@@ -7,29 +23,11 @@ const initialGameState: GameState = {
   turn: undefined,
 };
 
-const defaultParameters: GameParameters = {
-  turnTimeSeconds: 120,
-  wordCount: 5 * 5,
-  teamCount: 2,
-};
-
-type GameParameters = {
-  turnTimeSeconds: number;
-  wordCount: number;
-  teamCount: number;
-};
-
 export class Codenames {
-  private defaultParameters: GameParameters = {
-    turnTimeSeconds: 120,
-    wordCount: 5 * 5,
-    teamCount: 2,
-  };
-
   constructor(
     private gameState: GameState = initialGameState,
     private words: string[] = [],
-    private parameters: GameParameters = this.defaultParameters
+    private parameters: GameParameters = defaultParameters
   ) {}
 
   public addOrUpdatePlayer(player: Player): GameState {
@@ -72,11 +70,9 @@ export class Codenames {
   }
 
   public startGame(): GameState {
-    const shuffledWords = this.words
-      .sort(() => Math.random() - 0.5)
-      .slice(0, this.parameters.wordCount);
+    const board = setupBoard(this.parameters, this.words);
 
-    console.log(shuffledWords);
+    console.log(board);
 
     //, start timer for first turn
     return this.gameState;

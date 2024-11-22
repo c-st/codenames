@@ -9,10 +9,10 @@ const exampleGameState: GameState = {
     { id: "player-4", name: "Dana", team: "blue", role: "operative" },
   ],
   board: [
-    { word: "apple", type: "team", forTeam: "blue", revealed: false },
-    { word: "banana", type: "team", forTeam: "red", revealed: false },
-    { word: "car", type: "neutral", revealed: false },
-    { word: "bomb", type: "assassin", revealed: false },
+    { word: "apple", isAssassin: false, team: 0, isRevealed: false },
+    { word: "banana", isAssassin: false, team: 1, isRevealed: false },
+    { word: "car", isAssassin: false, isRevealed: false },
+    { word: "bomb", isAssassin: true, isRevealed: false },
   ],
   turn: { team: "red", until: new Date() },
 };
