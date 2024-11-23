@@ -1,6 +1,7 @@
 import { GameState, Hint, Player, WordCard } from "./schema";
 import { setupBoard } from "./setup-board";
 import { advanceDateBySeconds } from "./date";
+import { GameError } from "./error";
 
 export type GameParameters = {
   turnDurationSeconds: number;
@@ -70,6 +71,12 @@ export class Codenames {
   }
 
   public startGame(): GameState {
+    if (!this.isReadyToStartGame()) {
+      throw new GameError(
+        "Each team needs at least one spymaster and one operative"
+      );
+    }
+
     this.gameState.board = setupBoard(this.parameters, this.words);
     this.gameState.turn = {
       team: 0,
@@ -83,11 +90,13 @@ export class Codenames {
   }
 
   public advanceTurn(): GameState {
-    // triggered by timer or by "end turn" command
     const { teamCount } = this.parameters;
 
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
+    }
+    if (this.getGameResult()) {
+      throw new GameError("Game is already over");
     }
 
     const currentTeam = this.gameState.turn.team;
@@ -118,12 +127,73 @@ export class Codenames {
     return this.gameState;
   }
 
-  public makeGuess(word: string): GameState {
-    // ...
+  public revealWord(word: string): GameState {
+    const wordCard = this.gameState.board.find((card) => card.word === word);
+    if (!wordCard) {
+      throw new GameError("Word not found on board");
+    }
+
+    wordCard.isRevealed = true;
+
     return this.gameState;
   }
 
-  private updatePlayer(player: Player) {
+  public getGameResult():
+    | { winningTeam?: number; losingTeam?: number }
+    | undefined {
+    const { wordsToGuessCount } = this.parameters;
+
+    const isAssassinRevealed = this.gameState.board.some(
+      (card) => card.isAssassin && card.isRevealed
+    );
+
+    const losingTeam = isAssassinRevealed
+      ? this.gameState.turn?.team
+      : undefined;
+
+    const guessedWordsByTeam: number[] = new Array(
+      this.parameters.teamCount
+    ).fill(0);
+
+    this.gameState.board.reduce((teams, card) => {
+      if (card.team !== undefined && card.isRevealed) {
+        teams[card.team] += 1;
+      }
+      return teams;
+    }, guessedWordsByTeam);
+
+    const winningTeam = guessedWordsByTeam.find(
+      (count) => count === wordsToGuessCount
+    );
+
+    if (!winningTeam && !losingTeam) {
+      // game is not over
+      return undefined;
+    }
+
+    return { winningTeam, losingTeam };
+  }
+
+  private isReadyToStartGame(): boolean {
+    const { teamCount } = this.parameters;
+    const allTeams = Array.from({ length: teamCount });
+
+    const allTeamsHaveSpymaster = allTeams.every((_, team) => {
+      return this.gameState.players.some(
+        (player) => player.team === team && player.role === "spymaster"
+      );
+    });
+
+    const allTeamsHaveOperative = allTeams.every((_, team) => {
+      return this.gameState.players.some(
+        (player) => player.team === team && player.role === "operative"
+      );
+    });
+
+    return allTeamsHaveSpymaster && allTeamsHaveOperative;
+  }
+
+  private updatePlayer(player: Player): GameState {
     this.gameState.players = this.gameState.players.map((p) =>
       p.id === player.id ? player : p
     );
