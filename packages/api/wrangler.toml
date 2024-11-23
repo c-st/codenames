@@ -1,6 +1,6 @@
 # https://developers.cloudflare.com/workers/wrangler/configuration/
 
-name = "codenames-backend"
+name = "codenames-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-18"
 
