@@ -24,16 +24,16 @@
     ],
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "dist/types/**/*.ts",
+    ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    "dist/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
