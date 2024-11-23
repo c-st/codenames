@@ -32,6 +32,8 @@ jobs:
         run: pnpm run --filter api deploy
 
       - name: Build web
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
         run: pnpm run --filter web build
 
       - name: Deploy Web frontend
