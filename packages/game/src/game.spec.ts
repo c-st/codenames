@@ -1,5 +1,5 @@
 import { GameState } from "./schema";
-import { Codenames } from "./game";
+import { Codenames, defaultParameters } from "./game";
 import { classic as classicWordList } from "words";
 
 const runningGameState: GameState = {
@@ -181,8 +181,61 @@ describe("game state updates", () => {
       expect(onScheduleTurnCallback).toHaveBeenCalled();
     });
 
+    it("advances a turn with more than 2 teams", () => {
+      const game = new Codenames(
+        {
+          ...runningGameState,
+          players: [
+            ...runningGameState.players,
+            { id: "player-5", name: "Eve", team: 2, role: "spymaster" },
+            { id: "player-6", name: "Frank", team: 2, role: "operative" },
+          ],
+          turn: {
+            team: 1,
+            until: new Date(),
+            hint: {
+              word: "fruit",
+              count: 2,
+            },
+          },
+        },
+        classicWordList,
+        onScheduleTurnCallback,
+        {
+          ...defaultParameters,
+          teamCount: 3,
+        }
+      );
+
+      const updatedGameState = game.advanceTurn();
+      expect(updatedGameState.turn?.team).toEqual(2);
+
+      const latestGameState = game.advanceTurn();
+      expect(latestGameState.turn?.team).toEqual(0);
+
+      expect(onScheduleTurnCallback).toHaveBeenCalledTimes(2);
+    });
+
     it("sets a hint", () => {
-      //
+      const game = new Codenames(
+        {
+          ...runningGameState,
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: undefined,
+          },
+        },
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.setHint({ word: "juicy", count: 1 });
+
+      expect(updatedGameState.turn?.hint).toEqual({
+        word: "juicy",
+        count: 1,
+      });
     });
 
     it("handles guess for team's word", () => {});

@@ -9,7 +9,7 @@ export type GameParameters = {
   teamCount: number;
 };
 
-const defaultParameters: GameParameters = {
+export const defaultParameters: GameParameters = {
   turnDurationSeconds: 120,
   totalWordCount: 5 * 5,
   wordsToGuessCount: 8,
@@ -99,12 +99,22 @@ export class Codenames {
         this.parameters.turnDurationSeconds
       ),
     };
+
     this.onScheduleCallAdvanceTurn(this.gameState.turn.until);
+
     return this.gameState;
   }
 
   public setHint(hint: Hint): GameState {
-    // ...
+    if (!this.gameState.turn) {
+      throw new GameError("Game has not started yet");
+    }
+
+    this.gameState.turn = {
+      ...this.gameState.turn,
+      hint,
+    };
+
     return this.gameState;
   }
 
