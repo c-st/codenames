@@ -212,6 +212,18 @@ describe("game state updates", () => {
             { id: "player-5", name: "Eve", team: 2, role: "spymaster" },
             { id: "player-6", name: "Frank", team: 2, role: "operative" },
           ],
+          board: [
+            { word: "apple", isAssassin: false, team: 0, isRevealed: false },
+            { word: "banana", isAssassin: false, team: 1, isRevealed: false },
+            {
+              word: "grapefruit",
+              isAssassin: false,
+              team: 2,
+              isRevealed: false,
+            },
+            { word: "car", isAssassin: false, isRevealed: false },
+            { word: "bomb", isAssassin: true, isRevealed: false },
+          ],
           turn: {
             team: 1,
             until: new Date(),
@@ -258,17 +270,72 @@ describe("game state updates", () => {
         count: 1,
       });
     });
-  });
 
-  describe("game-over detection", () => {
-    it("handles guess for team's word", () => {
-      //
+    it("reveals a team word", () => {
+      const game = new Codenames(
+        buildExampleGameState(),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      game.revealWord("apple");
+
+      const gameResult = game.getGameResult();
+      expect(gameResult).toBeDefined();
+      expect(gameResult).toEqual({
+        winningTeam: 0,
+        losingTeam: undefined,
+      });
     });
 
-    it("handles guess for other team's word", () => {});
+    it("throws if advancing on a finished game", () => {
+      const game = new Codenames(
+        buildExampleGameState(),
+        classicWordList,
+        onScheduleTurnCallback
+      );
 
-    it("handles guess for neutral word", () => {});
+      game.revealWord("apple");
+      expect(() => game.advanceTurn()).toThrowError(
+        new GameError("Game is already over")
+      );
 
-    it("handles guess for assassin word", () => {});
+      const gameResult = game.getGameResult();
+      expect(gameResult).toBeDefined();
+      expect(gameResult).toEqual({
+        winningTeam: 0,
+        losingTeam: undefined,
+      });
+    });
+
+    it("ends game for revealed assassin word", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", isAssassin: false, team: 0, isRevealed: false },
+            { word: "banana", isAssassin: false, team: 1, isRevealed: false },
+            { word: "car", isAssassin: false, isRevealed: false },
+            { word: "bomb", isAssassin: true, isRevealed: true },
+          ],
+          turn: {
+            team: 1,
+            until: new Date(),
+            hint: {
+              word: "force",
+              count: 1,
+            },
+          },
+        }),
+        [],
+        onScheduleTurnCallback
+      );
+
+      const gameResult = game.getGameResult();
+
+      expect(gameResult).toEqual({
+        winningTeam: undefined,
+        losingTeam: 1,
+      });
+    });
   });
 });

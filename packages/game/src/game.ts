@@ -79,7 +79,7 @@ export class Codenames {
 
     this.gameState.board = setupBoard(this.parameters, this.words);
     this.gameState.turn = {
-      team: 0,
+      team: 0, // first team starts
       until: advanceDateBySeconds(
         new Date(),
         this.parameters.turnDurationSeconds
@@ -91,11 +91,12 @@ export class Codenames {
 
   public advanceTurn(): GameState {
     const { teamCount } = this.parameters;
-
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }
-    if (this.getGameResult()) {
+
+    const gameResult = this.getGameResult();
+    if (gameResult) {
       throw new GameError("Game is already over");
     }
 
@@ -134,6 +135,12 @@ export class Codenames {
     }
 
     wordCard.isRevealed = true;
+    this.updateCard(wordCard);
+
+    const isWrongGuess = wordCard.team !== this.gameState.turn?.team;
+    if (isWrongGuess || wordCard.isAssassin) {
+      this.advanceTurn();
+    }
 
     return this.gameState;
   }
@@ -141,8 +148,7 @@ export class Codenames {
   public getGameResult():
     | { winningTeam?: number; losingTeam?: number }
     | undefined {
-    const { wordsToGuessCount } = this.parameters;
-
+    const { teamCount } = this.parameters;
     const isAssassinRevealed = this.gameState.board.some(
       (card) => card.isAssassin && card.isRevealed
     );
@@ -151,22 +157,21 @@ export class Codenames {
       ? this.gameState.turn?.team
       : undefined;
 
-    const guessedWordsByTeam: number[] = new Array(
-      this.parameters.teamCount
-    ).fill(0);
-
-    this.gameState.board.reduce((teams, card) => {
-      if (card.team !== undefined && card.isRevealed) {
-        teams[card.team] += 1;
+    const remainingWordsByTeam = this.gameState.board.reduce((teams, card) => {
+      if (card.team !== undefined && !card.isRevealed) {
+        const currentCount = teams.get(card.team) ?? 0;
+        teams.set(card.team, currentCount + 1);
       }
       return teams;
-    }, guessedWordsByTeam);
+    }, new Map<number, number>(Array.from({ length: teamCount }, (_, i) => [i, 0])));
 
-    const winningTeam = guessedWordsByTeam.find(
-      (count) => count === wordsToGuessCount
-    );
+    const winningTeam = (
+      remainingWordsByTeam.entries().find(([team, count]) => {
+        return count === 0;
+      }) || []
+    ).at(0);
 
-    if (!winningTeam && !losingTeam) {
+    if (winningTeam === undefined && losingTeam === undefined) {
       // game is not over
       return undefined;
     }
@@ -196,6 +201,13 @@ export class Codenames {
   private updatePlayer(player: Player): GameState {
     this.gameState.players = this.gameState.players.map((p) =>
       p.id === player.id ? player : p
+    );
+    return this.gameState;
+  }
+
+  private updateCard(card: WordCard): GameState {
+    this.gameState.board = this.gameState.board.map((c) =>
+      c.word === card.word ? card : c
     );
     return this.gameState;
   }
