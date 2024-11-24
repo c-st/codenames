@@ -29,7 +29,7 @@ const useWebSocket = (url: string, skip: boolean) => {
     return () => {
       closeConnection();
     };
-  }, [url]);
+  }, [url, skip]);
 
   const sendMessage = (message: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

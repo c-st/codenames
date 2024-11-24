@@ -40,7 +40,7 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
     if (sessionSearchParam) {
       setSessionName(sessionSearchParam);
     }
-  }, [sessionSearchParam]);
+  }, [sessionSearchParam, pathname, router, websocketEndpointUrl]);
 
   return {
     sessionName,

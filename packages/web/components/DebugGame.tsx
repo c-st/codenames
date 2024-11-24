@@ -1,7 +1,5 @@
 "use client";
 
-import useCodenamesSession from "./useCodenamesSession";
-
 type DebugGameProps = {
   incomingMessage: string | undefined;
   sendMessage: (message: string) => void;
