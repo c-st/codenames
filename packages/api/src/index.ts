@@ -3,6 +3,7 @@ import { CodenamesGame } from "./gameServer";
 
 export interface Env {
   CODENAMES: DurableObjectNamespace<CodenamesGame>;
+  WORKER_ENV: string | undefined;
 }
 
 export default {
@@ -15,6 +16,13 @@ export default {
     const url = new URL(request.url);
     const sessionName = url.pathname.split("/").at(1);
 
+    const headers =
+      env.WORKER_ENV === "local"
+        ? { "Access-Control-Allow-Origin": "http://localhost:3000" }
+        : undefined;
+
+    console.log("-->", headers);
+
     if (!sessionName) {
       // Redirect to a random session
       const redirectUrl = new URL(url.origin);
@@ -25,7 +33,7 @@ export default {
       return new Response(null, {
         status: 302,
         headers: {
-          "Access-Control-Allow-Origin": "http://localhost:3000",
+          ...headers,
           Location: redirectUrl.toString(),
         },
       });
@@ -36,9 +44,7 @@ export default {
     if (!upgradeHeader || upgradeHeader !== "websocket") {
       return new Response("Expected websocket upgrade.", {
         status: 426,
-        headers: {
-          "Access-Control-Allow-Origin": "http://localhost:3000",
-        },
+        headers,
       });
     }
 
