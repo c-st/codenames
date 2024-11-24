@@ -27,15 +27,14 @@ export default function Home() {
         </div>
       </header>
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <HelloWord />
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <span className="text-2xl"></span>
         <DebugGame
           incomingMessage={incomingMessage}
           sendMessage={sendMessage}
           closeConnection={closeConnection}
         />
+      </main>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <span className="text-2xl"></span>
       </footer>
     </div>
   );
