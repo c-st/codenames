@@ -41,11 +41,17 @@ const useWebSocket = (url: string, skip: boolean) => {
     socketRef.current?.close(code);
   };
 
+  const reconnect = () => {
+    closeConnection();
+    socketRef.current = new WebSocket(url);
+  };
+
   return {
     incomingMessage,
     isConnected,
     sendMessage,
     closeConnection,
+    reconnect,
   };
 };
 

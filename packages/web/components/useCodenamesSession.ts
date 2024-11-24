@@ -17,11 +17,16 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
   const sessionSearchParam = searchParams?.get("session") ?? undefined;
 
   const [sessionName, setSessionName] = useState<string>();
-  const { isConnected, incomingMessage, sendMessage, closeConnection } =
-    useWebSocket(
-      `${websocketEndpointUrl}/${sessionName}`,
-      sessionName === undefined
-    );
+  const {
+    isConnected,
+    incomingMessage,
+    sendMessage,
+    closeConnection,
+    reconnect,
+  } = useWebSocket(
+    `${websocketEndpointUrl}/${sessionName}`,
+    sessionName === undefined
+  );
 
   useEffect(() => {
     const setSessionNameFromRedirectLocation = async () => {
@@ -35,9 +40,7 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
         }
       }
     };
-
     setSessionNameFromRedirectLocation();
-
     if (sessionSearchParam) {
       setSessionName(sessionSearchParam);
     }
