@@ -1,4 +1,6 @@
-import HelloWord from "@/components/HelloWord";
+// import HelloWord from "@/components/HelloWord";
+
+import JoinGame from "@/components/JoinGame";
 
 export default function Home() {
   return (
@@ -12,7 +14,8 @@ export default function Home() {
         {/* <span className="">/ snazzy-squirrel</span> */}
       </header>
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <HelloWord />
+        {/* <HelloWord /> */}
+        <JoinGame />
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         <span className="text-2xl"></span>

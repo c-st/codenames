@@ -7,11 +7,12 @@
   },
   "dependencies": {
     "game": "workspace:*",
+    "words": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241112.0",
     "vitest": "^2.1.5",
-    "wrangler": "^3.88.0"
+    "wrangler": "^3.90.0"
   }
 }
