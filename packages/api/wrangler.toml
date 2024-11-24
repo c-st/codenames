@@ -15,9 +15,12 @@ routes = [
   { pattern = "api.codenam.es", custom_domain = true }
 ]
 
-[env.staging]
-name = "codenames-backend-staging"
-workers_dev = true
+[env.local]
+vars = { WORKER_ENV = "local" }
+[env.local.durable_objects]
+  bindings = [
+    { name = "CODENAMES", class_name = "CodenamesGame" }
+  ]
 
 [[migrations]]
 tag = "v1" # Should be unique for each new migration

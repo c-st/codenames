@@ -1,7 +1,9 @@
+import { randomAnimalAlliteration } from "words";
 import { CodenamesGame } from "./gameServer";
 
 export interface Env {
   CODENAMES: DurableObjectNamespace<CodenamesGame>;
+  WORKER_ENV: string | undefined;
 }
 
 export default {
@@ -14,12 +16,27 @@ export default {
     const url = new URL(request.url);
     const sessionName = url.pathname.split("/").at(1);
 
+    const headers =
+      env.WORKER_ENV === "local"
+        ? { "Access-Control-Allow-Origin": "http://localhost:3000" }
+        : undefined;
+
+    console.log("-->", headers);
+
     if (!sessionName) {
       // Redirect to a random session
       const redirectUrl = new URL(url.origin);
-      const randomSessionName = "snazzy-squirrel"; // TODO: make this random
+      const randomSessionName = randomAnimalAlliteration();
       redirectUrl.pathname = `/${randomSessionName}`;
-      return Response.redirect(redirectUrl.toString(), 302);
+
+      // Redirect
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...headers,
+          Location: redirectUrl.toString(),
+        },
+      });
     }
 
     // Ensure upgrade header
@@ -27,6 +44,7 @@ export default {
     if (!upgradeHeader || upgradeHeader !== "websocket") {
       return new Response("Expected websocket upgrade.", {
         status: 426,
+        headers,
       });
     }
 
