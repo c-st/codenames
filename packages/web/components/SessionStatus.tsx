@@ -10,8 +10,14 @@ export default function SessionStatus({
   sessionName,
 }: SessionStatusProps) {
   return (
-    <span className="font-mono font-bold">
-      {isConnected ? "⚡️" : ""} {sessionName}
+    <span className="flex items-center">
+      {isConnected && (
+        <div className="text-xl mt-1">
+          <span className="animate-ping absolute">⚡️</span>
+          <span className="">⚡️</span>
+        </div>
+      )}
+      <p className="font-mono font-bold">{sessionName}</p>
     </span>
   );
 }

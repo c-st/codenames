@@ -5,6 +5,7 @@ import DebugGame from "@/components/DebugGame";
 import SessionStatus from "@/components/SessionStatus";
 import useCodenamesSession from "@/components/useCodenamesSession";
 import { isInDevMode } from "@/isInDevMode";
+import Logo from "@/components/Logo";
 
 export default function Home() {
   const {
@@ -20,11 +21,7 @@ export default function Home() {
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 px-4 py-4 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <header className="row-start-1 flex items-center justify-between gap-4 w-full">
-        <div className="font-bold text-4xl tracking-tighter">
-          <span className="">codenam</span>
-          <span className=" text-gray-600">.</span>
-          <span className="">es</span>
-        </div>
+        <Logo />
         <div className="">
           <SessionStatus isConnected={isConnected} sessionName={sessionName} />
         </div>

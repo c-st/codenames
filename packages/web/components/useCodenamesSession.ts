@@ -14,7 +14,8 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const sessionSearchParam = searchParams.get("session") ?? undefined;
+  const sessionSearchParam = searchParams?.get("session") ?? undefined;
+
   const [sessionName, setSessionName] = useState<string>();
   const { isConnected, incomingMessage, sendMessage, closeConnection } =
     useWebSocket(
