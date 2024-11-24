@@ -12,16 +12,13 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
-    // Extract session name
     const url = new URL(request.url);
     const sessionName = url.pathname.split("/").at(1);
 
     const headers =
       env.WORKER_ENV === "local"
         ? { "Access-Control-Allow-Origin": "http://localhost:3000" }
-        : undefined;
-
-    console.log("-->", headers);
+        : { "Access-Control-Allow-Origin": "https://codenam.es" };
 
     if (!sessionName) {
       // Redirect to a random session
