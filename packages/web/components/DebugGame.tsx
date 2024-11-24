@@ -1,9 +1,27 @@
 "use client";
 
+import { Message } from "schema";
+
 type DebugGameProps = {
   incomingMessage: string | undefined;
   sendMessage: (message: string) => void;
   closeConnection: () => void;
+};
+
+const buildAddPlayerMessage = (): Message => {
+  return {
+    id: "1",
+    timestamp: new Date().toISOString(),
+    type: {
+      type: "addPlayer",
+      player: {
+        id: "1",
+        name: "Alice",
+        role: "operative",
+        team: 1,
+      },
+    },
+  };
 };
 
 export default function DebugGame({
@@ -20,7 +38,7 @@ export default function DebugGame({
         <div className="flex gap-2 justify-end">
           <button
             className="bg-purple-500 hover:bg-purple-700 font-bold py-2 px-2 rounded"
-            onClick={() => sendMessage("hello")}
+            onClick={() => sendMessage(JSON.stringify(buildAddPlayerMessage()))}
           >
             ⬆ hello
           </button>

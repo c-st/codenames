@@ -1,4 +1,4 @@
-import { GameState, Hint, Player, WordCard } from "./schema";
+import { GameState, Hint, Player, WordCard } from "../../schema/src/game";
 import { setupBoard } from "./setup-board";
 import { advanceDateBySeconds } from "./date";
 import { GameError } from "./error";
@@ -177,6 +177,10 @@ export class Codenames {
     }
 
     return { winningTeam, losingTeam };
+  }
+
+  public getGameState(): GameState {
+    return this.gameState;
   }
 
   private isReadyToStartGame(): boolean {
