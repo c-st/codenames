@@ -1,23 +1,21 @@
 "use client";
 
+import useCodenamesSession from "./useCodenamesSession";
 import useWebSocket from "./useWebsocket";
 
 export default function JoinGame() {
   const {
+    sessionName,
     isConnected,
-    resolvedUrl,
     incomingMessage,
     sendMessage,
     closeConnection,
-  } = useWebSocket(
-    "wss://api.codenam.es"
-    // "ws://localhost:8787"
-  );
+  } = useCodenamesSession("ws://localhost:8787");
 
   return (
     <>
       <span className="font-mono">
-        {isConnected ? "⚡️" : ""} {resolvedUrl}
+        {isConnected ? "⚡️" : ""} {sessionName}
       </span>
       <div className="flex items-center justify-start gap-2">
         <button
