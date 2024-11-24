@@ -7,7 +7,6 @@ const useWebSocket = (url: string, skip: boolean) => {
 
   useEffect(() => {
     if (skip) {
-      console.log("Skipping WebSocket connection");
       return;
     }
 
@@ -15,7 +14,7 @@ const useWebSocket = (url: string, skip: boolean) => {
 
     socketRef.current.onopen = () => {
       setIsConnected(true);
-      console.log("WebSocket connected");
+      console.log("WebSocket connected", url);
     };
 
     socketRef.current.onmessage = (event) => {

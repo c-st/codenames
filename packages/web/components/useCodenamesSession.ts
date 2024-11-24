@@ -23,8 +23,7 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
     );
 
   useEffect(() => {
-    const setRandomSessionNameFromRedirectLocation = async () => {
-      // make http request and get session name from redirect location
+    const setSessionNameFromRedirectLocation = async () => {
       if (!sessionSearchParam) {
         const redirectUrl = await retrieveRedirectLocation(
           new URL(websocketEndpointUrl.replace("ws", "http")).toString()
@@ -36,7 +35,7 @@ const useCodenamesSession = (websocketEndpointUrl: string) => {
       }
     };
 
-    setRandomSessionNameFromRedirectLocation();
+    setSessionNameFromRedirectLocation();
 
     if (sessionSearchParam) {
       setSessionName(sessionSearchParam);
