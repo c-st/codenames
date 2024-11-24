@@ -4,6 +4,7 @@ import HelloWord from "@/components/HelloWord";
 import DebugGame from "@/components/DebugGame";
 import SessionStatus from "@/components/SessionStatus";
 import useCodenamesSession from "@/components/useCodenamesSession";
+import { isInDevMode } from "@/isInDevMode";
 
 export default function Home() {
   const {
@@ -12,7 +13,9 @@ export default function Home() {
     incomingMessage,
     sendMessage,
     closeConnection,
-  } = useCodenamesSession("ws://localhost:8787");
+  } = useCodenamesSession(
+    isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es"
+  );
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 px-4 py-4 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
