@@ -8,6 +8,7 @@
   "dependencies": {
     "game": "workspace:*",
     "schema": "workspace:*",
+    "uuid": "^11.0.3",
     "words": "workspace:*",
     "zod": "^3.23.8"
   },

@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { Codenames, GameState, gameStateSchema } from "game";
+import { v4 as uuidv4 } from "uuid";
 import { commandSchema } from "schema";
 import { Env } from "./worker";
 

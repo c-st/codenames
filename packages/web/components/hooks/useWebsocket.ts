@@ -14,6 +14,7 @@ const useWebSocket = (url: string, skip: boolean) => {
 
     socketRef.current.onopen = () => {
       setIsConnected(true);
+      setIncomingMessage(undefined);
       console.log("WebSocket connected", url);
     };
 
@@ -23,6 +24,7 @@ const useWebSocket = (url: string, skip: boolean) => {
 
     socketRef.current.onclose = (e) => {
       setIsConnected(false);
+      setIncomingMessage(undefined);
       console.log("WebSocket disconnected", e);
     };
 
