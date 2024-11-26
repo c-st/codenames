@@ -1,21 +1,77 @@
 import { DurableObject } from "cloudflare:workers";
 import { Codenames, GameState, gameStateSchema } from "game";
-import { messageSchema } from "schema";
+import { commandSchema } from "schema";
+import { Env } from "./worker";
 
-const initialGameState: GameState = { players: [], board: [] };
+const GAME_STATE = "gameState";
+
+const initialGameState: GameState = { players: [], board: [], turn: undefined };
 
 export class CodenamesGame extends DurableObject {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+
+    // Make sure that all players in the game are still connected
+    this.getGameInstance().then((game) => {
+      const websockets = this.ctx.getWebSockets();
+      game.getGameState().players.forEach((player) => {
+        if (
+          !websockets.some(
+            (ws) => ws.deserializeAttachment().playerId === player.id
+          )
+        ) {
+          game.removePlayer(player.id);
+        }
+      });
+
+      this.persistAndBroadcastGameState(game.getGameState());
+    });
+  }
+
+  async getGameInstance(): Promise<Codenames> {
+    try {
+      let gameState: GameState;
+      const state = await this.ctx.storage.get<string>(GAME_STATE);
+      if (state) {
+        gameState = gameStateSchema.parse(JSON.parse(state));
+      } else {
+        gameState = initialGameState;
+      }
+      return new Codenames(gameState ?? initialGameState, [], () => {});
+    } catch (error) {
+      console.error("Error initializing game state:", error);
+      return new Codenames(initialGameState, [], () => {});
+    }
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const sessionName = url.pathname.split("/").at(1);
+    // const sessionName = url.pathname.split("/").at(1);
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
 
+    // Restore state
+    const game = await this.getGameInstance();
+
+    // Accept WebSocket connection
     this.ctx.acceptWebSocket(server);
 
-    const game = await this.loadGameInstance();
+    // Assign playerId
+    const playerId = uuidv4();
+    server.serializeAttachment({
+      ...server.deserializeAttachment(),
+      playerId,
+    });
 
-    server.send(JSON.stringify(game.getGameState()));
+    // Join game
+    game.addOrUpdatePlayer({
+      id: playerId,
+      name: "Test",
+      role: "operative",
+      team: 0,
+    });
+
+    await this.persistAndBroadcastGameState(game.getGameState());
 
     return new Response(null, {
       status: 101,
@@ -23,34 +79,32 @@ export class CodenamesGame extends DurableObject {
     });
   }
 
-  async webSocketMessage(_ws: WebSocket, message: ArrayBuffer | string) {
-    const game = await this.loadGameInstance();
+  async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
+    const { playerId } = ws.deserializeAttachment();
 
-    console.log("Received message:", message);
     // Parse JSON
-    let parsedMessage;
+    let parsedCommand;
     try {
-      parsedMessage = JSON.parse(message.toString());
+      parsedCommand = commandSchema.parse(JSON.parse(message.toString()));
     } catch (error) {
-      console.info("Failed to parse JSON:", error);
+      console.error("Failed to parse JSON:", error);
       return;
     }
 
-    const messageParseResult = messageSchema.safeParse(parsedMessage);
-    if (!messageParseResult.success) {
-      console.info("Invalid message:", messageParseResult.error);
-      return;
-    }
+    //
+    console.log(await this.ctx.storage.getAlarm());
+    await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
 
-    const gameMessage = messageParseResult.data;
-    if (gameMessage.type?.type === "addPlayer") {
-      game.addOrUpdatePlayer(gameMessage.type.player);
-    } else if (gameMessage.type?.type === "removePlayer") {
-      game.removePlayer(gameMessage.type.playerId);
+    // Handle command
+    const command = parsedCommand;
+    if (command.type === "resetGame") {
+      await this.ctx.storage.delete(GAME_STATE);
+      const game = new Codenames(initialGameState, [], () => {});
+      await this.persistAndBroadcastGameState(game.getGameState());
+      await ws.close();
+    } else if (command.type === "hello") {
+      console.log("Hello from player", playerId);
     }
-
-    await this.persistGameState(game.getGameState());
-    await this.broadcastMessage(JSON.stringify(game.getGameState()));
   }
 
   async webSocketClose(
@@ -59,35 +113,34 @@ export class CodenamesGame extends DurableObject {
     _reason: string,
     _wasClean: boolean
   ) {
+    const { playerId } = ws.deserializeAttachment();
     ws.close(code, "Bye.");
+
+    const game = await this.getGameInstance();
+    game.removePlayer(playerId);
+    await this.persistAndBroadcastGameState(game.getGameState(), ws);
   }
 
-  async broadcastMessage(message: string) {
+  async broadcastMessage(message: string, exclude?: WebSocket): Promise<void> {
     const websockets = this.ctx.getWebSockets();
-    const promises = websockets.map((ws) => ws.send(message));
+    // TODO: remove word type for players who are not spymasters
+    const promises = websockets
+      .filter((websocket) => websocket !== exclude)
+      .map((ws) => ws.send(message));
+
     await Promise.all(promises);
   }
 
-  async persistGameState(gameState: GameState) {
-    await this.ctx.storage.put("gameState", JSON.stringify(gameState));
+  async persistAndBroadcastGameState(
+    gameState: GameState,
+    exclude?: WebSocket
+  ): Promise<void> {
+    await this.ctx.storage.put(GAME_STATE, JSON.stringify(gameState));
+    await this.broadcastMessage(JSON.stringify(gameState), exclude);
   }
 
-  async loadGameInstance(): Promise<Codenames> {
-    const state = await this.gameState();
-    return new Codenames(state, [], () => {});
+  async alarm() {
+    console.log("Alarm triggered");
   }
-
-  async gameState(): Promise<GameState> {
-    const state = (await this.ctx.storage.get<string>("gameState")) || "{}";
-    try {
-      const parsedState = JSON.parse(state);
-      const gameState = gameStateSchema.safeParse(parsedState);
-      return gameState.success ? gameState.data : initialGameState;
-    } catch (error) {
-      console.error("Failed to load game state:", error);
-    }
-    return initialGameState;
-  }
-
   // TODO: Callback for alarm schedule
 }
