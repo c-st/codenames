@@ -1,4 +1,4 @@
-import { toGameState, GameState } from "./schema";
+import { toGameState, GameState } from "../../schema/src/game";
 
 const exampleGameState: GameState = {
   players: [

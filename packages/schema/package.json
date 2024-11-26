@@ -1,13 +1,11 @@
 {
-  "name": "game",
+  "name": "schema",
   "type": "module",
   "main": "src/index.ts",
-  "scripts": {
-    "test": "vitest --run"
-  },
+  "scripts": {},
   "dependencies": {
-    "zod": "^3.23.8",
-    "words": "workspace:*"
+    "game": "workspace:*",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "vitest": "^2.1.5"

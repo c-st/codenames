@@ -2,32 +2,48 @@
 
 type DebugGameProps = {
   incomingMessage: string | undefined;
-  sendMessage: (message: string) => void;
+  resetGame: () => void;
+  hello: () => void;
   closeConnection: () => void;
 };
 
 export default function DebugGame({
-  sendMessage,
-  closeConnection,
   incomingMessage,
+  resetGame,
+  hello,
+  closeConnection,
 }: DebugGameProps) {
+  const lastMessage = JSON.parse(incomingMessage || "{}");
+
   return (
     <>
-      <div className="flex items-center justify-start gap-2">
-        <button
-          className="bg-purple-500 hover:bg-purple-700 font-bold py-2 px-2 rounded"
-          onClick={() => sendMessage("hello")}
-        >
-          ⬆ hello
-        </button>
-        <button
-          className="bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded"
-          onClick={() => closeConnection()}
-        >
-          Close
-        </button>
+      <div className="flex flex-col gap-4">
+        <div className="">
+          <pre className="font-mono text-xs">
+            {JSON.stringify(lastMessage, null, 2)}
+          </pre>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            className="bg-purple-500 hover:bg-purple-700 font-bold py-2 px-2 rounded"
+            onClick={() => hello()}
+          >
+            ⬆ Hello
+          </button>
+          <button
+            className="bg-red-500 hover:bg-red-700 font-bold py-2 px-2 rounded"
+            onClick={() => resetGame()}
+          >
+            💀 Reset
+          </button>
+          <button
+            className="bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded"
+            onClick={() => closeConnection()}
+          >
+            Disconnect
+          </button>
+        </div>
       </div>
-      <p className="font-mono text-l">{incomingMessage}</p>
     </>
   );
 }

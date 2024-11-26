@@ -1,4 +1,4 @@
-import { GameState, Hint, Player, WordCard } from "./schema";
+import { GameState, Hint, Player, WordCard } from "../../schema/src/game";
 import { setupBoard } from "./setup-board";
 import { advanceDateBySeconds } from "./date";
 import { GameError } from "./error";
@@ -32,6 +32,7 @@ export class Codenames {
   ) {}
 
   public addOrUpdatePlayer(player: Player): GameState {
+    // console.log("game - addOrUpdatePlayer", player);
     if (this.gameState.players.some((p) => p.id === player.id)) {
       this.removePlayer(player.id);
     }
@@ -49,6 +50,7 @@ export class Codenames {
   }
 
   public removePlayer(id: string): GameState {
+    // console.log("game - removePlayer", id);
     const playerToRemove = this.gameState.players.find((p) => p.id === id);
     if (!playerToRemove) {
       return this.gameState;
@@ -177,6 +179,10 @@ export class Codenames {
     }
 
     return { winningTeam, losingTeam };
+  }
+
+  public getGameState(): GameState {
+    return this.gameState;
   }
 
   private isReadyToStartGame(): boolean {

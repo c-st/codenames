@@ -1,6 +1,6 @@
 import { getRandomIndices, getRandomWords } from "words";
 import { GameParameters } from "./game";
-import { WordCard } from "./schema";
+import { WordCard } from "../../schema/src/game";
 
 export const setupBoard = (
   parameters: GameParameters,

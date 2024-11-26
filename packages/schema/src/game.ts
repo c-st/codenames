@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const playerSchema = z.object({
+export const playerSchema = z.object({
   id: z.string(),
   name: z.string(),
   team: z.number(),
@@ -25,7 +25,7 @@ const turnSchema = z.object({
   hint: hintSchema.optional(),
 });
 
-const gameStateSchema = z.object({
+export const gameStateSchema = z.object({
   players: z.array(playerSchema),
   board: z.array(wordCardSchema),
   turn: turnSchema.optional(),

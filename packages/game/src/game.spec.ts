@@ -1,4 +1,4 @@
-import { GameState } from "./schema";
+import { GameState } from "../../schema/src/game";
 import { Codenames, defaultParameters } from "./game";
 import { classic as classicWordList } from "words";
 import { GameError } from "./error";
