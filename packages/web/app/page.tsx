@@ -2,7 +2,7 @@
 
 import DebugGame from "@/components/DebugGame";
 import SessionStatus from "@/components/SessionStatus";
-import Logo from "@/components/Logo";
+import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 
 export default function Home() {
