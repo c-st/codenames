@@ -1,5 +1,6 @@
 import adjectives from "../resources/adjectives.json";
 import animals from "../resources/animals.json";
+import animalEmojis from "../resources/animal-emojis.json";
 
 export const getRandomWords = (words: string[], count: number): string[] =>
   Array.from(new Set(words))
@@ -21,6 +22,13 @@ export const randomAnimalAlliteration = (): string => {
     adjectives.filter((word) => word.charAt(0) === randomAnimal.charAt(0))
   );
   return `${randomMatchingAdjective}-${randomAnimal}`;
+};
+
+export const randomAnimalEmoji = (): string => {
+  const randomAnimal = getRandomWord(
+    animalEmojis.map((entry) => `${entry.emoji} ${entry.name}`)
+  );
+  return randomAnimal;
 };
 
 export const getRandomIndices = (count: number, max: number): number[] => {

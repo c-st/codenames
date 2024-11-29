@@ -1,7 +1,16 @@
-import { Command } from "schema";
+import {
+  Command,
+  GameStateForClient,
+  gameStateSchemaForClient,
+  Player,
+} from "schema";
 import useGameSession from "./useGameSession";
+import { useEffect, useState } from "react";
 
 const useCodenames = () => {
+  const [gameState, setGameState] = useState<GameStateForClient>();
+  const [players, setPlayers] = useState<Player[]>([]);
+
   const {
     sessionName,
     isConnected,
@@ -12,19 +21,24 @@ const useCodenames = () => {
     isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es"
   );
 
-  const resetGame = () => {
-    const message: Command = {
-      type: "resetGame",
-    };
-    sendMessage(JSON.stringify(message));
-  };
+  useEffect(() => {
+    if (!incomingMessage) {
+      return;
+    }
+    const parseResult = gameStateSchemaForClient.safeParse(
+      JSON.parse(incomingMessage)
+    );
+    if (!parseResult.success) {
+      console.error("Failed to parse incoming message:", parseResult.error);
+      return;
+    }
+    const newGameState = parseResult.data;
+    setGameState(newGameState);
+    setPlayers(newGameState.players);
+  }, [incomingMessage]);
 
-  const hello = () => {
-    const message: Command = {
-      type: "hello",
-    };
-    sendMessage(JSON.stringify(message));
-  };
+  const sendCommand = (command: Command) =>
+    sendMessage(JSON.stringify(command));
 
   return {
     // Connection
@@ -34,8 +48,13 @@ const useCodenames = () => {
     sendMessage,
     closeConnection,
     // Gameplay
-    resetGame,
-    hello,
+    players,
+    gameCanBeStarted: gameState?.gameCanStart ?? false,
+    currentPlayerId: gameState?.playerId ?? "",
+    resetGame: () => sendCommand({ type: "resetGame" }),
+    setName: (name: string) => sendCommand({ type: "setName", name }),
+    promoteToSpymaster: (playerId: string) =>
+      sendCommand({ type: "promoteToSpymaster", playerId }),
   };
 };
 

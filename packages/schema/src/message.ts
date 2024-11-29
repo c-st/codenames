@@ -5,7 +5,12 @@ export const commandSchema = z.discriminatedUnion("type", [
     type: z.literal("resetGame"),
   }),
   z.object({
-    type: z.literal("hello"),
+    type: z.literal("setName"),
+    name: z.string(),
+  }),
+  z.object({
+    type: z.literal("promoteToSpymaster"),
+    playerId: z.string(),
   }),
   z.object({
     type: z.literal("removePlayer"),
