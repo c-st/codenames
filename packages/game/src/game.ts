@@ -14,7 +14,7 @@ export const defaultParameters: GameParameters = {
   turnDurationSeconds: 120,
   totalWordCount: 5 * 5,
   wordsToGuessCount: 8,
-  teamCount: 3,
+  teamCount: 2,
 };
 
 const initialGameState: GameState = {
