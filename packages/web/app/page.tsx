@@ -4,14 +4,13 @@ import SessionStatus from "@/components/SessionStatus";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Lobby";
-import DebugGame from "@/components/DebugGame";
 import Board from "@/components/Board";
+import DebugGame from "@/components/DebugGame";
 
 export default function Home() {
   const {
     sessionName,
     isConnected,
-    incomingMessage,
     resetGame,
     closeConnection,
     promoteToSpymaster,
@@ -32,7 +31,6 @@ export default function Home() {
           <SessionStatus isConnected={isConnected} sessionName={sessionName} />
         </div>
       </header>
-      {/* Game */}
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
         {turn === undefined ? (
           <Lobby
@@ -48,12 +46,7 @@ export default function Home() {
         )}
       </main>
       <footer className="row-start-3 flex justify-center"></footer>
-      {/* End game */}
-      <DebugGame
-        incomingMessage={incomingMessage}
-        resetGame={resetGame}
-        closeConnection={closeConnection}
-      />
+      <DebugGame resetGame={resetGame} closeConnection={closeConnection} />
     </div>
   );
 }

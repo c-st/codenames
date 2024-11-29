@@ -110,7 +110,9 @@ export class CodenamesGame extends DurableObject {
 
   async alarm() {
     console.log("🚨 Alarm triggered");
-    // advance game turn
+    const game = await this.getGameInstance();
+    game.advanceTurn();
+    await this.persistAndBroadcastGameState(game);
   }
 
   async webSocketClose(

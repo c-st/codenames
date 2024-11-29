@@ -14,7 +14,7 @@ export const defaultParameters: GameParameters = {
   turnDurationSeconds: 120,
   totalWordCount: 5 * 5,
   wordsToGuessCount: 8,
-  teamCount: 2,
+  teamCount: 3,
 };
 
 const initialGameState: GameState = {
@@ -94,6 +94,8 @@ export class Codenames {
     }
 
     this.gameState.players = this.gameState.players.filter((p) => p.id !== id);
+
+    // TODO: end game when all players have left
     return this.gameState;
   }
 
