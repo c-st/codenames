@@ -31,8 +31,34 @@ export class Codenames {
     private parameters: GameParameters = defaultParameters
   ) {}
 
+  public joinGame(player: Pick<Player, "id" | "name">): GameState {
+    // player gets randomly assigned to a team and a spymaster role
+    const { teamCount } = this.parameters;
+    const teams = Array.from({ length: teamCount }, (_, i) => i);
+
+    // assign player to the team with the fewest players
+    const team = teams.reduce((min, team) => {
+      const teamPlayerCount = this.gameState.players.filter(
+        (player) => player.team === team
+      ).length;
+      const minPlayerCount = this.gameState.players.filter(
+        (player) => player.team === min
+      ).length;
+      return teamPlayerCount < minPlayerCount ? team : min;
+    }, 0);
+
+    const teamHasSpymaster = this.gameState.players.some(
+      (player) => player.team === team && player.role === "spymaster"
+    );
+
+    return this.addOrUpdatePlayer({
+      ...player,
+      team,
+      role: teamHasSpymaster ? "operative" : "spymaster",
+    });
+  }
+
   public addOrUpdatePlayer(player: Player): GameState {
-    // console.log("game - addOrUpdatePlayer", player);
     if (this.gameState.players.some((p) => p.id === player.id)) {
       this.removePlayer(player.id);
     }
@@ -50,7 +76,6 @@ export class Codenames {
   }
 
   public removePlayer(id: string): GameState {
-    // console.log("game - removePlayer", id);
     const playerToRemove = this.gameState.players.find((p) => p.id === id);
     if (!playerToRemove) {
       return this.gameState;
@@ -185,7 +210,7 @@ export class Codenames {
     return this.gameState;
   }
 
-  private isReadyToStartGame(): boolean {
+  public isReadyToStartGame(): boolean {
     const { teamCount } = this.parameters;
     const allTeams = Array.from({ length: teamCount });
 

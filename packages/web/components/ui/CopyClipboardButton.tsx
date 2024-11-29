@@ -1,13 +1,5 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { useState } from "react";
-
-const transition = {
-  type: "spring",
-  stiffness: 200,
-  damping: 15,
-  bounce: 0.8,
-  duration: 0.4,
-};
 
 export default function CopyClipboardButton({
   onClick,
@@ -19,7 +11,7 @@ export default function CopyClipboardButton({
   const handleClick = () => {
     onClick();
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setTimeout(() => setCopied(false), 1200);
   };
 
   return (
@@ -27,35 +19,42 @@ export default function CopyClipboardButton({
       <button
         onClick={handleClick}
         className={`
-          relative w-6 h-8 px-1.5 py-1.5 items-center justify-center  inline-flex rounded-lg
-          text-gray-500 dark:text-gray-400
-          ${copied ? "" : "hover:bg-gray-100 dark:hover:bg-gray-800"}
+          relative w-8 h-8 p-2 items-center justify-center  inline-flex rounded-lg
+          text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800
           `}
       >
         <AnimatePresence initial={false}>
-          {copied ? (
-            <motion.div
-              className="absolute"
-              key="success"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={transition}
-            >
-              <SuccessIcon />
-            </motion.div>
-          ) : (
-            <motion.div
-              className="absolute"
-              key="clipboard"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={transition}
-            >
-              <ClipboardIcon />
-            </motion.div>
-          )}
+          <MotionConfig
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 15,
+              bounce: 0.8,
+              duration: 0.4,
+            }}
+          >
+            {copied ? (
+              <motion.div
+                className="absolute"
+                key="success"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+              >
+                <SuccessIcon />
+              </motion.div>
+            ) : (
+              <motion.div
+                className="absolute"
+                key="clipboard"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+              >
+                <ClipboardIcon />
+              </motion.div>
+            )}
+          </MotionConfig>
         </AnimatePresence>
       </button>
     </>

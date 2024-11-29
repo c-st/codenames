@@ -35,6 +35,26 @@ describe("game state updates", () => {
   });
 
   describe("joining and leaving", () => {
+    it("new player joins the game", () => {
+      const initialGameState = buildExampleGameState({ players: [] });
+      const game = new Codenames(
+        initialGameState,
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.joinGame({ id: "player-1", name: "Alice" });
+
+      expect(updatedGameState.players).toEqual([
+        {
+          id: "player-1",
+          name: "Alice",
+          team: 0,
+          role: "spymaster",
+        },
+      ]);
+    });
+
     it("adds a new player", () => {
       const initialGameState = buildExampleGameState({ players: [] });
 

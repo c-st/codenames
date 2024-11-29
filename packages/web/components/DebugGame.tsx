@@ -1,16 +1,16 @@
 "use client";
 
+import { Toggle } from "./ui/Toggle";
+
 type DebugGameProps = {
   incomingMessage: string | undefined;
   resetGame: () => void;
-  hello: () => void;
   closeConnection: () => void;
 };
 
 export default function DebugGame({
   incomingMessage,
   resetGame,
-  hello,
   closeConnection,
 }: DebugGameProps) {
   const lastMessage = JSON.parse(incomingMessage || "{}");
@@ -23,13 +23,11 @@ export default function DebugGame({
             {JSON.stringify(lastMessage, null, 2)}
           </pre>
         </div>
+        <div className="flex gap-2">
+          <Toggle />
+          <Toggle />
+        </div>
         <div className="flex gap-2 justify-end">
-          <button
-            className="bg-purple-500 hover:bg-purple-700 font-bold py-2 px-2 rounded"
-            onClick={() => hello()}
-          >
-            ⬆ Hello
-          </button>
           <button
             className="bg-red-500 hover:bg-red-700 font-bold py-2 px-2 rounded"
             onClick={() => resetGame()}

@@ -1,8 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { v4 as uuidv4 } from "uuid";
-import { commandSchema, GameState, gameStateSchema } from "schema";
+import {
+  commandSchema,
+  GameState,
+  GameStateForClient,
+  gameStateSchema,
+} from "schema";
 import { Env } from "./worker";
 import { Codenames } from "game";
+import { randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
 
@@ -24,8 +30,7 @@ export class CodenamesGame extends DurableObject {
           game.removePlayer(player.id);
         }
       });
-
-      this.persistAndBroadcastGameState(game.getGameState());
+      this.persistAndBroadcastGameState(game);
     });
   }
 
@@ -65,14 +70,9 @@ export class CodenamesGame extends DurableObject {
     });
 
     // Join game
-    game.addOrUpdatePlayer({
-      id: playerId,
-      name: "Test",
-      role: "operative",
-      team: 0,
-    });
+    game.joinGame({ id: playerId, name: randomAnimalEmoji() });
 
-    await this.persistAndBroadcastGameState(game.getGameState());
+    await this.persistAndBroadcastGameState(game);
 
     return new Response(null, {
       status: 101,
@@ -93,18 +93,34 @@ export class CodenamesGame extends DurableObject {
     }
 
     //
-    console.log(await this.ctx.storage.getAlarm());
-    await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
+    // console.log(await this.ctx.storage.getAlarm());
+    // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
 
     // Handle command
     const command = parsedCommand;
+    const game = await this.getGameInstance();
+    console.log(`${playerId} sent command:`, command);
     if (command.type === "resetGame") {
       await this.ctx.storage.delete(GAME_STATE);
-      const game = new Codenames(initialGameState, [], () => {});
-      await this.persistAndBroadcastGameState(game.getGameState());
+      const newGame = new Codenames(initialGameState, [], () => {});
+      await this.persistAndBroadcastGameState(newGame);
       await ws.close();
-    } else if (command.type === "hello") {
-      console.log("Hello from player", playerId);
+    } else if (command.type === "setName") {
+      const player = game.getGameState().players.find((p) => p.id === playerId);
+      if (!player) {
+        return;
+      }
+      game.addOrUpdatePlayer({ ...player, id: playerId, name: command.name });
+      await this.persistAndBroadcastGameState(game);
+    } else if (command.type === "promoteToSpymaster") {
+      const newSpymaster = game
+        .getGameState()
+        .players.find((p) => p.id === command.playerId);
+      if (!newSpymaster) {
+        return;
+      }
+      game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
+      await this.persistAndBroadcastGameState(game);
     }
   }
 
@@ -119,25 +135,31 @@ export class CodenamesGame extends DurableObject {
 
     const game = await this.getGameInstance();
     game.removePlayer(playerId);
-    await this.persistAndBroadcastGameState(game.getGameState(), ws);
-  }
-
-  async broadcastMessage(message: string, exclude?: WebSocket): Promise<void> {
-    const websockets = this.ctx.getWebSockets();
-    // TODO: remove word type for players who are not spymasters
-    const promises = websockets
-      .filter((websocket) => websocket !== exclude)
-      .map((ws) => ws.send(message));
-
-    await Promise.all(promises);
+    await this.persistAndBroadcastGameState(game, ws);
   }
 
   async persistAndBroadcastGameState(
-    gameState: GameState,
+    game: Codenames,
     exclude?: WebSocket
   ): Promise<void> {
+    const gameState = game.getGameState();
     await this.ctx.storage.put(GAME_STATE, JSON.stringify(gameState));
-    await this.broadcastMessage(JSON.stringify(gameState), exclude);
+
+    const websockets = this.ctx.getWebSockets();
+    const promises = websockets
+      .filter((websocket) => websocket !== exclude)
+      .map((ws) => {
+        const { playerId } = ws.deserializeAttachment();
+        // TODO: remove word type for players who are not spymasters
+        const gameStateForClient: GameStateForClient = {
+          ...gameState,
+          playerId,
+          gameCanStart: game.isReadyToStartGame(),
+        };
+        return ws.send(JSON.stringify(gameStateForClient));
+      });
+
+    await Promise.all(promises);
   }
 
   async alarm() {
