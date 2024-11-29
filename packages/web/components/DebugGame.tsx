@@ -1,7 +1,5 @@
 "use client";
 
-import { Toggle } from "./ui/Toggle";
-
 type DebugGameProps = {
   incomingMessage: string | undefined;
   resetGame: () => void;
@@ -24,8 +22,8 @@ export default function DebugGame({
           </pre>
         </div>
         <div className="flex gap-2">
-          <Toggle />
-          <Toggle />
+          {/* <Toggle />
+          <Toggle /> */}
         </div>
         <div className="flex gap-2 justify-end">
           <button

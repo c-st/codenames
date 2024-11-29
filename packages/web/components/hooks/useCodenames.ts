@@ -3,6 +3,8 @@ import {
   GameStateForClient,
   gameStateSchemaForClient,
   Player,
+  Turn,
+  WordCard,
 } from "schema";
 import useGameSession from "./useGameSession";
 import { useEffect, useState } from "react";
@@ -10,6 +12,8 @@ import { useEffect, useState } from "react";
 const useCodenames = () => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
+  const [turn, setTurn] = useState<Turn>();
+  const [board, setBoard] = useState<WordCard[]>();
 
   const {
     sessionName,
@@ -33,8 +37,11 @@ const useCodenames = () => {
       return;
     }
     const newGameState = parseResult.data;
+    console.log("Updating game state:", newGameState);
     setGameState(newGameState);
     setPlayers(newGameState.players);
+    setTurn(newGameState.turn);
+    setBoard(newGameState.board);
   }, [incomingMessage]);
 
   const sendCommand = (command: Command) =>
@@ -49,12 +56,15 @@ const useCodenames = () => {
     closeConnection,
     // Gameplay
     players,
+    turn,
+    board,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
     resetGame: () => sendCommand({ type: "resetGame" }),
     setName: (name: string) => sendCommand({ type: "setName", name }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
+    startGame: () => sendCommand({ type: "startGame" }),
   };
 };
 

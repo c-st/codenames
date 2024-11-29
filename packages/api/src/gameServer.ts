@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { v4 as uuidv4 } from "uuid";
 import {
+  Command,
   commandSchema,
   GameState,
   GameStateForClient,
@@ -8,7 +9,7 @@ import {
 } from "schema";
 import { Env } from "./worker";
 import { Codenames } from "game";
-import { randomAnimalEmoji } from "words";
+import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
 
@@ -35,6 +36,10 @@ export class CodenamesGame extends DurableObject {
   }
 
   async getGameInstance(): Promise<Codenames> {
+    const onScheduleCallAdvanceTurn = (date: Date) => {
+      this.ctx.storage.setAlarm(date.getTime());
+    };
+
     try {
       let gameState: GameState;
       const state = await this.ctx.storage.get<string>(GAME_STATE);
@@ -43,10 +48,18 @@ export class CodenamesGame extends DurableObject {
       } else {
         gameState = initialGameState;
       }
-      return new Codenames(gameState ?? initialGameState, [], () => {});
+      return new Codenames(
+        gameState ?? initialGameState,
+        classic,
+        onScheduleCallAdvanceTurn
+      );
     } catch (error) {
       console.error("Error initializing game state:", error);
-      return new Codenames(initialGameState, [], () => {});
+      return new Codenames(
+        initialGameState,
+        classic,
+        onScheduleCallAdvanceTurn
+      );
     }
   }
 
@@ -81,8 +94,6 @@ export class CodenamesGame extends DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
-    const { playerId } = ws.deserializeAttachment();
-
     // Parse JSON
     let parsedCommand;
     try {
@@ -92,36 +103,14 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
-    //
-    // console.log(await this.ctx.storage.getAlarm());
-    // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
-
     // Handle command
     const command = parsedCommand;
-    const game = await this.getGameInstance();
-    console.log(`${playerId} sent command:`, command);
-    if (command.type === "resetGame") {
-      await this.ctx.storage.delete(GAME_STATE);
-      const newGame = new Codenames(initialGameState, [], () => {});
-      await this.persistAndBroadcastGameState(newGame);
-      await ws.close();
-    } else if (command.type === "setName") {
-      const player = game.getGameState().players.find((p) => p.id === playerId);
-      if (!player) {
-        return;
-      }
-      game.addOrUpdatePlayer({ ...player, id: playerId, name: command.name });
-      await this.persistAndBroadcastGameState(game);
-    } else if (command.type === "promoteToSpymaster") {
-      const newSpymaster = game
-        .getGameState()
-        .players.find((p) => p.id === command.playerId);
-      if (!newSpymaster) {
-        return;
-      }
-      game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
-      await this.persistAndBroadcastGameState(game);
-    }
+    await this.handleCommand(command, ws);
+  }
+
+  async alarm() {
+    console.log("🚨 Alarm triggered");
+    // advance game turn
   }
 
   async webSocketClose(
@@ -138,7 +127,7 @@ export class CodenamesGame extends DurableObject {
     await this.persistAndBroadcastGameState(game, ws);
   }
 
-  async persistAndBroadcastGameState(
+  private async persistAndBroadcastGameState(
     game: Codenames,
     exclude?: WebSocket
   ): Promise<void> {
@@ -154,7 +143,8 @@ export class CodenamesGame extends DurableObject {
         const gameStateForClient: GameStateForClient = {
           ...gameState,
           playerId,
-          gameCanStart: game.isReadyToStartGame(),
+          gameCanStart:
+            game.isReadyToStartGame() && gameState.turn === undefined,
         };
         return ws.send(JSON.stringify(gameStateForClient));
       });
@@ -162,8 +152,61 @@ export class CodenamesGame extends DurableObject {
     await Promise.all(promises);
   }
 
-  async alarm() {
-    console.log("Alarm triggered");
+  private async handleCommand(command: Command, ws: WebSocket): Promise<void> {
+    const { playerId } = ws.deserializeAttachment();
+    const game = await this.getGameInstance();
+    console.log(`${playerId} sent command:`, command);
+
+    // console.log(await this.ctx.storage.getAlarm());
+    // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
+
+    switch (command.type) {
+      case "startGame": {
+        if (game.isReadyToStartGame()) {
+          game.startGame();
+          await this.persistAndBroadcastGameState(game);
+        }
+        break;
+      }
+
+      case "setName": {
+        const player = game
+          .getGameState()
+          .players.find((p) => p.id === playerId);
+        if (!player) {
+          return;
+        }
+        game.addOrUpdatePlayer({
+          ...player,
+          id: playerId,
+          name: command.name,
+        });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "promoteToSpymaster": {
+        const newSpymaster = game
+          .getGameState()
+          .players.find((p) => p.id === command.playerId);
+        if (!newSpymaster) {
+          return;
+        }
+        game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "resetGame": {
+        await this.ctx.storage.delete(GAME_STATE);
+        const newGame = new Codenames(initialGameState, [], () => {});
+        await this.persistAndBroadcastGameState(newGame);
+        await ws.close();
+        break;
+      }
+
+      default:
+        console.error("Unknown command type:", command);
+    }
   }
-  // TODO: Callback for alarm schedule
 }

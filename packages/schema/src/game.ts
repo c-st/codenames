@@ -40,6 +40,7 @@ export type GameState = z.infer<typeof gameStateSchema>;
 export type GameStateForClient = z.infer<typeof gameStateSchemaForClient>;
 export type WordCard = z.infer<typeof wordCardSchema>;
 export type Player = z.infer<typeof playerSchema>;
+export type Turn = z.infer<typeof turnSchema>;
 export type Hint = z.infer<typeof hintSchema>;
 
 export const toGameState = (object: unknown): GameState =>

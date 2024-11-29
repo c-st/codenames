@@ -13,8 +13,7 @@ export const commandSchema = z.discriminatedUnion("type", [
     playerId: z.string(),
   }),
   z.object({
-    type: z.literal("removePlayer"),
-    playerId: z.string(),
+    type: z.literal("startGame"),
   }),
 ]);
 

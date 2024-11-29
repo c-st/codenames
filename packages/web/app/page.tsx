@@ -4,16 +4,24 @@ import SessionStatus from "@/components/SessionStatus";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Lobby";
+import DebugGame from "@/components/DebugGame";
+import Board from "@/components/Board";
 
 export default function Home() {
   const {
     sessionName,
     isConnected,
+    incomingMessage,
+    resetGame,
+    closeConnection,
     promoteToSpymaster,
     setName,
     players,
+    turn,
+    board,
     currentPlayerId,
     gameCanBeStarted,
+    startGame,
   } = useCodenames();
 
   return (
@@ -26,16 +34,26 @@ export default function Home() {
       </header>
       {/* Game */}
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Lobby
-          players={players}
-          currentPlayerId={currentPlayerId}
-          promoteToSpymaster={promoteToSpymaster}
-          setName={setName}
-          gameCanBeStarted={gameCanBeStarted}
-        />
+        {turn === undefined ? (
+          <Lobby
+            players={players}
+            currentPlayerId={currentPlayerId}
+            promoteToSpymaster={promoteToSpymaster}
+            setName={setName}
+            gameCanBeStarted={gameCanBeStarted}
+            startGame={startGame}
+          />
+        ) : (
+          <Board words={board} turn={turn} />
+        )}
       </main>
       <footer className="row-start-3 flex justify-center"></footer>
       {/* End game */}
+      <DebugGame
+        incomingMessage={incomingMessage}
+        resetGame={resetGame}
+        closeConnection={closeConnection}
+      />
     </div>
   );
 }

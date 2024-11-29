@@ -9,12 +9,14 @@ export default function Lobby({
   promoteToSpymaster,
   setName,
   gameCanBeStarted,
+  startGame,
 }: {
   players: Player[];
   currentPlayerId: string;
   promoteToSpymaster: (playerId: string) => void;
   setName: (name: string) => void;
   gameCanBeStarted: boolean;
+  startGame: () => void;
 }) {
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
   if (!currentPlayer) {
@@ -50,12 +52,7 @@ export default function Lobby({
       </div>
       <div className="flex flex-col gap-4 items-center">
         {gameCanBeStarted ? (
-          <Button
-            title="Start game"
-            onClick={() => {
-              console.log("Starting game");
-            }}
-          />
+          <Button title="Start game" onClick={startGame} />
         ) : (
           <span className="text-xl font-bold">Waiting for more players...</span>
         )}
