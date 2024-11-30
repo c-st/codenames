@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
 import { Button } from "./ui/Button";
+import { motion } from "framer-motion";
 
 export default function Board({
   players,
@@ -42,6 +43,7 @@ export default function Board({
       </div>
       <WordMatrix
         words={words}
+        turn={turn}
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
       />
@@ -79,18 +81,16 @@ function TeamInfo({
   return (
     <div className="flex justify-between">
       {Object.entries(teams).map(([teamId, teamPlayers], index) => (
-        <div key={teamId} className="flex flex-col">
-          <h2
-            className={`mb-1 text-lg font-black md:text-2xl text-${getTeamColor(index)}-500 text-center`}
-          >
-            Team {teamId}
-            {teamId === turn.team.toString() && " (active)"}
-          </h2>
+        <div
+          key={teamId}
+          className={`bg-${getTeamColor(index)}-500 flex flex-col rounded-lg p-2 ${turn.team === index ? "opacity-100" : "opacity-50"}`}
+        >
+          <h2 className={`mb-1 font-black md:text-xl`}>Team {teamId}</h2>
 
           {teamPlayers.map((player) => (
             <div
               key={player.id}
-              className={`${player.id === currentPlayer.id ? "font-bold" : "font-normal"}`}
+              className={`text-md ${player.id === currentPlayer.id ? "font-black" : "font-bold"}`}
             >
               {player.name}
               {player.role === "spymaster" && " (spymaster)"}
@@ -155,18 +155,25 @@ function Timer({ until }: { until: Date }) {
 function WordMatrix({
   words,
   currentPlayer,
+  turn,
   onRevealWord,
 }: {
   words: WordCard[];
   currentPlayer: Player;
+  turn: Turn;
   onRevealWord: (word: string) => void;
 }) {
+  const teamColor = getTeamColor(turn.team);
+  const borderColor = `border-${teamColor}-500/20`;
+
   return (
-    <div className="grid grid-cols-5 grid-rows-5 gap-2">
+    <div
+      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-[8px] border-solid ${borderColor} p-2`}
+    >
       {words.map((wordCard) => (
         <Word
           key={wordCard.word}
-          word={wordCard}
+          wordCard={wordCard}
           currentPlayer={currentPlayer}
           onRevealWord={onRevealWord}
         />
@@ -176,47 +183,53 @@ function WordMatrix({
 }
 
 function Word({
-  word,
+  wordCard,
   currentPlayer,
   onRevealWord,
 }: {
-  word: WordCard;
+  wordCard: WordCard;
   currentPlayer: Player;
   onRevealWord: (word: string) => void;
 }) {
   const isSpymaster = currentPlayer.role === "spymaster";
-  const showWord = word.isRevealed || isSpymaster;
+  const showWord = wordCard.isRevealed || isSpymaster;
 
   // Determine colors
   let bgColor = "bg-white";
   if (showWord) {
-    if (word.team === undefined && !word.isAssassin) {
+    if (wordCard.team === undefined && !wordCard.isAssassin) {
       bgColor = "bg-gray-400";
-    } else if (word.isAssassin) {
+    } else if (wordCard.isAssassin) {
       bgColor = "bg-red-500"; // black?
-    } else if (word.team !== undefined) {
-      bgColor = `bg-${getTeamColor(word.team)}-500`;
+    } else if (wordCard.team !== undefined) {
+      const color = getTeamColor(wordCard.team);
+      bgColor = `bg-${color}-500`;
     }
   }
 
   const textColor = showWord ? "text-white" : "text-black";
-  const opacity = !word.isRevealed && isSpymaster ? "opacity-30" : "";
+  const opacity = !wordCard.isRevealed && isSpymaster ? 0.5 : 0.95;
 
-  // if revealed, show in team color of team
   return (
-    <div
-      className={`justify-top flex h-20 cursor-pointer flex-col justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor} ${opacity}`}
-      onClick={() => onRevealWord(word.word)}
+    <motion.div
+      key={wordCard.word}
+      className={`justify-top flex h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
+      onClick={() => onRevealWord(wordCard.word)}
+      whileHover={{ scale: 1.05, opacity: 0.8 }}
+      whileTap={{ scale: 0.95 }}
+      animate={{ opacity }}
+      initial={{ opacity: isSpymaster ? 1 : 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+        duration: 0.5,
+      }}
     >
-      <p
-        className={`text-m text-center font-extrabold ${textColor} md:text-xl`}
-      >
-        {word.word}
+      <p className={`text-m font-extrabold ${textColor} md:text-xl`}>
+        {wordCard.word}
       </p>
-      {/* {word.isRevealed && "✔️"} */}
-      {/* {showWord && word.team} */}
-      {/* {showWord && word.isAssassin && "💣"} */}
-    </div>
+    </motion.div>
   );
 }
 
@@ -248,8 +261,6 @@ const getTeamColor = (team: number) => {
     case 1:
       return "green";
     case 2:
-      return "orange";
-    case 3:
       return "pink";
     default:
       return "blue";
