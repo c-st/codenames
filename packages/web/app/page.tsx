@@ -5,19 +5,19 @@ import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Lobby";
 import Board from "@/components/Board";
-import DebugGame from "@/components/DebugGame";
 
 export default function Home() {
   const {
     sessionName,
     isConnected,
-    resetGame,
-    closeConnection,
+    // resetGame,
+    // closeConnection,
     promoteToSpymaster,
     setName,
     players,
     turn,
     board,
+    gameResult,
     currentPlayerId,
     gameCanBeStarted,
     startGame,
@@ -26,7 +26,7 @@ export default function Home() {
   } = useCodenames();
 
   return (
-    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center px-5 pt-5 font-[family-name:var(--font-geist-sans)] sm:p-20">
+    <div className="grid min-h-screen grid-rows-[auto_1fr_20px] items-center justify-items-center px-3 pt-5 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
       <header className="row-start-1 flex w-full items-center justify-between gap-4">
         <Logo />
         <div className="">
@@ -49,13 +49,16 @@ export default function Home() {
             currentPlayerId={currentPlayerId}
             words={board}
             turn={turn}
+            gameResult={gameResult}
+            gameCanBeStarted={gameCanBeStarted}
+            startGame={startGame}
             giveHint={giveHint}
             revealWord={revealWord}
           />
         )}
       </main>
       <footer className="row-start-3 flex justify-center">
-        <DebugGame resetGame={resetGame} closeConnection={closeConnection} />
+        {/* <DebugGame resetGame={resetGame} closeConnection={closeConnection} /> */}
       </footer>
     </div>
   );

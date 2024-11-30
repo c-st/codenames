@@ -1,5 +1,6 @@
 import {
   Command,
+  GameResult,
   GameStateForClient,
   gameStateSchemaForClient,
   Player,
@@ -14,6 +15,7 @@ const useCodenames = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
+  const [gameResult, setGameResult] = useState<GameResult>();
 
   const {
     sessionName,
@@ -39,10 +41,11 @@ const useCodenames = () => {
     const newGameState = parseResult.data;
     console.log("Updating game state:", newGameState);
     setGameState(newGameState);
-    const { players, board, turn } = newGameState;
+    const { players, board, turn, gameResult } = newGameState;
     setPlayers(players);
     setBoard(board);
     setTurn(turn);
+    setGameResult(gameResult);
   }, [incomingMessage]);
 
   const sendCommand = (command: Command) =>
@@ -59,6 +62,7 @@ const useCodenames = () => {
     players,
     turn,
     board,
+    gameResult,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
     // Commands

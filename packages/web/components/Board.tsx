@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Player, Turn, WordCard } from "schema";
+import { GameResult, Player, Turn, WordCard } from "schema";
+import { Button } from "./ui/Button";
 
 export default function Board({
   players,
   currentPlayerId,
   words,
   turn,
+  gameResult,
+  gameCanBeStarted,
+  startGame,
   // giveHint,
   revealWord,
 }: {
@@ -13,6 +17,9 @@ export default function Board({
   currentPlayerId: string;
   words?: WordCard[];
   turn: Turn;
+  gameResult?: GameResult;
+  gameCanBeStarted: boolean;
+  startGame: () => void;
   giveHint: (hint: string, count: number) => void;
   revealWord: (word: string) => void;
 }) {
@@ -30,14 +37,18 @@ export default function Board({
     <div className="flex flex-col gap-4">
       <TeamInfo players={players} currentPlayer={currentPlayer} turn={turn} />
       <div className="flex justify-between">
-        <Hint turn={turn} />
-        <Timer until={until} />
+        <Hint turn={turn} />-{JSON.stringify(gameResult, null, 2)}-
+        {gameResult === undefined && <Timer until={until} />}
       </div>
-
       <WordMatrix
         words={words}
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
+      />
+      <GameActions
+        gameResult={gameResult}
+        gameCanBeStarted={gameCanBeStarted}
+        startGame={startGame}
       />
     </div>
   );
@@ -67,14 +78,20 @@ function TeamInfo({
   // show each team's players
   return (
     <div className="flex justify-between">
-      {Object.entries(teams).map(([teamId, teamPlayers]) => (
+      {Object.entries(teams).map(([teamId, teamPlayers], index) => (
         <div key={teamId} className="flex flex-col">
-          <h2 className="mb-2 text-xl font-bold">
-            Team {teamId} {teamId === turn.team.toString() && " (active)"}
+          <h2
+            className={`mb-1 text-lg font-black md:text-2xl text-${getTeamColor(index)}-500 text-center`}
+          >
+            Team {teamId}
+            {teamId === turn.team.toString() && " (active)"}
           </h2>
 
           {teamPlayers.map((player) => (
-            <div key={player.id} className="">
+            <div
+              key={player.id}
+              className={`${player.id === currentPlayer.id ? "font-bold" : "font-normal"}`}
+            >
               {player.name}
               {player.role === "spymaster" && " (spymaster)"}
               {player.id === currentPlayer.id && " (you)"}
@@ -167,16 +184,74 @@ function Word({
   currentPlayer: Player;
   onRevealWord: (word: string) => void;
 }) {
-  const showWord = word.isRevealed || currentPlayer.role === "spymaster";
+  const isSpymaster = currentPlayer.role === "spymaster";
+  const showWord = word.isRevealed || isSpymaster;
+
+  // Determine colors
+  let bgColor = "bg-white";
+  if (showWord) {
+    if (word.team === undefined && !word.isAssassin) {
+      bgColor = "bg-gray-400";
+    } else if (word.isAssassin) {
+      bgColor = "bg-red-500"; // black?
+    } else if (word.team !== undefined) {
+      bgColor = `bg-${getTeamColor(word.team)}-500`;
+    }
+  }
+
+  const textColor = showWord ? "text-white" : "text-black";
+  const opacity = !word.isRevealed && isSpymaster ? "opacity-30" : "";
+
+  // if revealed, show in team color of team
   return (
     <div
-      className="justify-top flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-gray-800"
+      className={`justify-top flex h-20 cursor-pointer flex-col justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor} ${opacity}`}
       onClick={() => onRevealWord(word.word)}
     >
-      <p className="text-m font-bold md:text-xl">{word.word}</p>
-      {word.isRevealed && "✔️"}
-      {showWord && word.team}
-      {showWord && word.isAssassin && "💣"}
+      <p
+        className={`text-m text-center font-extrabold ${textColor} md:text-xl`}
+      >
+        {word.word}
+      </p>
+      {/* {word.isRevealed && "✔️"} */}
+      {/* {showWord && word.team} */}
+      {/* {showWord && word.isAssassin && "💣"} */}
     </div>
   );
 }
+
+function GameActions({
+  gameResult,
+  gameCanBeStarted,
+  startGame,
+}: {
+  gameResult?: GameResult;
+  gameCanBeStarted: boolean;
+  startGame: () => void;
+}) {
+  return (
+    <div className="mt-8 flex justify-center">
+      {gameResult && gameCanBeStarted && (
+        <Button title="Start new game" onClick={startGame} />
+      )}
+      {!gameCanBeStarted && (
+        <span className="text-xl font-bold">Waiting for more players...</span>
+      )}
+    </div>
+  );
+}
+
+const getTeamColor = (team: number) => {
+  switch (team) {
+    case 0:
+      return "purple";
+    case 1:
+      return "green";
+    case 2:
+      return "orange";
+    case 3:
+      return "pink";
+    default:
+      return "blue";
+  }
+};

@@ -8,7 +8,7 @@ import {
   gameStateSchema,
 } from "schema";
 import { Env } from "./worker";
-import { Codenames } from "game";
+import { Codenames, defaultParameters } from "game";
 import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
@@ -49,18 +49,20 @@ export class CodenamesGame extends DurableObject {
         gameState = initialGameState;
       }
       return new Codenames(
-        gameState ?? initialGameState,
+        gameState,
         classic,
-        onScheduleCallAdvanceTurn
+        onScheduleCallAdvanceTurn,
+        defaultParameters
       );
     } catch (error) {
       console.error("Error initializing game state:", error);
-      return new Codenames(
-        initialGameState,
-        classic,
-        onScheduleCallAdvanceTurn
-      );
     }
+    return new Codenames(
+      initialGameState,
+      classic,
+      onScheduleCallAdvanceTurn,
+      defaultParameters
+    );
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -111,7 +113,9 @@ export class CodenamesGame extends DurableObject {
   async alarm() {
     console.log("Received trigger for advancing turn");
     const game = await this.getGameInstance();
-    game.advanceTurn();
+    if (game.getGameResult() === undefined) {
+      game.advanceTurn();
+    }
     await this.persistAndBroadcastGameState(game);
   }
 
@@ -142,12 +146,18 @@ export class CodenamesGame extends DurableObject {
       .map((ws) => {
         const { playerId } = ws.deserializeAttachment();
         // TODO: remove word type for players who are not spymasters
+
+        console.log(game.getGameResult());
         const gameStateForClient: GameStateForClient = {
           ...gameState,
           playerId,
-          gameCanStart:
-            game.isReadyToStartGame() && gameState.turn === undefined,
+          gameCanStart: game.isReadyToStartGame(),
+          gameResult: game.getGameResult(),
         };
+        console.log(
+          "Broadcasting game state:",
+          gameStateForClient.gameCanStart
+        );
         return ws.send(JSON.stringify(gameStateForClient));
       });
 
@@ -235,9 +245,8 @@ export class CodenamesGame extends DurableObject {
 
       case "resetGame": {
         await this.ctx.storage.delete(GAME_STATE);
-        const newGame = new Codenames(initialGameState, [], () => {});
+        const newGame = await this.getGameInstance();
         await this.persistAndBroadcastGameState(newGame);
-        await ws.close();
         break;
       }
 

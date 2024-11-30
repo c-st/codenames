@@ -166,8 +166,14 @@ export class Codenames {
     wordCard.isRevealed = true;
     this.updateCard(wordCard);
 
+    const gameResult = this.getGameResult();
+    if (gameResult) {
+      console.log("Game over", gameResult);
+      return this.gameState;
+    }
+
     const isWrongGuess = wordCard.team !== this.gameState.turn?.team;
-    if (isWrongGuess || wordCard.isAssassin) {
+    if (isWrongGuess) {
       this.advanceTurn();
     }
 

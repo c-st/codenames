@@ -27,6 +27,9 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("endTurn"),
   }),
+
+  // end game
+  // start new game
 ]);
 
 export type Command = z.infer<typeof commandSchema>;
