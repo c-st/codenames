@@ -15,6 +15,18 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("startGame"),
   }),
+  z.object({
+    type: z.literal("giveHint"),
+    hint: z.string(),
+    count: z.number(),
+  }),
+  z.object({
+    type: z.literal("revealWord"),
+    word: z.string(),
+  }),
+  z.object({
+    type: z.literal("endTurn"),
+  }),
 ]);
 
 export type Command = z.infer<typeof commandSchema>;

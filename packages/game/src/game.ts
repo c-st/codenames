@@ -144,7 +144,7 @@ export class Codenames {
     return this.gameState;
   }
 
-  public setHint(hint: Hint): GameState {
+  public giveHint(hint: Hint): GameState {
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }
@@ -186,16 +186,21 @@ export class Codenames {
       ? this.gameState.turn?.team
       : undefined;
 
-    const remainingWordsByTeam = this.gameState.board.reduce((teams, card) => {
-      if (card.team !== undefined && !card.isRevealed) {
-        const currentCount = teams.get(card.team) ?? 0;
-        teams.set(card.team, currentCount + 1);
-      }
-      return teams;
-    }, new Map<number, number>(Array.from({ length: teamCount }, (_, i) => [i, 0])));
+    const remainingWordsByTeam = this.gameState.board.reduce(
+      (teams, word) => {
+        if (word.team !== undefined && !word.isRevealed) {
+          const currentCount = teams.get(word.team) ?? 0;
+          teams.set(word.team, currentCount + 1);
+        }
+        return teams;
+      },
+      new Map<number, number>(
+        Array.from({ length: teamCount }, (_, i) => [i, 0])
+      )
+    );
 
     const winningTeam = (
-      remainingWordsByTeam.entries().find(([team, count]) => {
+      remainingWordsByTeam.entries().find(([_, count]) => {
         return count === 0;
       }) || []
     ).at(0);

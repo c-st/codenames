@@ -12,8 +12,8 @@ import { useEffect, useState } from "react";
 const useCodenames = () => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [turn, setTurn] = useState<Turn>();
   const [board, setBoard] = useState<WordCard[]>();
+  const [turn, setTurn] = useState<Turn>();
 
   const {
     sessionName,
@@ -22,7 +22,7 @@ const useCodenames = () => {
     sendMessage,
     closeConnection,
   } = useGameSession(
-    isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es"
+    isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es",
   );
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const useCodenames = () => {
       return;
     }
     const parseResult = gameStateSchemaForClient.safeParse(
-      JSON.parse(incomingMessage)
+      JSON.parse(incomingMessage),
     );
     if (!parseResult.success) {
       console.error("Failed to parse incoming message:", parseResult.error);
@@ -40,8 +40,8 @@ const useCodenames = () => {
     console.log("Updating game state:", newGameState);
     setGameState(newGameState);
     setPlayers(newGameState.players);
-    setTurn(newGameState.turn);
     setBoard(newGameState.board);
+    setTurn(newGameState.turn);
   }, [incomingMessage]);
 
   const sendCommand = (command: Command) =>
@@ -60,11 +60,13 @@ const useCodenames = () => {
     board,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
+    // Commands
     resetGame: () => sendCommand({ type: "resetGame" }),
     setName: (name: string) => sendCommand({ type: "setName", name }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
     startGame: () => sendCommand({ type: "startGame" }),
+    revealWord: (word: string) => sendCommand({ type: "revealWord", word }),
   };
 };
 

@@ -109,7 +109,7 @@ export class CodenamesGame extends DurableObject {
   }
 
   async alarm() {
-    console.log("🚨 Alarm triggered");
+    console.log("Received trigger for advancing turn");
     const game = await this.getGameInstance();
     game.advanceTurn();
     await this.persistAndBroadcastGameState(game);
@@ -157,27 +157,19 @@ export class CodenamesGame extends DurableObject {
   private async handleCommand(command: Command, ws: WebSocket): Promise<void> {
     const { playerId } = ws.deserializeAttachment();
     const game = await this.getGameInstance();
-    console.log(`${playerId} sent command:`, command);
+
+    const player = game.getGameState().players.find((p) => p.id === playerId);
+    if (!player) {
+      console.error("Player not found:", playerId);
+      return;
+    }
+    console.log(`${player?.name} sent command:`, command);
 
     // console.log(await this.ctx.storage.getAlarm());
     // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
 
     switch (command.type) {
-      case "startGame": {
-        if (game.isReadyToStartGame()) {
-          game.startGame();
-          await this.persistAndBroadcastGameState(game);
-        }
-        break;
-      }
-
       case "setName": {
-        const player = game
-          .getGameState()
-          .players.find((p) => p.id === playerId);
-        if (!player) {
-          return;
-        }
         game.addOrUpdatePlayer({
           ...player,
           id: playerId,
@@ -195,6 +187,48 @@ export class CodenamesGame extends DurableObject {
           return;
         }
         game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "startGame": {
+        if (game.isReadyToStartGame()) {
+          game.startGame();
+          await this.persistAndBroadcastGameState(game);
+        }
+        break;
+      }
+
+      case "giveHint": {
+        if (player.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        if (player.role !== "spymaster") {
+          console.error("Not spymaster");
+          return;
+        }
+        game.giveHint({ hint: command.hint, count: command.count });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "revealWord": {
+        if (player?.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        game.revealWord(command.word);
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "endTurn": {
+        if (player?.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        game.advanceTurn();
         await this.persistAndBroadcastGameState(game);
         break;
       }

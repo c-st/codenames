@@ -15,7 +15,7 @@ const wordCardSchema = z.object({
 });
 
 const hintSchema = z.object({
-  word: z.string(),
+  hint: z.string(),
   count: z.number(),
 });
 
