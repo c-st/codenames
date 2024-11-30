@@ -38,7 +38,8 @@ export default function Board({
     <div className="flex flex-col gap-4">
       <TeamInfo players={players} currentPlayer={currentPlayer} turn={turn} />
       <div className="flex justify-between">
-        <Hint turn={turn} />-{JSON.stringify(gameResult, null, 2)}-
+        <Hint turn={turn} />
+        {gameResult && <Result gameResult={gameResult} />}
         {gameResult === undefined && <Timer until={until} />}
       </div>
       <WordMatrix
@@ -53,6 +54,16 @@ export default function Board({
         startGame={startGame}
       />
     </div>
+  );
+}
+
+function Result({ gameResult }: { gameResult?: GameResult }) {
+  const { winningTeam, losingTeam } = gameResult || {};
+  return (
+    <span className="text-2xl font-bold">
+      {winningTeam !== undefined && `Team ${winningTeam} wins!`}
+      {losingTeam !== undefined && `Team ${losingTeam} loses...`}
+    </span>
   );
 }
 
