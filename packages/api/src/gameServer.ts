@@ -163,7 +163,7 @@ export class CodenamesGame extends DurableObject {
       console.error("Player not found:", playerId);
       return;
     }
-    console.log(`${player?.name} sent command:`, command);
+    console.log(`${player?.name}:`, command);
 
     // console.log(await this.ctx.storage.getAlarm());
     // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);

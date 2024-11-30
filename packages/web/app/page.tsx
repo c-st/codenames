@@ -21,6 +21,8 @@ export default function Home() {
     currentPlayerId,
     gameCanBeStarted,
     startGame,
+    revealWord,
+    giveHint,
   } = useCodenames();
 
   return (
@@ -42,11 +44,19 @@ export default function Home() {
             startGame={startGame}
           />
         ) : (
-          <Board words={board} turn={turn} />
+          <Board
+            players={players}
+            currentPlayerId={currentPlayerId}
+            words={board}
+            turn={turn}
+            giveHint={giveHint}
+            revealWord={revealWord}
+          />
         )}
       </main>
-      <footer className="row-start-3 flex justify-center"></footer>
-      <DebugGame resetGame={resetGame} closeConnection={closeConnection} />
+      <footer className="row-start-3 flex justify-center">
+        <DebugGame resetGame={resetGame} closeConnection={closeConnection} />
+      </footer>
     </div>
   );
 }

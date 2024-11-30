@@ -16,7 +16,7 @@ export default function DebugGame({
           {/* <Toggle />
           <Toggle /> */}
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-4">
           <button
             className="rounded bg-red-500 px-2 py-2 font-bold hover:bg-red-700"
             onClick={() => resetGame()}
@@ -27,7 +27,7 @@ export default function DebugGame({
             className="rounded bg-red-500 px-4 py-2 font-bold hover:bg-red-700"
             onClick={() => closeConnection()}
           >
-            Disconnect
+            Close
           </button>
         </div>
       </div>

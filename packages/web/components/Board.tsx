@@ -1,26 +1,103 @@
 import { useEffect, useState } from "react";
-import { Turn, WordCard } from "schema";
+import { Player, Turn, WordCard } from "schema";
 
 export default function Board({
+  players,
+  currentPlayerId,
   words,
   turn,
+  // giveHint,
+  revealWord,
 }: {
+  players: Player[];
+  currentPlayerId: string;
   words?: WordCard[];
   turn: Turn;
+  giveHint: (hint: string, count: number) => void;
+  revealWord: (word: string) => void;
 }) {
   const { until } = turn;
 
   if (words === undefined) {
     return null;
   }
-
-  words.map((w) => w.word);
+  const currentPlayer = players.find((p) => p.id === currentPlayerId);
+  if (!currentPlayer) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      Turn: team {turn.team}
-      <Timer until={until} />
-      <WordMatrix words={words} />
+      <TeamInfo players={players} currentPlayer={currentPlayer} turn={turn} />
+      <div className="flex justify-between">
+        <Hint turn={turn} />
+        <Timer until={until} />
+      </div>
+
+      <WordMatrix
+        words={words}
+        currentPlayer={currentPlayer}
+        onRevealWord={revealWord}
+      />
+    </div>
+  );
+}
+
+function TeamInfo({
+  players,
+  turn,
+  currentPlayer,
+}: {
+  players: Player[];
+  currentPlayer: Player;
+  turn: Turn;
+}) {
+  // Group players by team
+  const teams = players.reduce(
+    (acc, player) => {
+      if (!acc[player.team]) {
+        acc[player.team] = [];
+      }
+      acc[player.team].push(player);
+      return acc;
+    },
+    {} as Record<number, Player[]>,
+  );
+
+  // show each team's players
+  return (
+    <div className="flex justify-between">
+      {Object.entries(teams).map(([teamId, teamPlayers]) => (
+        <div key={teamId} className="flex flex-col">
+          <h2 className="mb-2 text-xl font-bold">
+            Team {teamId} {teamId === turn.team.toString() && " (active)"}
+          </h2>
+
+          {teamPlayers.map((player) => (
+            <div key={player.id} className="">
+              {player.name}
+              {player.role === "spymaster" && " (spymaster)"}
+              {player.id === currentPlayer.id && " (you)"}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Hint({ turn }: { turn: Turn }) {
+  return (
+    <div>
+      <div className="font-mono text-2xl font-bold">
+        {turn.hint ? (
+          <p className="font-mono text-2xl">
+            {turn.hint.hint} {turn.hint.count}
+          </p>
+        ) : (
+          ""
+        )}
+      </div>
     </div>
   );
 }
@@ -58,17 +135,48 @@ function Timer({ until }: { until: Date }) {
   );
 }
 
-function WordMatrix({ words }: { words: WordCard[] }) {
+function WordMatrix({
+  words,
+  currentPlayer,
+  onRevealWord,
+}: {
+  words: WordCard[];
+  currentPlayer: Player;
+  onRevealWord: (word: string) => void;
+}) {
   return (
     <div className="grid grid-cols-5 grid-rows-5 gap-2">
       {words.map((wordCard) => (
-        <div
+        <Word
           key={wordCard.word}
-          className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-4 font-mono font-bold dark:border-gray-600 dark:bg-gray-800"
-        >
-          {wordCard.word}
-        </div>
+          word={wordCard}
+          currentPlayer={currentPlayer}
+          onRevealWord={onRevealWord}
+        />
       ))}
+    </div>
+  );
+}
+
+function Word({
+  word,
+  currentPlayer,
+  onRevealWord,
+}: {
+  word: WordCard;
+  currentPlayer: Player;
+  onRevealWord: (word: string) => void;
+}) {
+  const showWord = word.isRevealed || currentPlayer.role === "spymaster";
+  return (
+    <div
+      className="justify-top flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-600 dark:bg-gray-800"
+      onClick={() => onRevealWord(word.word)}
+    >
+      <p className="text-m font-bold md:text-xl">{word.word}</p>
+      {word.isRevealed && "✔️"}
+      {showWord && word.team}
+      {showWord && word.isAssassin && "💣"}
     </div>
   );
 }

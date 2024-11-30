@@ -39,9 +39,10 @@ const useCodenames = () => {
     const newGameState = parseResult.data;
     console.log("Updating game state:", newGameState);
     setGameState(newGameState);
-    setPlayers(newGameState.players);
-    setBoard(newGameState.board);
-    setTurn(newGameState.turn);
+    const { players, board, turn } = newGameState;
+    setPlayers(players);
+    setBoard(board);
+    setTurn(turn);
   }, [incomingMessage]);
 
   const sendCommand = (command: Command) =>
@@ -66,6 +67,8 @@ const useCodenames = () => {
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
     startGame: () => sendCommand({ type: "startGame" }),
+    giveHint: (hint: string, count: number) =>
+      sendCommand({ type: "giveHint", hint, count }),
     revealWord: (word: string) => sendCommand({ type: "revealWord", word }),
   };
 };
