@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import {
   Command,
   commandSchema,
@@ -76,7 +76,7 @@ export class CodenamesGame extends DurableObject {
     this.ctx.acceptWebSocket(server);
 
     // Assign playerId
-    const playerId = uuidv4();
+    const playerId = nanoid();
     server.serializeAttachment({
       ...server.deserializeAttachment(),
       playerId,
