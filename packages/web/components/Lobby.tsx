@@ -23,17 +23,20 @@ export default function Lobby({
     return null;
   }
 
-  const teams = players.reduce((acc, player) => {
-    if (!acc[player.team]) {
-      acc[player.team] = [];
-    }
-    acc[player.team].push(player);
-    return acc;
-  }, {} as Record<number, Player[]>);
+  const teams = players.reduce(
+    (acc, player) => {
+      if (!acc[player.team]) {
+        acc[player.team] = [];
+      }
+      acc[player.team].push(player);
+      return acc;
+    },
+    {} as Record<number, Player[]>,
+  );
 
   return (
     <div className="flex flex-col items-center gap-12">
-      <h1 className="md:text-4xl text-2xl font-black">Lobby</h1>
+      <h1 className="text-2xl font-black md:text-4xl">Lobby</h1>
       <div className="flex items-center gap-4">
         <p className="text-xl font-black">That&apos;s you: </p>
         <NameField player={currentPlayer} onSetName={setName} />
@@ -50,7 +53,7 @@ export default function Lobby({
           );
         })}
       </div>
-      <div className="flex flex-col gap-4 items-center">
+      <div className="flex flex-col items-center gap-4">
         {gameCanBeStarted ? (
           <Button title="Start game" onClick={startGame} />
         ) : (
@@ -71,7 +74,7 @@ function NameField({
   return (
     <input
       type="text"
-      className="px-4 py-2 h-12 w-48 text-md font-base font-mono border-2 border-gray-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500"
+      className="text-md font-base h-12 w-48 rounded-2xl border-2 border-gray-300 px-4 py-2 font-mono focus:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:ring-blue-500"
       placeholder="Enter your name"
       value={player.name}
       onChange={(e) => onSetName(e.target.value)}
@@ -107,13 +110,13 @@ function TeamTable({
   }, [sortedTeam]);
 
   return (
-    <div className="dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col gap-2 min-w-32">
+    <div className="flex min-w-32 flex-col gap-2 rounded-lg p-4 shadow-md dark:bg-gray-800">
       <AnimatePresence>
         <Reorder.Group
           axis="y"
           values={team}
           onReorder={setSortedTeam}
-          className="flex flex-col gap-4 items-center"
+          className="flex flex-col items-center gap-4"
         >
           {sortedTeam.map((player) => {
             return (
@@ -145,10 +148,9 @@ function PlayerCard({
   return (
     <div
       key={player.id}
-      className={`dark:bg-white bg-gray-200 text-gray-900 rounded-lg shadow-md min-w-24 w-56 px-4 p-2 flex flex-col gap-2 justify-center
-        `}
+      className={`flex w-56 min-w-24 flex-col justify-center gap-2 rounded-lg bg-gray-200 p-2 px-4 text-gray-900 shadow-md dark:bg-white`}
     >
-      <span className="md:text-xl text-base font-bold">
+      <span className="text-base font-bold md:text-xl">
         {player.name}
         {player.id === currentPlayerId && " (you)"}
         {player.role === "spymaster" && " *"}

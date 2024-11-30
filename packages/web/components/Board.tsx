@@ -64,7 +64,7 @@ function WordMatrix({ words }: { words: WordCard[] }) {
       {words.map((wordCard) => (
         <div
           key={wordCard.word}
-          className="flex items-center justify-center p-4 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 font-mono font-bold"
+          className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-4 font-mono font-bold dark:border-gray-600 dark:bg-gray-800"
         >
           {wordCard.word}
         </div>

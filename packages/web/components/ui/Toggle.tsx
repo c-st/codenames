@@ -12,18 +12,18 @@ export function Toggle() {
   return (
     <div className="">
       <motion.div
-        className="w-12 h-8 relative cursor-pointer rounded-full bg-gray-800"
+        className="relative h-8 w-12 cursor-pointer rounded-full bg-gray-800"
         animate={current}
         initial={false}
         onTapStart={cycle}
       >
         <motion.div
-          className="w=full h-full rounded-full bg-purple-700 "
+          className="w=full h-full rounded-full bg-purple-700"
           variants={{ off: { scale: 0 }, on: { scale: 1 } }}
           transition={transition}
         />
         <motion.div
-          className="w-7 h-7 rounded-full bg-white shadow-md"
+          className="h-7 w-7 rounded-full bg-white shadow-md"
           style={{
             position: "absolute",
             top: 2,

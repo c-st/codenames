@@ -24,14 +24,14 @@ export default function Home() {
   } = useCodenames();
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center px-5 pt-5 min-h-screen sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header className="row-start-1 flex items-center justify-between gap-4 w-full">
+    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center px-5 pt-5 font-[family-name:var(--font-geist-sans)] sm:p-20">
+      <header className="row-start-1 flex w-full items-center justify-between gap-4">
         <Logo />
         <div className="">
           <SessionStatus isConnected={isConnected} sessionName={sessionName} />
         </div>
       </header>
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+      <main className="row-start-2 flex flex-col items-center gap-8 sm:items-start">
         {turn === undefined ? (
           <Lobby
             players={players}
