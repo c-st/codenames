@@ -179,7 +179,7 @@ function WordMatrix({
 
   return (
     <div
-      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-[8px] border-solid ${borderColor} p-2`}
+      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-8 border-solid ${borderColor} p-2`}
     >
       {words.map((wordCard) => (
         <Word
