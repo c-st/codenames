@@ -284,9 +284,12 @@ function GameActions({
   endGame: () => void;
 }) {
   return (
-    <div className="mt-8 flex flex-col items-center justify-center gap-2">
+    <div className="mt-4 flex flex-col items-center justify-center gap-3">
       {gameResult && gameCanBeStarted && (
-        <Button title="Start new game" onClick={startGame} />
+        <>
+          <Button title="Start new game" onClick={startGame} />
+          <Button title="Return to lobby" onClick={endGame} />
+        </>
       )}
       {!gameResult && gameCanBeStarted && isCurrentTurn && (
         <Button title="End turn" onClick={endTurn} />
