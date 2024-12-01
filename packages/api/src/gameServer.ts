@@ -147,17 +147,13 @@ export class CodenamesGame extends DurableObject {
         const { playerId } = ws.deserializeAttachment();
         // TODO: remove word type for players who are not spymasters
 
-        console.log(game.getGameResult());
         const gameStateForClient: GameStateForClient = {
           ...gameState,
           playerId,
           gameCanStart: game.isReadyToStartGame(),
           gameResult: game.getGameResult(),
         };
-        console.log(
-          "Broadcasting game state:",
-          gameStateForClient.gameCanStart
-        );
+
         return ws.send(JSON.stringify(gameStateForClient));
       });
 
@@ -173,7 +169,6 @@ export class CodenamesGame extends DurableObject {
       console.error("Player not found:", playerId);
       return;
     }
-    console.log(`${player?.name}:`, command);
 
     // console.log(await this.ctx.storage.getAlarm());
     // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
@@ -224,8 +219,12 @@ export class CodenamesGame extends DurableObject {
       }
 
       case "revealWord": {
-        if (player?.team !== game.getGameState().turn?.team) {
+        if (player.team !== game.getGameState().turn?.team) {
           console.error("Not player's turn");
+          return;
+        }
+        if (player.role === "spymaster") {
+          console.error("Spymaster cannot reveal words");
           return;
         }
         game.revealWord(command.word);
@@ -234,11 +233,17 @@ export class CodenamesGame extends DurableObject {
       }
 
       case "endTurn": {
-        if (player?.team !== game.getGameState().turn?.team) {
+        if (player.team !== game.getGameState().turn?.team) {
           console.error("Not player's turn");
           return;
         }
         game.advanceTurn();
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "endGame": {
+        game.endGame();
         await this.persistAndBroadcastGameState(game);
         break;
       }

@@ -13,6 +13,8 @@ export default function Board({
   startGame,
   // giveHint,
   revealWord,
+  endTurn,
+  endGame,
 }: {
   players: Player[];
   currentPlayerId: string;
@@ -23,6 +25,8 @@ export default function Board({
   startGame: () => void;
   giveHint: (hint: string, count: number) => void;
   revealWord: (word: string) => void;
+  endTurn: () => void;
+  endGame: () => void;
 }) {
   const { until } = turn;
 
@@ -33,6 +37,8 @@ export default function Board({
   if (!currentPlayer) {
     return null;
   }
+
+  const isCurrentTurn = currentPlayer.team === turn.team;
 
   return (
     <div className="flex flex-col gap-4">
@@ -49,9 +55,12 @@ export default function Board({
         onRevealWord={revealWord}
       />
       <GameActions
+        isCurrentTurn={isCurrentTurn}
         gameResult={gameResult}
         gameCanBeStarted={gameCanBeStarted}
         startGame={startGame}
+        endTurn={endTurn}
+        endGame={endGame}
       />
     </div>
   );
@@ -245,21 +254,33 @@ function Word({
 }
 
 function GameActions({
+  isCurrentTurn,
   gameResult,
   gameCanBeStarted,
   startGame,
+  endTurn,
+  endGame,
 }: {
+  isCurrentTurn: boolean;
   gameResult?: GameResult;
   gameCanBeStarted: boolean;
   startGame: () => void;
+  endTurn: () => void;
+  endGame: () => void;
 }) {
   return (
-    <div className="mt-8 flex justify-center">
+    <div className="mt-8 flex flex-col items-center justify-center gap-2">
       {gameResult && gameCanBeStarted && (
         <Button title="Start new game" onClick={startGame} />
       )}
+      {!gameResult && gameCanBeStarted && isCurrentTurn && (
+        <Button title="End turn" onClick={endTurn} />
+      )}
       {!gameCanBeStarted && (
-        <span className="text-xl font-bold">Waiting for more players...</span>
+        <>
+          <span className="text-xl font-bold">Waiting for more players...</span>
+          <Button title="Return to lobby" onClick={endGame} />
+        </>
       )}
     </div>
   );

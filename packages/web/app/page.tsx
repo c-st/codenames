@@ -22,6 +22,8 @@ export default function Home() {
     gameCanBeStarted,
     startGame,
     revealWord,
+    endTurn,
+    endGame,
     giveHint,
   } = useCodenames();
 
@@ -54,6 +56,8 @@ export default function Home() {
             startGame={startGame}
             giveHint={giveHint}
             revealWord={revealWord}
+            endTurn={endTurn}
+            endGame={endGame}
           />
         )}
       </main>

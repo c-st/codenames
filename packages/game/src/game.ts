@@ -223,6 +223,12 @@ export class Codenames {
     return this.gameState;
   }
 
+  public endGame(): GameState {
+    this.gameState.turn = undefined;
+    this.gameState.board = [];
+    return this.gameState;
+  }
+
   public isReadyToStartGame(): boolean {
     const { teamCount } = this.parameters;
     const allTeams = Array.from({ length: teamCount });

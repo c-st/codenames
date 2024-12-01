@@ -9,7 +9,7 @@ export function Button({
 }) {
   return (
     <motion.div
-      className="flex h-12 cursor-pointer select-none items-center justify-center rounded-full bg-blue-500 p-6 text-xl font-bold"
+      className="flex h-12 cursor-pointer select-none items-center justify-center rounded-full bg-blue-500 p-6 text-xl font-bold text-white"
       whileHover={{ scale: 1.2 }}
       whileTap={{ scale: 0.9 }}
       onClick={onClick}
