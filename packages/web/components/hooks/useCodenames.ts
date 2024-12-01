@@ -16,6 +16,9 @@ const useCodenames = () => {
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
   const [gameResult, setGameResult] = useState<GameResult>();
+  const [remainingWordsByTeam, setRemainingWordsByTeam] = useState<number[]>(
+    [],
+  );
 
   const {
     sessionName,
@@ -39,12 +42,14 @@ const useCodenames = () => {
       return;
     }
     const newGameState = parseResult.data;
-    // console.log("Updating game state:", newGameState);
+    console.log("Updating game state:", newGameState);
     setGameState(newGameState);
-    const { players, board, turn, gameResult } = newGameState;
+    const { players, board, turn, remainingWordsByTeam, gameResult } =
+      newGameState;
     setPlayers(players);
     setBoard(board);
     setTurn(turn);
+    setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
   }, [incomingMessage]);
 
@@ -62,6 +67,7 @@ const useCodenames = () => {
     players,
     turn,
     board,
+    remainingWordsByTeam,
     gameResult,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",

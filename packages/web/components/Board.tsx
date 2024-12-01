@@ -8,6 +8,7 @@ export default function Board({
   currentPlayerId,
   words,
   turn,
+  remainingWordsByTeam,
   gameResult,
   gameCanBeStarted,
   startGame,
@@ -20,6 +21,7 @@ export default function Board({
   currentPlayerId: string;
   words?: WordCard[];
   turn: Turn;
+  remainingWordsByTeam: number[];
   gameResult?: GameResult;
   gameCanBeStarted: boolean;
   startGame: () => void;
@@ -42,7 +44,13 @@ export default function Board({
 
   return (
     <div className="flex flex-col gap-4">
-      <TeamInfo players={players} currentPlayer={currentPlayer} turn={turn} />
+      <TeamInfo
+        players={players}
+        currentPlayer={currentPlayer}
+        turn={turn}
+        remainingWordsByTeam={remainingWordsByTeam}
+      />
+
       <div className="flex justify-between">
         <Hint turn={turn} />
         {gameResult && <Result gameResult={gameResult} />}
@@ -80,10 +88,12 @@ function TeamInfo({
   players,
   turn,
   currentPlayer,
+  remainingWordsByTeam,
 }: {
   players: Player[];
   currentPlayer: Player;
   turn: Turn;
+  remainingWordsByTeam: number[];
 }) {
   // Group players by team
   const teams = players.reduce(
@@ -100,12 +110,17 @@ function TeamInfo({
   // show each team's players
   return (
     <div className="flex justify-between">
-      {Object.entries(teams).map(([teamId, teamPlayers], index) => (
+      {Object.entries(teams).map(([teamId, teamPlayers], teamIndex) => (
         <div
           key={teamId}
-          className={`bg-${getTeamColor(index)}-500 flex flex-col rounded-lg p-2 ${turn.team === index ? "opacity-100" : "opacity-50"}`}
+          className={`bg-${getTeamColor(teamIndex)}-500 flex flex-col rounded-lg p-1 px-2 ${turn.team === teamIndex ? "opacity-100" : "opacity-50"}`}
         >
-          <h2 className={`mb-1 font-black md:text-xl`}>Team {teamId}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className={`font-black md:text-xl`}>Team {teamId}</h2>
+            <span className="text-2xl font-black">
+              {remainingWordsByTeam.at(teamIndex) ?? "?"}
+            </span>
+          </div>
 
           {teamPlayers.map((player) => (
             <div

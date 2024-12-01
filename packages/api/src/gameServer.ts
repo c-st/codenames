@@ -161,6 +161,9 @@ export class CodenamesGame extends DurableObject {
           ...censoredGameState,
           playerId,
           gameCanStart: game.isReadyToStartGame(),
+          remainingWordsByTeam: Array.from(
+            game.getRemainingWordsByTeam().values()
+          ),
           gameResult: game.getGameResult(),
         };
 
@@ -179,9 +182,6 @@ export class CodenamesGame extends DurableObject {
       console.error("Player not found:", playerId);
       return;
     }
-
-    // console.log(await this.ctx.storage.getAlarm());
-    // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
 
     switch (command.type) {
       case "setName": {

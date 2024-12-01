@@ -17,6 +17,7 @@ export default function Home() {
     players,
     turn,
     board,
+    remainingWordsByTeam,
     gameResult,
     currentPlayerId,
     gameCanBeStarted,
@@ -51,6 +52,7 @@ export default function Home() {
             currentPlayerId={currentPlayerId}
             words={board}
             turn={turn}
+            remainingWordsByTeam={remainingWordsByTeam}
             gameResult={gameResult}
             gameCanBeStarted={gameCanBeStarted}
             startGame={startGame}

@@ -180,18 +180,8 @@ export class Codenames {
     return this.gameState;
   }
 
-  public getGameResult():
-    | { winningTeam?: number; losingTeam?: number }
-    | undefined {
+  public getRemainingWordsByTeam(): Map<number, number> {
     const { teamCount } = this.parameters;
-    const isAssassinRevealed = this.gameState.board.some(
-      (card) => card.isAssassin && card.isRevealed
-    );
-
-    const losingTeam = isAssassinRevealed
-      ? this.gameState.turn?.team
-      : undefined;
-
     const remainingWordsByTeam = this.gameState.board.reduce(
       (teams, word) => {
         if (word.team !== undefined && !word.isRevealed) {
@@ -204,6 +194,21 @@ export class Codenames {
         Array.from({ length: teamCount }, (_, i) => [i, 0])
       )
     );
+    return remainingWordsByTeam;
+  }
+
+  public getGameResult():
+    | { winningTeam?: number; losingTeam?: number }
+    | undefined {
+    const isAssassinRevealed = this.gameState.board.some(
+      (card) => card.isAssassin && card.isRevealed
+    );
+
+    const losingTeam = isAssassinRevealed
+      ? this.gameState.turn?.team
+      : undefined;
+
+    const remainingWordsByTeam = this.getRemainingWordsByTeam();
 
     const winningTeam = (
       remainingWordsByTeam.entries().find(([_, count]) => {
