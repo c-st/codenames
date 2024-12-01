@@ -106,12 +106,15 @@ export class CodenamesGame extends DurableObject {
     }
 
     // Handle command
-    const command = parsedCommand;
-    await this.handleCommand(command, ws);
+    try {
+      const command = parsedCommand;
+      await this.handleCommand(command, ws);
+    } catch (error) {
+      console.error("Failed to handle command:", error);
+    }
   }
 
   async alarm() {
-    console.log("Received trigger for advancing turn");
     const game = await this.getGameInstance();
     if (game.getGameResult() === undefined) {
       game.advanceTurn();
@@ -183,6 +186,8 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
+    console.info(`${player.name}: ${JSON.stringify(command)}`);
+
     switch (command.type) {
       case "setName": {
         game.addOrUpdatePlayer({
@@ -216,11 +221,11 @@ export class CodenamesGame extends DurableObject {
 
       case "giveHint": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.error("Not player's turn");
+          console.info("Not player's turn");
           return;
         }
         if (player.role !== "spymaster") {
-          console.error("Not spymaster");
+          console.info("Not spymaster");
           return;
         }
         game.giveHint({ hint: command.hint, count: command.count });
@@ -230,11 +235,11 @@ export class CodenamesGame extends DurableObject {
 
       case "revealWord": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.error("Not player's turn");
+          console.info("Not player's turn");
           return;
         }
         if (player.role === "spymaster") {
-          console.error("Spymaster cannot reveal words");
+          console.info("Spymaster cannot reveal words");
           return;
         }
         game.revealWord(command.word);
@@ -244,7 +249,7 @@ export class CodenamesGame extends DurableObject {
 
       case "endTurn": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.error("Not player's turn");
+          console.info("Not player's turn");
           return;
         }
         game.advanceTurn();
