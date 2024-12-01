@@ -6,6 +6,17 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: [
+    // dynamically calculated colors need to appear here
+    "border-purple-500/20",
+    "border-green-500/20",
+    "border-pink-500/20",
+    "border-blue-500/20",
+    "bg-purple-500",
+    "bg-green-500",
+    "bg-pink-500",
+    "bg-blue-500",
+  ],
   theme: {
     extend: {
       colors: {

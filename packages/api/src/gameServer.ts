@@ -1,14 +1,15 @@
 import { DurableObject } from "cloudflare:workers";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import {
+  Command,
   commandSchema,
   GameState,
   GameStateForClient,
   gameStateSchema,
 } from "schema";
 import { Env } from "./worker";
-import { Codenames } from "game";
-import { randomAnimalEmoji } from "words";
+import { Codenames, defaultParameters } from "game";
+import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
 
@@ -35,6 +36,10 @@ export class CodenamesGame extends DurableObject {
   }
 
   async getGameInstance(): Promise<Codenames> {
+    const onScheduleCallAdvanceTurn = (date: Date) => {
+      this.ctx.storage.setAlarm(date.getTime());
+    };
+
     try {
       let gameState: GameState;
       const state = await this.ctx.storage.get<string>(GAME_STATE);
@@ -43,11 +48,21 @@ export class CodenamesGame extends DurableObject {
       } else {
         gameState = initialGameState;
       }
-      return new Codenames(gameState ?? initialGameState, [], () => {});
+      return new Codenames(
+        gameState,
+        classic,
+        onScheduleCallAdvanceTurn,
+        defaultParameters
+      );
     } catch (error) {
       console.error("Error initializing game state:", error);
-      return new Codenames(initialGameState, [], () => {});
     }
+    return new Codenames(
+      initialGameState,
+      classic,
+      onScheduleCallAdvanceTurn,
+      defaultParameters
+    );
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -63,7 +78,7 @@ export class CodenamesGame extends DurableObject {
     this.ctx.acceptWebSocket(server);
 
     // Assign playerId
-    const playerId = uuidv4();
+    const playerId = nanoid();
     server.serializeAttachment({
       ...server.deserializeAttachment(),
       playerId,
@@ -81,8 +96,6 @@ export class CodenamesGame extends DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
-    const { playerId } = ws.deserializeAttachment();
-
     // Parse JSON
     let parsedCommand;
     try {
@@ -92,36 +105,18 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
-    //
-    // console.log(await this.ctx.storage.getAlarm());
-    // await this.ctx.storage.setAlarm(Date.now() + 1000 * 60);
-
     // Handle command
     const command = parsedCommand;
+    await this.handleCommand(command, ws);
+  }
+
+  async alarm() {
+    console.log("Received trigger for advancing turn");
     const game = await this.getGameInstance();
-    console.log(`${playerId} sent command:`, command);
-    if (command.type === "resetGame") {
-      await this.ctx.storage.delete(GAME_STATE);
-      const newGame = new Codenames(initialGameState, [], () => {});
-      await this.persistAndBroadcastGameState(newGame);
-      await ws.close();
-    } else if (command.type === "setName") {
-      const player = game.getGameState().players.find((p) => p.id === playerId);
-      if (!player) {
-        return;
-      }
-      game.addOrUpdatePlayer({ ...player, id: playerId, name: command.name });
-      await this.persistAndBroadcastGameState(game);
-    } else if (command.type === "promoteToSpymaster") {
-      const newSpymaster = game
-        .getGameState()
-        .players.find((p) => p.id === command.playerId);
-      if (!newSpymaster) {
-        return;
-      }
-      game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
-      await this.persistAndBroadcastGameState(game);
+    if (game.getGameResult() === undefined) {
+      game.advanceTurn();
     }
+    await this.persistAndBroadcastGameState(game);
   }
 
   async webSocketClose(
@@ -138,7 +133,7 @@ export class CodenamesGame extends DurableObject {
     await this.persistAndBroadcastGameState(game, ws);
   }
 
-  async persistAndBroadcastGameState(
+  private async persistAndBroadcastGameState(
     game: Codenames,
     exclude?: WebSocket
   ): Promise<void> {
@@ -150,20 +145,129 @@ export class CodenamesGame extends DurableObject {
       .filter((websocket) => websocket !== exclude)
       .map((ws) => {
         const { playerId } = ws.deserializeAttachment();
-        // TODO: remove word type for players who are not spymasters
+        const isSpymaster =
+          gameState.players.find((player) => player.id === playerId)?.role ===
+          "spymaster";
+
+        const censoredGameState = gameState.board.map((card) => ({
+          ...card,
+          isAssassin:
+            card.isRevealed || isSpymaster ? card.isAssassin : undefined,
+          team: card.isRevealed || isSpymaster ? card.team : undefined,
+        }));
+
         const gameStateForClient: GameStateForClient = {
           ...gameState,
+          ...censoredGameState,
           playerId,
           gameCanStart: game.isReadyToStartGame(),
+          remainingWordsByTeam: Array.from(
+            game.getRemainingWordsByTeam().values()
+          ),
+          gameResult: game.getGameResult(),
         };
+
         return ws.send(JSON.stringify(gameStateForClient));
       });
 
     await Promise.all(promises);
   }
 
-  async alarm() {
-    console.log("Alarm triggered");
+  private async handleCommand(command: Command, ws: WebSocket): Promise<void> {
+    const { playerId } = ws.deserializeAttachment();
+    const game = await this.getGameInstance();
+
+    const player = game.getGameState().players.find((p) => p.id === playerId);
+    if (!player) {
+      console.error("Player not found:", playerId);
+      return;
+    }
+
+    switch (command.type) {
+      case "setName": {
+        game.addOrUpdatePlayer({
+          ...player,
+          id: playerId,
+          name: command.name,
+        });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "promoteToSpymaster": {
+        const newSpymaster = game
+          .getGameState()
+          .players.find((p) => p.id === command.playerId);
+        if (!newSpymaster) {
+          return;
+        }
+        game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "startGame": {
+        if (game.isReadyToStartGame()) {
+          game.startGame();
+          await this.persistAndBroadcastGameState(game);
+        }
+        break;
+      }
+
+      case "giveHint": {
+        if (player.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        if (player.role !== "spymaster") {
+          console.error("Not spymaster");
+          return;
+        }
+        game.giveHint({ hint: command.hint, count: command.count });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "revealWord": {
+        if (player.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        if (player.role === "spymaster") {
+          console.error("Spymaster cannot reveal words");
+          return;
+        }
+        game.revealWord(command.word);
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "endTurn": {
+        if (player.team !== game.getGameState().turn?.team) {
+          console.error("Not player's turn");
+          return;
+        }
+        game.advanceTurn();
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "endGame": {
+        game.endGame();
+        await this.ctx.storage.deleteAlarm();
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "resetGame": {
+        await this.ctx.storage.delete(GAME_STATE);
+        const newGame = await this.getGameInstance();
+        await this.persistAndBroadcastGameState(newGame);
+        break;
+      }
+
+      default:
+        console.error("Unknown command type:", command);
+    }
   }
-  // TODO: Callback for alarm schedule
 }

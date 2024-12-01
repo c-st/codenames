@@ -116,12 +116,8 @@
     "name": "Lion"
   },
   {
-    "emoji": "🐨",
-    "name": "Koala"
-  },
-  {
     "emoji": "🦮",
-    "name": "Dog"
+    "name": "Service Dog"
   },
   {
     "emoji": "🐩",
@@ -165,11 +161,11 @@
   },
   {
     "emoji": "🦛",
-    "name": "Hippo"
+    "name": "Hippopotamus"
   },
   {
     "emoji": "🦏",
-    "name": "Rhino"
+    "name": "Rhinoceros"
   },
   {
     "emoji": "🐪",
@@ -188,11 +184,203 @@
     "name": "Pig"
   },
   {
-    "emoji": "🐇",
-    "name": "Bunny"
-  },
-  {
     "emoji": "🦝",
     "name": "Raccoon"
+  },
+  {
+    "emoji": "🦨",
+    "name": "Skunk"
+  },
+  {
+    "emoji": "🦡",
+    "name": "Badger"
+  },
+  {
+    "emoji": "🦥",
+    "name": "Sloth"
+  },
+  {
+    "emoji": "🦦",
+    "name": "Otter"
+  },
+  {
+    "emoji": "🐳",
+    "name": "Whale"
+  },
+  {
+    "emoji": "🦈",
+    "name": "Shark"
+  },
+  {
+    "emoji": "🦢",
+    "name": "Swan"
+  },
+  {
+    "emoji": "🦃",
+    "name": "Turkey"
+  },
+  {
+    "emoji": "🕊️",
+    "name": "Dove"
+  },
+  {
+    "emoji": "🐓",
+    "name": "Rooster"
+  },
+  {
+    "emoji": "🐔",
+    "name": "Chicken"
+  },
+  {
+    "emoji": "🐣",
+    "name": "Freshly hatched Chick"
+  },
+  {
+    "emoji": "🐤",
+    "name": "Chick"
+  },
+  {
+    "emoji": "🐥",
+    "name": "Hatched Chick"
+  },
+  {
+    "emoji": "🐦",
+    "name": "Bird"
+  },
+  {
+    "emoji": "🦇",
+    "name": "Bat"
+  },
+  {
+    "emoji": "🦅",
+    "name": "Eagle"
+  },
+  {
+    "emoji": "🦉",
+    "name": "Owl"
+  },
+  {
+    "emoji": "🦎",
+    "name": "Lizard"
+  },
+  {
+    "emoji": "🦋",
+    "name": "Butterfly"
+  },
+  {
+    "emoji": "🦂",
+    "name": "Scorpion"
+  },
+  {
+    "emoji": "🐜",
+    "name": "Ant"
+  },
+  {
+    "emoji": "🐞",
+    "name": "Ladybug"
+  },
+  {
+    "emoji": "🐌",
+    "name": "Snail"
+  },
+  {
+    "emoji": "🦕",
+    "name": "Sauropod"
+  },
+  {
+    "emoji": "🦖",
+    "name": "T-Rex"
+  },
+  {
+    "emoji": "🐋",
+    "name": "Whale"
+  },
+  {
+    "emoji": "🐊",
+    "name": "Crocodile"
+  },
+  {
+    "emoji": "🦐",
+    "name": "Shrimp"
+  },
+  {
+    "emoji": "🦑",
+    "name": "Squid"
+  },
+  {
+    "emoji": "🦞",
+    "name": "Lobster"
+  },
+  {
+    "emoji": "🦀",
+    "name": "Crab"
+  },
+  {
+    "emoji": "🐡",
+    "name": "Blowfish"
+  },
+  {
+    "emoji": "🐟",
+    "name": "Fish"
+  },
+  {
+    "emoji": "🐠",
+    "name": "Tropical Fish"
+  },
+  {
+    "emoji": "🐚",
+    "name": "Spiral Shell"
+  },
+  {
+    "emoji": "🐿️",
+    "name": "Chipmunk"
+  },
+  {
+    "emoji": "🐀",
+    "name": "Rat"
+  },
+  {
+    "emoji": "🐁",
+    "name": "Mouse"
+  },
+  {
+    "emoji": "🐭",
+    "name": "Mouse"
+  },
+  {
+    "emoji": "🐹",
+    "name": "Hamster"
+  },
+  {
+    "emoji": "🐯",
+    "name": "Tiger"
+  },
+  {
+    "emoji": "🦤",
+    "name": "Dodo"
+  },
+  {
+    "emoji": "🦆",
+    "name": "Duck"
+  },
+  {
+    "emoji": "🐗",
+    "name": "Boar"
+  },
+  {
+    "emoji": "🐏",
+    "name": "Ram"
+  },
+  {
+    "emoji": "🐐",
+    "name": "Goat"
+  },
+  {
+    "emoji": "🐕‍🦺",
+    "name": "Service Dog"
+  },
+  {
+    "emoji": "🐃",
+    "name": "Water Buffalo"
   }
 ]

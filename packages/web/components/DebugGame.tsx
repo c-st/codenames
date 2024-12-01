@@ -1,44 +1,33 @@
 "use client";
 
-import { Toggle } from "./ui/Toggle";
-
 type DebugGameProps = {
-  incomingMessage: string | undefined;
   resetGame: () => void;
   closeConnection: () => void;
 };
 
 export default function DebugGame({
-  incomingMessage,
   resetGame,
   closeConnection,
 }: DebugGameProps) {
-  const lastMessage = JSON.parse(incomingMessage || "{}");
-
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="">
-          <pre className="font-mono text-xs">
-            {JSON.stringify(lastMessage, null, 2)}
-          </pre>
-        </div>
         <div className="flex gap-2">
-          <Toggle />
-          <Toggle />
+          {/* <Toggle />
+          <Toggle /> */}
         </div>
-        <div className="flex gap-2 justify-end">
+        <div className="flex justify-end gap-4">
           <button
-            className="bg-red-500 hover:bg-red-700 font-bold py-2 px-2 rounded"
+            className="rounded bg-red-500 px-2 py-2 font-bold hover:bg-red-700"
             onClick={() => resetGame()}
           >
             💀 Reset
           </button>
           <button
-            className="bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded"
+            className="rounded bg-red-500 px-4 py-2 font-bold hover:bg-red-700"
             onClick={() => closeConnection()}
           >
-            Disconnect
+            Close
           </button>
         </div>
       </div>

@@ -20,7 +20,7 @@ const buildExampleGameState = (input: Partial<GameState> = {}): GameState => ({
     team: 0,
     until: new Date(),
     hint: {
-      word: "fruit",
+      hint: "fruit",
       count: 2,
     },
   },
@@ -248,7 +248,7 @@ describe("game state updates", () => {
             team: 1,
             until: new Date(),
             hint: {
-              word: "fruit",
+              hint: "fruit",
               count: 2,
             },
           },
@@ -283,10 +283,10 @@ describe("game state updates", () => {
         onScheduleTurnCallback
       );
 
-      const updatedGameState = game.setHint({ word: "juicy", count: 1 });
+      const updatedGameState = game.giveHint({ hint: "juicy", count: 1 });
 
       expect(updatedGameState.turn?.hint).toEqual({
-        word: "juicy",
+        hint: "juicy",
         count: 1,
       });
     });
@@ -341,7 +341,7 @@ describe("game state updates", () => {
             team: 1,
             until: new Date(),
             hint: {
-              word: "force",
+              hint: "force",
               count: 1,
             },
           },

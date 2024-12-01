@@ -15,7 +15,7 @@ const wordCardSchema = z.object({
 });
 
 const hintSchema = z.object({
-  word: z.string(),
+  hint: z.string(),
   count: z.number(),
 });
 
@@ -31,16 +31,25 @@ export const gameStateSchema = z.object({
   turn: turnSchema.optional(),
 });
 
+export const gameResult = z.object({
+  winningTeam: z.number().optional(),
+  losingTeam: z.number().optional(),
+});
+
 export const gameStateSchemaForClient = gameStateSchema.extend({
   playerId: z.string(),
   gameCanStart: z.boolean(),
+  gameResult: gameResult.optional(),
+  remainingWordsByTeam: z.array(z.number()),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;
 export type GameStateForClient = z.infer<typeof gameStateSchemaForClient>;
 export type WordCard = z.infer<typeof wordCardSchema>;
 export type Player = z.infer<typeof playerSchema>;
+export type Turn = z.infer<typeof turnSchema>;
 export type Hint = z.infer<typeof hintSchema>;
+export type GameResult = z.infer<typeof gameResult>;
 
 export const toGameState = (object: unknown): GameState =>
   gameStateSchema.parse(object);

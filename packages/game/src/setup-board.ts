@@ -8,6 +8,12 @@ export const setupBoard = (
 ): WordCard[] => {
   const { totalWordCount, teamCount, wordsToGuessCount } = parameters;
 
+  if (words.length < totalWordCount) {
+    throw new Error(
+      `Not enough words to create a board: ${words.length} < ${totalWordCount}`
+    );
+  }
+
   const shuffledWords = getRandomWords(words, totalWordCount);
   const totalRandomIndices = teamCount * wordsToGuessCount + 1;
   const randomIndices = getRandomIndices(totalRandomIndices, totalWordCount);

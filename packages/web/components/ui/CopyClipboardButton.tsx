@@ -18,10 +18,7 @@ export default function CopyClipboardButton({
     <>
       <button
         onClick={handleClick}
-        className={`
-          relative w-8 h-8 p-2 items-center justify-center  inline-flex rounded-lg
-          text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800
-          `}
+        className={`relative inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 p-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400`}
       >
         <AnimatePresence initial={false}>
           <MotionConfig
@@ -63,7 +60,7 @@ export default function CopyClipboardButton({
 
 const SuccessIcon = () => (
   <svg
-    className="w-3.5 h-3.5 text-blue-700 dark:text-blue-500"
+    className="h-3.5 w-3.5 text-blue-700 dark:text-blue-500"
     aria-hidden="true"
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
@@ -81,7 +78,7 @@ const SuccessIcon = () => (
 
 const ClipboardIcon = () => (
   <svg
-    className="w-3.5 h-3.5"
+    className="h-3.5 w-3.5"
     aria-hidden="true"
     xmlns="http://www.w3.org/2000/svg"
     fill="currentColor"

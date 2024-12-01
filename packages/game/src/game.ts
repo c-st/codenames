@@ -94,6 +94,8 @@ export class Codenames {
     }
 
     this.gameState.players = this.gameState.players.filter((p) => p.id !== id);
+
+    // TODO: end game when all players have left
     return this.gameState;
   }
 
@@ -142,7 +144,7 @@ export class Codenames {
     return this.gameState;
   }
 
-  public setHint(hint: Hint): GameState {
+  public giveHint(hint: Hint): GameState {
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }
@@ -164,18 +166,40 @@ export class Codenames {
     wordCard.isRevealed = true;
     this.updateCard(wordCard);
 
+    const gameResult = this.getGameResult();
+    if (gameResult) {
+      console.log("Game over", gameResult);
+      return this.gameState;
+    }
+
     const isWrongGuess = wordCard.team !== this.gameState.turn?.team;
-    if (isWrongGuess || wordCard.isAssassin) {
+    if (isWrongGuess) {
       this.advanceTurn();
     }
 
     return this.gameState;
   }
 
+  public getRemainingWordsByTeam(): Map<number, number> {
+    const { teamCount } = this.parameters;
+    const remainingWordsByTeam = this.gameState.board.reduce(
+      (teams, word) => {
+        if (word.team !== undefined && !word.isRevealed) {
+          const currentCount = teams.get(word.team) ?? 0;
+          teams.set(word.team, currentCount + 1);
+        }
+        return teams;
+      },
+      new Map<number, number>(
+        Array.from({ length: teamCount }, (_, i) => [i, 0])
+      )
+    );
+    return remainingWordsByTeam;
+  }
+
   public getGameResult():
     | { winningTeam?: number; losingTeam?: number }
     | undefined {
-    const { teamCount } = this.parameters;
     const isAssassinRevealed = this.gameState.board.some(
       (card) => card.isAssassin && card.isRevealed
     );
@@ -184,16 +208,10 @@ export class Codenames {
       ? this.gameState.turn?.team
       : undefined;
 
-    const remainingWordsByTeam = this.gameState.board.reduce((teams, card) => {
-      if (card.team !== undefined && !card.isRevealed) {
-        const currentCount = teams.get(card.team) ?? 0;
-        teams.set(card.team, currentCount + 1);
-      }
-      return teams;
-    }, new Map<number, number>(Array.from({ length: teamCount }, (_, i) => [i, 0])));
+    const remainingWordsByTeam = this.getRemainingWordsByTeam();
 
     const winningTeam = (
-      remainingWordsByTeam.entries().find(([team, count]) => {
+      remainingWordsByTeam.entries().find(([_, count]) => {
         return count === 0;
       }) || []
     ).at(0);
@@ -207,6 +225,12 @@ export class Codenames {
   }
 
   public getGameState(): GameState {
+    return this.gameState;
+  }
+
+  public endGame(): GameState {
+    this.gameState.turn = undefined;
+    this.gameState.board = [];
     return this.gameState;
   }
 

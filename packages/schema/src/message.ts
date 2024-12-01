@@ -13,8 +13,22 @@ export const commandSchema = z.discriminatedUnion("type", [
     playerId: z.string(),
   }),
   z.object({
-    type: z.literal("removePlayer"),
-    playerId: z.string(),
+    type: z.literal("startGame"),
+  }),
+  z.object({
+    type: z.literal("giveHint"),
+    hint: z.string(),
+    count: z.number(),
+  }),
+  z.object({
+    type: z.literal("revealWord"),
+    word: z.string(),
+  }),
+  z.object({
+    type: z.literal("endTurn"),
+  }),
+  z.object({
+    type: z.literal("endGame"),
   }),
 ]);
 
