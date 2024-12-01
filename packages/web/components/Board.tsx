@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
 import { Button } from "./ui/Button";
 import { AnimatePresence, motion } from "framer-motion";
+import { TextInput } from "./ui/TextInput";
 
 export default function Board({
   players,
@@ -12,7 +13,7 @@ export default function Board({
   gameResult,
   gameCanBeStarted,
   startGame,
-  // giveHint,
+  giveHint,
   revealWord,
   endTurn,
   endGame,
@@ -51,7 +52,13 @@ export default function Board({
         remainingWordsByTeam={remainingWordsByTeam}
       />
       <div className="flex justify-between">
-        <Hint turn={turn} />
+        <Hint
+          turn={turn}
+          giveHint={giveHint}
+          isCurrentlySpymaster={
+            currentPlayer.role === "spymaster" && isCurrentTurn
+          }
+        />
         {gameResult && <Result gameResult={gameResult} />}
         {gameResult === undefined && <Timer until={until} />}
       </div>
@@ -144,16 +151,38 @@ function TeamInfo({
   );
 }
 
-function Hint({ turn }: { turn: Turn }) {
+function Hint({
+  turn,
+  giveHint,
+  isCurrentlySpymaster,
+}: {
+  turn: Turn;
+  giveHint: (hint: string, count: number) => void;
+  isCurrentlySpymaster: boolean;
+}) {
+  const [currentHint, setCurrentHint] = useState("");
   return (
     <div>
-      <div className="font-mono text-2xl font-bold">
+      <div className="">
         {turn.hint ? (
-          <p className="font-mono text-2xl">
-            {turn.hint.hint} {turn.hint.count}
-          </p>
+          <p className="font-mono text-2xl font-bold">{turn.hint.hint}</p>
         ) : (
-          ""
+          isCurrentlySpymaster && (
+            <div className="flex gap-2">
+              <TextInput
+                value={currentHint}
+                placeholder="Hint"
+                onChange={setCurrentHint}
+              />
+              <Button
+                title="Give hint"
+                onClick={() => {
+                  giveHint(currentHint, 0);
+                  setCurrentHint("");
+                }}
+              />
+            </div>
+          )
         )}
       </div>
     </div>
@@ -314,7 +343,11 @@ function GameActions({
       {gameResult && gameCanBeStarted && (
         <>
           <Button title="Start new game" onClick={startGame} />
-          <Button title="Return to lobby" onClick={endGame} />
+          <Button
+            title="Return to lobby"
+            type="destructive"
+            onClick={endGame}
+          />
         </>
       )}
       {!gameResult && gameCanBeStarted && isCurrentTurn && (
@@ -323,7 +356,11 @@ function GameActions({
       {!gameCanBeStarted && (
         <>
           <span className="text-xl font-bold">Waiting for more players...</span>
-          <Button title="Return to lobby" onClick={endGame} />
+          <Button
+            title="Return to lobby"
+            type="destructive"
+            onClick={endGame}
+          />
         </>
       )}
     </div>

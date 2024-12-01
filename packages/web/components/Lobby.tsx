@@ -2,6 +2,7 @@ import { AnimatePresence, Reorder } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Player } from "schema";
 import { Button } from "./ui/Button";
+import { TextInput } from "./ui/TextInput";
 
 export default function Lobby({
   players,
@@ -39,7 +40,11 @@ export default function Lobby({
       <h1 className="text-2xl font-black md:text-4xl">Lobby</h1>
       <div className="flex items-center gap-4">
         <p className="text-xl font-black">That&apos;s you:</p>
-        <NameField player={currentPlayer} onSetName={setName} />
+        <TextInput
+          value={currentPlayer.name}
+          placeholder="Your name"
+          onChange={setName}
+        />
       </div>
       <div>
         <p className="text-xl font-black">
@@ -67,24 +72,6 @@ export default function Lobby({
         )}
       </div>
     </div>
-  );
-}
-
-function NameField({
-  player,
-  onSetName,
-}: {
-  player: Player;
-  onSetName: (name: string) => void;
-}) {
-  return (
-    <input
-      type="text"
-      className="text-md font-base h-12 w-48 rounded-2xl border-2 border-gray-300 px-4 py-2 font-mono focus:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:ring-blue-500"
-      placeholder="Enter your name"
-      value={player.name}
-      onChange={(e) => onSetName(e.target.value)}
-    />
   );
 }
 
@@ -121,7 +108,8 @@ function TeamTable({
         <Reorder.Group
           axis="y"
           values={team}
-          onReorder={setSortedTeam}
+          onReorder={() => {}}
+          // onReorder={setSortedTeam}
           className="flex flex-col items-center gap-4"
         >
           {sortedTeam.map((player) => {
