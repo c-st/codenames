@@ -145,10 +145,20 @@ export class CodenamesGame extends DurableObject {
       .filter((websocket) => websocket !== exclude)
       .map((ws) => {
         const { playerId } = ws.deserializeAttachment();
-        // TODO: remove word type for players who are not spymasters
+        const isSpymaster =
+          gameState.players.find((player) => player.id === playerId)?.role ===
+          "spymaster";
+
+        const censoredGameState = gameState.board.map((card) => ({
+          ...card,
+          isAssassin:
+            card.isRevealed || isSpymaster ? card.isAssassin : undefined,
+          team: card.isRevealed || isSpymaster ? card.team : undefined,
+        }));
 
         const gameStateForClient: GameStateForClient = {
           ...gameState,
+          ...censoredGameState,
           playerId,
           gameCanStart: game.isReadyToStartGame(),
           gameResult: game.getGameResult(),
@@ -244,6 +254,7 @@ export class CodenamesGame extends DurableObject {
 
       case "endGame": {
         game.endGame();
+        await this.ctx.storage.deleteAlarm();
         await this.persistAndBroadcastGameState(game);
         break;
       }

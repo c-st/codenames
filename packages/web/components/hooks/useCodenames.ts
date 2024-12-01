@@ -39,7 +39,7 @@ const useCodenames = () => {
       return;
     }
     const newGameState = parseResult.data;
-    console.log("Updating game state:", newGameState);
+    // console.log("Updating game state:", newGameState);
     setGameState(newGameState);
     const { players, board, turn, gameResult } = newGameState;
     setPlayers(players);
