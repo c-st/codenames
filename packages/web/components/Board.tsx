@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
 import { Button } from "./ui/Button";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function Board({
   players,
@@ -50,7 +50,6 @@ export default function Board({
         turn={turn}
         remainingWordsByTeam={remainingWordsByTeam}
       />
-
       <div className="flex justify-between">
         <Hint turn={turn} />
         {gameResult && <Result gameResult={gameResult} />}
@@ -117,9 +116,16 @@ function TeamInfo({
         >
           <div className="flex items-center justify-between">
             <h2 className={`font-black md:text-xl`}>Team {teamId}</h2>
-            <span className="text-2xl font-black">
+            <motion.span
+              key={remainingWordsByTeam[teamIndex]}
+              className="text-2xl font-black"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
               {remainingWordsByTeam.at(teamIndex) ?? "?"}
-            </span>
+            </motion.span>
           </div>
 
           {teamPlayers.map((player) => (
@@ -178,11 +184,28 @@ function Timer({ until }: { until: Date }) {
     return () => clearInterval(timer);
   }, [until]);
 
+  const remainingTime = `${timeLeft.minutes}:${timeLeft.seconds}`;
+
   return (
-    <div className="flex justify-end">
-      <span className="font-mono text-2xl">
-        {timeLeft.minutes}:{timeLeft.seconds}
-      </span>
+    <div className="flex font-mono text-2xl">
+      <AnimatePresence>
+        <motion.span
+          className="absolute"
+          key={remainingTime}
+          exit={{ y: 0, opacity: 0 }}
+          initial={{ y: 0, opacity: 0.0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 20,
+            duration: 0.3,
+          }}
+        >
+          {remainingTime}
+        </motion.span>
+        <span className="">{remainingTime}</span>
+      </AnimatePresence>
     </div>
   );
 }
@@ -205,14 +228,16 @@ function WordMatrix({
     <div
       className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-8 border-solid ${borderColor} p-2`}
     >
-      {words.map((wordCard) => (
-        <Word
-          key={wordCard.word}
-          wordCard={wordCard}
-          currentPlayer={currentPlayer}
-          onRevealWord={onRevealWord}
-        />
-      ))}
+      <AnimatePresence>
+        {words.map((wordCard) => (
+          <Word
+            key={wordCard.word}
+            wordCard={wordCard}
+            currentPlayer={currentPlayer}
+            onRevealWord={onRevealWord}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -252,8 +277,9 @@ function Word({
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.05, opacity: 0.8 }}
       whileTap={{ scale: 0.95 }}
-      animate={{ opacity }}
-      initial={{ opacity: isSpymaster ? 1 : 0 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       transition={{
         type: "spring",
         stiffness: 300,
