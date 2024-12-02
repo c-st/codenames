@@ -10,11 +10,11 @@ export default function PlayerCard({
   return (
     <div
       key={player.id}
-      className={`flex w-56 min-w-24 cursor-pointer select-none flex-col justify-center rounded-lg bg-gray-200 p-1 px-2 text-gray-900 shadow-md dark:bg-white`}
+      className={`flex min-w-48 cursor-pointer select-none flex-col justify-center rounded-lg p-1 px-2 text-gray-900 dark:bg-white ${player.id === currentPlayerId ? "glow" : "drop-shadow-xl"}`}
     >
       <span className="text-base font-bold md:text-lg">
         {player.name}
-        {player.id === currentPlayerId && " (you)"}
+        {player.id === currentPlayerId && " (you!)"}
         {player.role === "spymaster" && " *"}
       </span>
     </div>

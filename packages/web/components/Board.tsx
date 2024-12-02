@@ -133,14 +133,15 @@ function TeamInfo({
               {remainingWordsByTeam.at(teamIndex) ?? "?"}
             </motion.span>
           </div>
-
-          {teamPlayers.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              currentPlayerId={currentPlayer.id}
-            />
-          ))}
+          <div className="flex flex-col gap-2">
+            {teamPlayers.map((player) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                currentPlayerId={currentPlayer.id}
+              />
+            ))}
+          </div>
         </div>
       ))}
     </div>
