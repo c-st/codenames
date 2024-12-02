@@ -9,10 +9,10 @@ export default {
   darkMode: "class",
   safelist: [
     // dynamically calculated colors need to appear here
-    "border-purple-500/20",
-    "border-green-500/20",
-    "border-pink-500/20",
-    "border-blue-500/20",
+    "border-purple-500/40",
+    "border-green-500/40",
+    "border-pink-500/40",
+    "border-blue-500/40",
     "bg-purple-500",
     "bg-green-500",
     "bg-pink-500",
@@ -29,7 +29,7 @@ export default {
         base: "1rem",
         xl: "1.25rem",
         "2xl": "2rem",
-        "3xl": "2rem",
+        "3xl": "2.5rem",
         "4xl": "3rem",
         "5xl": "4rem",
         "6xl": "5em",

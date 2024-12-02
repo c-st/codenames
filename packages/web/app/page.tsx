@@ -29,15 +29,20 @@ export default function Home() {
     giveHint,
   } = useCodenames();
 
+  const currentPlayer = players.find((p) => p.id === currentPlayerId);
+  if (!currentPlayer) {
+    return null;
+  }
+
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] items-center justify-items-center px-5 pb-5 pt-5 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
-      <header className="row-start-1 flex w-full items-center justify-between gap-4">
+    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] justify-items-center p-1.5 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
+      <header className="row-start-1 flex w-full items-center justify-between">
         <Logo />
         <div className="">
           <SessionStatus isConnected={isConnected} sessionName={sessionName} />
         </div>
       </header>
-      <main className="row-start-2 flex flex-col items-center gap-8 sm:items-start">
+      <main className="row-start-2 flex flex-col gap-8 pt-4 sm:items-start">
         {turn === undefined ? (
           <Lobby
             players={players}
@@ -64,13 +69,17 @@ export default function Home() {
           />
         )}
       </main>
-      <footer className="row-start-3 flex justify-center">
+      <footer className="row-start-3 flex h-full flex-col gap-8">
+        {!gameResult &&
+          gameCanBeStarted &&
+          currentPlayer.team === turn?.team && (
+            <Button title="End turn" onClick={endTurn} />
+          )}
         {!gameResult && gameCanBeStarted && (
-          <div className="mt-4">
+          <div className="">
             <Button title="End game" type="destructive" onClick={endGame} />
           </div>
         )}
-        {/* <DebugGame resetGame={resetGame} closeConnection={closeConnection} /> */}
       </footer>
     </div>
   );

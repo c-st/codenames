@@ -3,6 +3,7 @@ import { GameResult, Player, Turn, WordCard } from "schema";
 import { Button } from "./ui/Button";
 import { AnimatePresence, motion } from "framer-motion";
 import HintInput from "./HintInput";
+import PlayerCard from "./PlayerCard";
 
 export default function Board({
   players,
@@ -92,7 +93,6 @@ function Result({ gameResult }: { gameResult?: GameResult }) {
 
 function TeamInfo({
   players,
-  turn,
   currentPlayer,
   remainingWordsByTeam,
 }: {
@@ -113,21 +113,20 @@ function TeamInfo({
     {} as Record<number, Player[]>,
   );
 
-  // show each team's players
   return (
     <div className="flex justify-between">
       {Object.entries(teams).map(([teamId, teamPlayers], teamIndex) => (
         <div
           key={teamId}
-          className={`bg-${getTeamColor(teamIndex)}-500 flex flex-col rounded-lg p-1 px-2 ${turn.team === teamIndex ? "opacity-100" : "opacity-50"}`}
+          className={`bg-${getTeamColor(teamIndex)}-500 flex flex-col gap-2 rounded-lg p-2 px-2`}
         >
-          <div className="flex items-center justify-between">
-            <h2 className={`font-black md:text-xl`}>Team {teamId}</h2>
+          <div className="flex items-center justify-between px-2">
+            <h2 className={`text-lg font-black md:text-xl`}>Team {teamId}</h2>
             <motion.span
               key={remainingWordsByTeam[teamIndex]}
               className="text-2xl font-black"
               initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              animate={{ scale: 1.2 }}
               exit={{ scale: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
@@ -136,14 +135,11 @@ function TeamInfo({
           </div>
 
           {teamPlayers.map((player) => (
-            <div
+            <PlayerCard
               key={player.id}
-              className={`text-md ${player.id === currentPlayer.id ? "font-black" : "font-bold"}`}
-            >
-              {player.name}
-              {player.role === "spymaster" && " (spymaster)"}
-              {player.id === currentPlayer.id && " (you)"}
-            </div>
+              player={player}
+              currentPlayerId={currentPlayer.id}
+            />
           ))}
         </div>
       ))}
@@ -197,7 +193,10 @@ function Timer({ until }: { until: Date }) {
     return () => clearInterval(timer);
   }, [until]);
 
-  const remainingTime = `${timeLeft.minutes}:${timeLeft.seconds}`;
+  const remainingTime =
+    !!timeLeft.minutes && !!timeLeft.seconds
+      ? `${timeLeft.minutes}:${timeLeft.seconds}`
+      : "0:00";
 
   return (
     <div className="flex font-mono text-2xl">
@@ -235,22 +234,20 @@ function WordMatrix({
   onRevealWord: (word: string) => void;
 }) {
   const teamColor = getTeamColor(turn.team);
-  const borderColor = `border-${teamColor}-500/20`;
+  const borderColor = `border-${teamColor}-500/40`;
 
   return (
     <div
       className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-8 border-solid ${borderColor} p-2`}
     >
-      <AnimatePresence>
-        {words.map((wordCard) => (
-          <Word
-            key={wordCard.word}
-            wordCard={wordCard}
-            currentPlayer={currentPlayer}
-            onRevealWord={onRevealWord}
-          />
-        ))}
-      </AnimatePresence>
+      {words.map((wordCard) => (
+        <Word
+          key={wordCard.word}
+          wordCard={wordCard}
+          currentPlayer={currentPlayer}
+          onRevealWord={onRevealWord}
+        />
+      ))}
     </div>
   );
 }
@@ -288,7 +285,7 @@ function Word({
       key={wordCard.word}
       className={`justify-top flex h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
-      whileHover={{ scale: 1.05, opacity: 0.8 }}
+      whileHover={{ scale: 1.08, opacity: 0.9 }}
       whileTap={{ scale: 0.95 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity, y: 0 }}
@@ -296,11 +293,13 @@ function Word({
       transition={{
         type: "spring",
         stiffness: 300,
-        damping: 20,
+        damping: 10,
         duration: 0.5,
       }}
     >
-      <p className={`text-m font-extrabold ${textColor} md:text-xl`}>
+      <p
+        className={`text-m font-extrabold ${textColor} select-none text-center md:text-xl`}
+      >
         {wordCard.word}
       </p>
     </motion.div>
@@ -308,11 +307,9 @@ function Word({
 }
 
 function GameActions({
-  isCurrentTurn,
   gameResult,
   gameCanBeStarted,
   startGame,
-  endTurn,
   endGame,
 }: {
   isCurrentTurn: boolean;
@@ -333,9 +330,6 @@ function GameActions({
             onClick={endGame}
           />
         </>
-      )}
-      {!gameResult && gameCanBeStarted && isCurrentTurn && (
-        <Button title="End turn" onClick={endTurn} />
       )}
       {!gameCanBeStarted && (
         <>

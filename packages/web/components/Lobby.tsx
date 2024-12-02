@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Player } from "schema";
 import { Button } from "./ui/Button";
 import { TextInput } from "./ui/TextInput";
+import PlayerCard from "./PlayerCard";
 
 export default function Lobby({
   players,
@@ -62,7 +63,7 @@ export default function Lobby({
         </div>
       </div>
       <div>
-        <p className="text-xl font-black">
+        <p className="text-xl font-black md:text-xl">
           Your role is{" "}
           {currentPlayer.role === "spymaster" ? "Spymaster" : "Operative"}
         </p>
@@ -143,27 +144,6 @@ function TeamTable({
           })}
         </Reorder.Group>
       </AnimatePresence>
-    </div>
-  );
-}
-
-function PlayerCard({
-  player,
-  currentPlayerId,
-}: {
-  player: Player;
-  currentPlayerId: string;
-}) {
-  return (
-    <div
-      key={player.id}
-      className={`flex w-56 min-w-24 flex-col justify-center gap-2 rounded-lg bg-gray-200 p-2 px-4 text-gray-900 shadow-md dark:bg-white`}
-    >
-      <span className="text-base font-bold md:text-xl">
-        {player.name}
-        {player.id === currentPlayerId && " (you)"}
-        {player.role === "spymaster" && " *"}
-      </span>
     </div>
   );
 }
