@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
 import { Button } from "./ui/Button";
 import { AnimatePresence, motion } from "framer-motion";
-import { TextInput } from "./ui/TextInput";
+import HintInput from "./HintInput";
 
 export default function Board({
   players,
@@ -160,29 +160,13 @@ function Hint({
   giveHint: (hint: string, count: number) => void;
   isCurrentlySpymaster: boolean;
 }) {
-  const [currentHint, setCurrentHint] = useState("");
   return (
     <div>
       <div className="">
         {turn.hint ? (
           <p className="font-mono text-2xl font-bold">{turn.hint.hint}</p>
         ) : (
-          isCurrentlySpymaster && (
-            <div className="flex gap-2">
-              <TextInput
-                value={currentHint}
-                placeholder="Hint"
-                onChange={setCurrentHint}
-              />
-              <Button
-                title="Give hint"
-                onClick={() => {
-                  giveHint(currentHint, 0);
-                  setCurrentHint("");
-                }}
-              />
-            </div>
-          )
+          isCurrentlySpymaster && <HintInput giveHint={giveHint} />
         )}
       </div>
     </div>
