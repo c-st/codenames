@@ -52,23 +52,27 @@ export default function Board({
   return (
     <div className="flex flex-col gap-4">
       <TeamInfo
+        isGameOver={!!gameResult}
         players={players}
         currentPlayer={currentPlayer}
         turn={turn}
         remainingWordsByTeam={remainingWordsByTeam}
       />
       <div className="flex justify-between">
-        <Hint
-          turn={turn}
-          giveHint={giveHint}
-          isCurrentlySpymaster={
-            currentPlayer.role === "spymaster" && isCurrentTurn
-          }
-        />
+        {!gameResult && (
+          <Hint
+            turn={turn}
+            giveHint={giveHint}
+            isCurrentlySpymaster={
+              currentPlayer.role === "spymaster" && isCurrentTurn
+            }
+          />
+        )}
         {gameResult && <Result gameResult={gameResult} />}
         {gameResult === undefined && <Timer until={until} />}
       </div>
       <WordMatrix
+        isGameOver={!!gameResult}
         words={words}
         turn={turn}
         currentPlayer={currentPlayer}
@@ -97,11 +101,13 @@ function Result({ gameResult }: { gameResult?: GameResult }) {
 }
 
 function TeamInfo({
+  isGameOver,
   players,
   turn,
   currentPlayer,
   remainingWordsByTeam,
 }: {
+  isGameOver: boolean;
   players: Player[];
   currentPlayer: Player;
   turn: Turn;
@@ -126,7 +132,7 @@ function TeamInfo({
           key={teamId}
           className={`relative bg-${getTeamColor(teamIndex)}-500 flex flex-col gap-2 rounded-lg p-2 px-2`}
         >
-          {turn.team === teamIndex && (
+          {turn.team === teamIndex && !isGameOver && (
             <motion.div
               className="absolute -left-4 -top-6 m-2 opacity-95"
               initial={{ opacity: 0, x: -100 }}
@@ -248,11 +254,13 @@ function Timer({ until }: { until: Date }) {
 }
 
 function WordMatrix({
+  isGameOver,
   words,
   currentPlayer,
   turn,
   onRevealWord,
 }: {
+  isGameOver: boolean;
   words: WordCard[];
   currentPlayer: Player;
   turn: Turn;
@@ -267,6 +275,7 @@ function WordMatrix({
     >
       {words.map((wordCard) => (
         <Word
+          isGameOver={isGameOver}
           key={wordCard.word}
           wordCard={wordCard}
           currentPlayer={currentPlayer}
@@ -278,16 +287,18 @@ function WordMatrix({
 }
 
 function Word({
+  isGameOver,
   wordCard,
   currentPlayer,
   onRevealWord,
 }: {
+  isGameOver: boolean;
   wordCard: WordCard;
   currentPlayer: Player;
   onRevealWord: (word: string) => void;
 }) {
   const isSpymaster = currentPlayer.role === "spymaster";
-  const showWord = wordCard.isRevealed || isSpymaster;
+  const showWord = wordCard.isRevealed || isSpymaster || isGameOver;
 
   // Determine colors
   let bgColor = "bg-white";
@@ -303,7 +314,8 @@ function Word({
   }
 
   const textColor = showWord ? "text-white" : "text-black";
-  const opacity = !wordCard.isRevealed && isSpymaster ? 0.5 : 0.95;
+  const opacity =
+    !wordCard.isRevealed && (isSpymaster || isGameOver) ? 0.5 : 0.95;
 
   return (
     <motion.div

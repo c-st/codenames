@@ -6,6 +6,7 @@ import {
   GameState,
   GameStateForClient,
   gameStateSchema,
+  WordCard,
 } from "schema";
 import { Env } from "./worker";
 import { Codenames, defaultParameters } from "game";
@@ -151,17 +152,23 @@ export class CodenamesGame extends DurableObject {
         const isSpymaster =
           gameState.players.find((player) => player.id === playerId)?.role ===
           "spymaster";
+        const isGameOver = game.getGameResult() !== undefined;
 
-        const censoredGameState = gameState.board.map((card) => ({
+        const censoredGameBoard: WordCard[] = gameState.board.map((card) => ({
           ...card,
           isAssassin:
-            card.isRevealed || isSpymaster ? card.isAssassin : undefined,
-          team: card.isRevealed || isSpymaster ? card.team : undefined,
+            card.isRevealed || isSpymaster || isGameOver
+              ? card.isAssassin
+              : false,
+          team:
+            card.isRevealed || isSpymaster || isGameOver
+              ? card.team
+              : undefined,
         }));
 
         const gameStateForClient: GameStateForClient = {
           ...gameState,
-          ...censoredGameState,
+          board: censoredGameBoard,
           playerId,
           gameCanStart: game.isReadyToStartGame(),
           remainingWordsByTeam: Array.from(
@@ -169,6 +176,8 @@ export class CodenamesGame extends DurableObject {
           ),
           gameResult: game.getGameResult(),
         };
+
+        console.log("revealed", gameStateForClient);
 
         return ws.send(JSON.stringify(gameStateForClient));
       });

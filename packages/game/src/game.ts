@@ -168,7 +168,6 @@ export class Codenames {
 
     const gameResult = this.getGameResult();
     if (gameResult) {
-      console.log("Game over", gameResult);
       return this.gameState;
     }
 
