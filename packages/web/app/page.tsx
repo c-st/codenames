@@ -42,7 +42,7 @@ export default function Home() {
           <SessionStatus isConnected={isConnected} sessionName={sessionName} />
         </div>
       </header>
-      <main className="row-start-2 flex flex-col gap-8 pt-4 sm:items-start">
+      <main className="row-start-2 flex flex-col gap-8 pt-6 sm:items-start">
         {turn === undefined ? (
           <Lobby
             players={players}

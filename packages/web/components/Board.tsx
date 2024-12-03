@@ -96,6 +96,7 @@ function Result({ gameResult }: { gameResult?: GameResult }) {
 
 function TeamInfo({
   players,
+  turn,
   currentPlayer,
   remainingWordsByTeam,
 }: {
@@ -121,8 +122,26 @@ function TeamInfo({
       {Object.entries(teams).map(([teamId, teamPlayers], teamIndex) => (
         <div
           key={teamId}
-          className={`bg-${getTeamColor(teamIndex)}-500 flex flex-col gap-2 rounded-lg p-2 px-2`}
+          className={`relative bg-${getTeamColor(teamIndex)}-500 flex flex-col gap-2 rounded-lg p-2 px-2`}
         >
+          {turn.team === teamIndex && (
+            <motion.div
+              className="absolute -left-4 -top-6 m-2 opacity-95"
+              initial={{ opacity: 0, x: -100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 20,
+              }}
+            >
+              <span className="text-m inline-flex items-center rounded-full bg-red-500 px-2.5 py-0.5 font-bold text-white drop-shadow-md">
+                Now guessing!
+              </span>
+            </motion.div>
+          )}
+
           <div className="flex items-center justify-between px-2">
             <h2 className={`text-lg font-black md:text-xl`}>Team {teamId}</h2>
             <motion.span

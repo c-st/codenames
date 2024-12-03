@@ -17,6 +17,7 @@ export default {
     "bg-green-500",
     "bg-pink-500",
     "bg-blue-500",
+    "drop-shadow-md",
   ],
   theme: {
     extend: {
