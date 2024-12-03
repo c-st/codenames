@@ -7,6 +7,7 @@ import PlayerCard from "./PlayerCard";
 import { useWarnBeforeReloading } from "./hooks/useWarnBeforeReloading";
 
 export default function Board({
+  isConnected,
   players,
   currentPlayerId,
   words,
@@ -20,6 +21,7 @@ export default function Board({
   endTurn,
   endGame,
 }: {
+  isConnected: boolean;
   players: Player[];
   currentPlayerId: string;
   words?: WordCard[];
@@ -33,7 +35,7 @@ export default function Board({
   endTurn: () => void;
   endGame: () => void;
 }) {
-  useWarnBeforeReloading();
+  useWarnBeforeReloading(isConnected);
 
   const { until } = turn;
 

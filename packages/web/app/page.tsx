@@ -54,6 +54,7 @@ export default function Home() {
           />
         ) : (
           <Board
+            isConnected={isConnected}
             players={players}
             currentPlayerId={currentPlayerId}
             words={board}
