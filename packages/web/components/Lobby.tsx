@@ -2,8 +2,8 @@ import { AnimatePresence, Reorder } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Player } from "schema";
 import { Button } from "./ui/Button";
-import { TextInput } from "./ui/TextInput";
 import PlayerCard from "./PlayerCard";
+import NameInput from "./NameInput";
 
 export default function Lobby({
   players,
@@ -21,13 +21,6 @@ export default function Lobby({
   startGame: () => void;
 }) {
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
-  const [currentName, setCurrentName] = useState("");
-
-  useEffect(() => {
-    if (!currentPlayer) return;
-    setCurrentName(currentPlayer.name);
-  }, [currentPlayer]);
-
   if (!currentPlayer) {
     return null;
   }
@@ -48,19 +41,7 @@ export default function Lobby({
       <h1 className="text-2xl font-black md:text-4xl">Lobby</h1>
       <div className="flex items-center gap-4">
         <p className="text-xl font-black">That&apos;s you:</p>
-        <div className="flex gap-2">
-          <TextInput
-            value={currentName}
-            placeholder="Your name"
-            onChange={setCurrentName}
-          />
-          <Button
-            title="Update"
-            onClick={() => {
-              setName(currentName);
-            }}
-          />
-        </div>
+        <NameInput name={currentPlayer.name} setName={setName} />
       </div>
       <div>
         <p className="text-xl font-black md:text-xl">
