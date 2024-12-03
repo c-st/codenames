@@ -4,6 +4,7 @@ import { Button } from "./ui/Button";
 import { AnimatePresence, motion } from "framer-motion";
 import HintInput from "./HintInput";
 import PlayerCard from "./PlayerCard";
+import { useWarnBeforeReloading } from "./hooks/useWarnBeforeReloading";
 
 export default function Board({
   players,
@@ -32,6 +33,8 @@ export default function Board({
   endTurn: () => void;
   endGame: () => void;
 }) {
+  useWarnBeforeReloading();
+
   const { until } = turn;
 
   if (words === undefined) {
