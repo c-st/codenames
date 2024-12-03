@@ -117,7 +117,10 @@ export class CodenamesGame extends DurableObject {
 
   async alarm() {
     const game = await this.getGameInstance();
-    if (game.getGameResult() === undefined) {
+    if (
+      game.getGameResult() === undefined &&
+      game.getGameState().players.length > 1
+    ) {
       game.advanceTurn();
     }
     await this.persistAndBroadcastGameState(game);
@@ -159,7 +162,7 @@ export class CodenamesGame extends DurableObject {
           isAssassin:
             card.isRevealed || isSpymaster || isGameOver
               ? card.isAssassin
-              : false,
+              : false, // TODO: this should be undefined
           team:
             card.isRevealed || isSpymaster || isGameOver
               ? card.team
@@ -176,8 +179,6 @@ export class CodenamesGame extends DurableObject {
           ),
           gameResult: game.getGameResult(),
         };
-
-        console.log("revealed", gameStateForClient);
 
         return ws.send(JSON.stringify(gameStateForClient));
       });
