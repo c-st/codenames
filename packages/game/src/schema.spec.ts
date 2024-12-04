@@ -14,6 +14,7 @@ const exampleGameState: GameState = {
     { word: "bomb", isAssassin: true, isRevealed: false },
   ],
   turn: { team: 0, until: new Date() },
+  hintHistory: [],
 };
 
 describe("toGameState", () => {
