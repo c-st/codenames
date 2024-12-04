@@ -149,12 +149,10 @@ export class Codenames {
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }
-
     this.gameState.turn = {
       ...this.gameState.turn,
       hint,
     };
-
     this.gameState.hintHistory.push({
       ...hint,
       team: this.gameState.turn.team,
@@ -235,6 +233,7 @@ export class Codenames {
 
   public endGame(): GameState {
     this.gameState.turn = undefined;
+    this.gameState.hintHistory = [];
     this.gameState.board = [];
     return this.gameState;
   }

@@ -3,6 +3,7 @@ import {
   GameResult,
   GameStateForClient,
   gameStateSchemaForClient,
+  Hint,
   Player,
   Turn,
   WordCard,
@@ -10,11 +11,14 @@ import {
 import useGameSession from "./useGameSession";
 import { useEffect, useState } from "react";
 
+export type HintHistoryItem = Hint & { team: number };
+
 const useCodenames = () => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
+  const [hintHistory, setHintHistory] = useState<HintHistoryItem[]>([]);
   const [gameResult, setGameResult] = useState<GameResult>();
   const [remainingWordsByTeam, setRemainingWordsByTeam] = useState<number[]>(
     [],
@@ -44,11 +48,18 @@ const useCodenames = () => {
     const newGameState = parseResult.data;
     // console.log("Updating game state:", newGameState);
     setGameState(newGameState);
-    const { players, board, turn, remainingWordsByTeam, gameResult } =
-      newGameState;
+    const {
+      players,
+      board,
+      turn,
+      hintHistory,
+      remainingWordsByTeam,
+      gameResult,
+    } = newGameState;
     setPlayers(players);
     setBoard(board);
     setTurn(turn);
+    setHintHistory(hintHistory);
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
   }, [incomingMessage]);
@@ -66,6 +77,7 @@ const useCodenames = () => {
     // Gameplay
     players,
     turn,
+    hintHistory,
     board,
     remainingWordsByTeam,
     gameResult,

@@ -1,7 +1,6 @@
 import { AnimatePresence, Reorder } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Player } from "schema";
-import { Button } from "./ui/Button";
 import PlayerCard from "./PlayerCard";
 import NameInput from "./NameInput";
 
@@ -10,8 +9,6 @@ export default function Lobby({
   currentPlayerId,
   promoteToSpymaster,
   setName,
-  gameCanBeStarted,
-  startGame,
 }: {
   players: Player[];
   currentPlayerId: string;
@@ -60,13 +57,6 @@ export default function Lobby({
             />
           );
         })}
-      </div>
-      <div className="flex flex-col items-center gap-4">
-        {gameCanBeStarted ? (
-          <Button title="Start game" onClick={startGame} />
-        ) : (
-          <span className="text-xl font-bold">Waiting for more players...</span>
-        )}
       </div>
     </div>
   );

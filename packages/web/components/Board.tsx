@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
-import { Button } from "./ui/Button";
 import { AnimatePresence, motion } from "framer-motion";
 import HintInput from "./HintInput";
 import PlayerCard from "./PlayerCard";
 import { useWarnBeforeReloading } from "./hooks/useWarnBeforeReloading";
+import { HintHistoryItem } from "./hooks/useCodenames";
 
 export default function Board({
   isConnected,
@@ -12,20 +12,18 @@ export default function Board({
   currentPlayerId,
   words,
   turn,
+  hintHistory,
   remainingWordsByTeam,
   gameResult,
-  gameCanBeStarted,
-  startGame,
   giveHint,
   revealWord,
-  endTurn,
-  endGame,
 }: {
   isConnected: boolean;
   players: Player[];
   currentPlayerId: string;
   words?: WordCard[];
   turn: Turn;
+  hintHistory: HintHistoryItem[];
   remainingWordsByTeam: number[];
   gameResult?: GameResult;
   gameCanBeStarted: boolean;
@@ -78,14 +76,14 @@ export default function Board({
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
       />
-      <GameActions
-        isCurrentTurn={isCurrentTurn}
-        gameResult={gameResult}
-        gameCanBeStarted={gameCanBeStarted}
-        startGame={startGame}
-        endTurn={endTurn}
-        endGame={endGame}
-      />
+      <div className="font-mono text-lg font-medium">
+        {hintHistory
+          .filter((e) => e.team === turn.team)
+          .reverse()
+          .slice(1)
+          .map((e) => e.hint)
+          .join(", ")}
+      </div>
     </div>
   );
 }
@@ -340,45 +338,6 @@ function Word({
         {wordCard.word}
       </p>
     </motion.div>
-  );
-}
-
-function GameActions({
-  gameResult,
-  gameCanBeStarted,
-  startGame,
-  endGame,
-}: {
-  isCurrentTurn: boolean;
-  gameResult?: GameResult;
-  gameCanBeStarted: boolean;
-  startGame: () => void;
-  endTurn: () => void;
-  endGame: () => void;
-}) {
-  return (
-    <div className="mt-4 flex flex-col items-center justify-center gap-3">
-      {gameResult && gameCanBeStarted && (
-        <>
-          <Button title="Start new game" onClick={startGame} />
-          <Button
-            title="Return to lobby"
-            type="destructive"
-            onClick={endGame}
-          />
-        </>
-      )}
-      {!gameCanBeStarted && (
-        <>
-          <span className="text-xl font-bold">Waiting for more players...</span>
-          <Button
-            title="Return to lobby"
-            type="destructive"
-            onClick={endGame}
-          />
-        </>
-      )}
-    </div>
   );
 }
 
