@@ -24,6 +24,7 @@ const buildExampleGameState = (input: Partial<GameState> = {}): GameState => ({
       count: 2,
     },
   },
+  hintHistory: [],
   ...input,
 });
 
@@ -270,7 +271,7 @@ describe("game state updates", () => {
       expect(onScheduleTurnCallback).toHaveBeenCalledTimes(2);
     });
 
-    it("sets a hint", () => {
+    it("records a hint", () => {
       const game = new Codenames(
         buildExampleGameState({
           turn: {
@@ -289,6 +290,9 @@ describe("game state updates", () => {
         hint: "juicy",
         count: 1,
       });
+      expect(updatedGameState.hintHistory).toEqual([
+        { hint: "juicy", count: 1, team: 0 },
+      ]);
     });
 
     it("reveals a team word", () => {

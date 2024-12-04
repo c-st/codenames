@@ -9,12 +9,10 @@ import {
   WordCard,
 } from "schema";
 import { Env } from "./worker";
-import { Codenames, defaultParameters } from "game";
+import { Codenames, defaultParameters, initialGameState } from "game";
 import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
-
-const initialGameState: GameState = { players: [], board: [], turn: undefined };
 
 export class CodenamesGame extends DurableObject {
   constructor(ctx: DurableObjectState, env: Env) {

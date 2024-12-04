@@ -17,10 +17,11 @@ export const defaultParameters: GameParameters = {
   teamCount: 2,
 };
 
-const initialGameState: GameState = {
+export const initialGameState: GameState = {
   board: [],
   players: [],
   turn: undefined,
+  hintHistory: [],
 };
 
 export class Codenames {
@@ -153,6 +154,11 @@ export class Codenames {
       ...this.gameState.turn,
       hint,
     };
+
+    this.gameState.hintHistory.push({
+      ...hint,
+      team: this.gameState.turn.team,
+    });
 
     return this.gameState;
   }
