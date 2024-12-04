@@ -9,16 +9,22 @@ export default function HintInput({
 }) {
   const [hint, setHint] = useState("");
 
+  const submitHint = () => {
+    if (hint.trim() !== "") {
+      giveHint(hint, 0);
+      setHint("");
+    }
+  };
+
   return (
     <div className="flex gap-2">
-      <TextInput value={hint} placeholder="Hint" onChange={setHint} />
-      <Button
-        title="Give hint"
-        onClick={() => {
-          giveHint(hint, 0);
-          setHint("");
-        }}
+      <TextInput
+        value={hint}
+        placeholder="Hint"
+        onChange={setHint}
+        onSubmit={submitHint}
       />
+      <Button title="Give hint" onClick={submitHint} />
     </div>
   );
 }
