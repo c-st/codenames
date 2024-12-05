@@ -37,20 +37,12 @@ export default function Board({
 
   const { until } = turn;
 
-  const [previousHints, setPreviousHints] = useState<string>("");
-  useEffect(() => {
-    if (hintHistory.length > 0) {
-      const teamHints = hintHistory
-        .filter((e) => e.team === turn.team)
-        .reverse()
-        .slice(turn.hint ? 1 : 0)
-        .map((e) => e.hint)
-        .join(", ");
-      setPreviousHints(teamHints);
-    } else {
-      setPreviousHints("");
-    }
-  }, [hintHistory, turn.team, turn.hint]);
+  const previousHints = hintHistory
+    .filter((e) => e.team === turn.team)
+    .reverse()
+    .slice(turn.hint ? 1 : 0)
+    .map((e) => e.hint)
+    .join(", ");
 
   if (words === undefined) {
     return null;
