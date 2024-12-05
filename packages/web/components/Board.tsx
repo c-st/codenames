@@ -37,6 +37,21 @@ export default function Board({
 
   const { until } = turn;
 
+  const [previousHints, setPreviousHints] = useState<string>("");
+  useEffect(() => {
+    if (hintHistory.length > 0) {
+      const teamHints = hintHistory
+        .filter((e) => e.team === turn.team)
+        .reverse()
+        .slice(turn.hint ? 1 : 0)
+        .map((e) => e.hint)
+        .join(", ");
+      setPreviousHints(teamHints);
+    } else {
+      setPreviousHints("");
+    }
+  }, [hintHistory, turn.team, turn.hint]);
+
   if (words === undefined) {
     return null;
   }
@@ -76,14 +91,7 @@ export default function Board({
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
       />
-      <div className="font-mono text-lg font-medium">
-        {hintHistory
-          .filter((e) => e.team === turn.team)
-          .reverse()
-          .slice(1)
-          .map((e) => e.hint)
-          .join(", ")}
-      </div>
+      <div className="font-mono text-lg font-medium">{previousHints}</div>
     </div>
   );
 }
