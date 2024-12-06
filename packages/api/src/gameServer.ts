@@ -160,7 +160,7 @@ export class CodenamesGame extends DurableObject {
           isAssassin:
             !!card.revealed || isSpymaster || isGameOver
               ? card.isAssassin
-              : false, // TODO: this should be undefined if not published
+              : undefined,
           team:
             !!card.revealed || isSpymaster || isGameOver
               ? card.team

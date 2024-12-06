@@ -10,7 +10,7 @@ export const playerSchema = z.object({
 const wordCardSchema = z.object({
   word: z.string(),
   team: z.number().optional(),
-  isAssassin: z.boolean(),
+  isAssassin: z.boolean().optional(),
   revealed: z
     .object({
       byTeam: z.number(),
