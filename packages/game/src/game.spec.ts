@@ -164,10 +164,7 @@ describe("game state updates", () => {
         buildExampleGameState({
           turn: undefined,
           board: [],
-          hintHistory: [
-            { hint: "fruit", count: 2, team: 0 },
-            { hint: "animal", count: 2, team: 1 },
-          ],
+          hintHistory: [],
         }),
         classicWordList,
         onScheduleTurnCallback
@@ -184,6 +181,28 @@ describe("game state updates", () => {
         hint: undefined,
       });
       expect(onScheduleTurnCallback).toHaveBeenCalled();
+    });
+
+    it("clears the previous game state", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          turn: undefined,
+          board: [],
+          hintHistory: [
+            { hint: "fruit", count: 2, team: 0, inTurn: 0 },
+            { hint: "animal", count: 2, team: 1, inTurn: 1 },
+          ],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.startGame();
+
+      expect(updatedGameState.players).toHaveLength(4);
+      expect(updatedGameState.board).toHaveLength(25);
+      expect(updatedGameState.board.some((card) => card.revealed)).toBeFalsy();
+      expect(updatedGameState.hintHistory).toHaveLength(0);
     });
 
     it("does not start a new game if the players are not complete", () => {
@@ -292,7 +311,7 @@ describe("game state updates", () => {
         count: 1,
       });
       expect(updatedGameState.hintHistory).toEqual([
-        { hint: "juicy", count: 1, team: 0 },
+        { hint: "juicy", count: 1, team: 0, inTurn: 0 },
       ]);
     });
 
@@ -308,9 +327,9 @@ describe("game state updates", () => {
             },
           },
           hintHistory: [
-            { hint: "fruit", count: 2, team: 0 },
-            { hint: "animal", count: 2, team: 1 },
-            { hint: "vegetable", count: 2, team: 0 },
+            { hint: "animal", count: 2, team: 1, inTurn: 0 },
+            { hint: "vegetable", count: 2, team: 0, inTurn: 1 },
+            { hint: "fruit", count: 2, team: 0, inTurn: 2 },
           ],
         }),
         classicWordList,

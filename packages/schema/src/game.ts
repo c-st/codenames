@@ -34,7 +34,12 @@ export const gameStateSchema = z.object({
   players: z.array(playerSchema),
   board: z.array(wordCardSchema),
   turn: turnSchema.optional(),
-  hintHistory: z.array(hintSchema.extend({ team: z.number() })),
+  hintHistory: z.array(
+    hintSchema.extend({
+      team: z.number(),
+      inTurn: z.number(),
+    })
+  ),
 });
 
 export const gameResult = z.object({

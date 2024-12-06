@@ -156,6 +156,7 @@ export class Codenames {
     this.gameState.hintHistory.push({
       ...hint,
       team: this.gameState.turn.team,
+      inTurn: this.gameState.hintHistory.length,
     });
 
     return this.gameState;
