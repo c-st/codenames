@@ -2,6 +2,7 @@ import { randomAnimal, randomAnimalAlliteration } from "./random-words";
 
 import adjectives from "../resources/adjectives.json";
 import animals from "../resources/animals.json";
+import { findDuplicates, makeUnique } from "./tools";
 
 describe("random words", () => {
   it("returns a random animal", () => {
@@ -22,15 +23,12 @@ describe("random words", () => {
     console.log(concatenatedResult.trim());
   });
 
-  it.skip("finds duplicate words", () => {
-    const findDuplicates = (arr: string[]) => {
-      const duplicates = arr.filter(
-        (item, index) => arr.indexOf(item) !== index
-      );
-      return [...new Set(duplicates)];
-    };
-
+  it("finds duplicate words", () => {
     console.log(findDuplicates(animals));
     console.log(findDuplicates(adjectives));
+  });
+
+  it.skip("uniques a wordlist", () => {
+    console.log(makeUnique(animals));
   });
 });
