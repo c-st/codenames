@@ -106,7 +106,7 @@ export class Codenames {
         "Each team needs at least one spymaster and one operative"
       );
     }
-
+    this.gameState.hintHistory = [];
     this.gameState.board = setupBoard(this.parameters, this.words);
     this.gameState.turn = {
       team: 0, // first team starts

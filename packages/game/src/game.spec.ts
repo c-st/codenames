@@ -167,6 +167,10 @@ describe("game state updates", () => {
         buildExampleGameState({
           turn: undefined,
           board: [],
+          hintHistory: [
+            { hint: "fruit", count: 2, team: 0 },
+            { hint: "animal", count: 2, team: 1 },
+          ],
         }),
         classicWordList,
         onScheduleTurnCallback
@@ -176,6 +180,7 @@ describe("game state updates", () => {
 
       expect(updatedGameState.players).toHaveLength(4);
       expect(updatedGameState.board).toHaveLength(25);
+      expect(updatedGameState.hintHistory).toHaveLength(0);
       expect(updatedGameState.turn).toEqual({
         team: 0,
         until: expect.any(Date),
