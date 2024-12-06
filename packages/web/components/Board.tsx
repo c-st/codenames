@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { GameResult, Player, Turn, WordCard } from "schema";
-import { AnimatePresence, motion } from "framer-motion";
 import HintInput from "./HintInput";
 import PlayerCard from "./PlayerCard";
 import { useWarnBeforeReloading } from "./hooks/useWarnBeforeReloading";
 import { HintHistoryItem } from "./hooks/useCodenames";
+import { AnimatePresence, motion } from "motion/react";
 
 export default function Board({
   isConnected,

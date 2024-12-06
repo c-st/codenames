@@ -1,4 +1,4 @@
-import { motion, useCycle } from "framer-motion";
+import { motion, useCycle } from "motion/react";
 
 const transition = {
   type: "spring",
@@ -15,7 +15,7 @@ export function Toggle() {
         className="relative h-8 w-12 cursor-pointer rounded-full bg-gray-800"
         animate={current}
         initial={false}
-        onTapStart={cycle}
+        onTapStart={() => cycle()}
       >
         <motion.div
           className="w=full h-full rounded-full bg-purple-700"

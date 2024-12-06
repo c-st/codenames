@@ -1,8 +1,8 @@
-import { AnimatePresence, Reorder } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Player } from "schema";
 import PlayerCard from "./PlayerCard";
 import NameInput from "./NameInput";
+import { AnimatePresence, Reorder } from "motion/react";
 
 export default function Lobby({
   players,

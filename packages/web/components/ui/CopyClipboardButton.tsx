@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, MotionConfig } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import { useState } from "react";
 
 export default function CopyClipboardButton({
