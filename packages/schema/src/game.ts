@@ -9,9 +9,14 @@ export const playerSchema = z.object({
 
 const wordCardSchema = z.object({
   word: z.string(),
-  isRevealed: z.boolean(),
-  isAssassin: z.boolean(),
   team: z.number().optional(),
+  isAssassin: z.boolean(),
+  revealed: z
+    .object({
+      byTeam: z.number(),
+      inTurn: z.number(),
+    })
+    .optional(),
 });
 
 const hintSchema = z.object({

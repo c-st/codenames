@@ -11,18 +11,15 @@ const buildExampleGameState = (input: Partial<GameState> = {}): GameState => ({
     { id: "player-4", name: "Dana", team: 1, role: "operative" },
   ],
   board: [
-    { word: "apple", isAssassin: false, team: 0, isRevealed: false },
-    { word: "banana", isAssassin: false, team: 1, isRevealed: false },
-    { word: "car", isAssassin: false, isRevealed: false },
-    { word: "bomb", isAssassin: true, isRevealed: false },
+    { word: "apple", isAssassin: false, team: 0 },
+    { word: "banana", isAssassin: false, team: 1 },
+    { word: "car", isAssassin: false },
+    { word: "bomb", isAssassin: true },
   ],
   turn: {
     team: 0,
     until: new Date(),
-    hint: {
-      hint: "fruit",
-      count: 2,
-    },
+    hint: undefined,
   },
   hintHistory: [],
   ...input,
@@ -239,16 +236,15 @@ describe("game state updates", () => {
             { id: "player-6", name: "Frank", team: 2, role: "operative" },
           ],
           board: [
-            { word: "apple", isAssassin: false, team: 0, isRevealed: false },
-            { word: "banana", isAssassin: false, team: 1, isRevealed: false },
+            { word: "apple", isAssassin: false, team: 0 },
+            { word: "banana", isAssassin: false, team: 1 },
             {
               word: "grapefruit",
               isAssassin: false,
               team: 2,
-              isRevealed: false,
             },
-            { word: "car", isAssassin: false, isRevealed: false },
-            { word: "bomb", isAssassin: true, isRevealed: false },
+            { word: "car", isAssassin: false },
+            { word: "bomb", isAssassin: true },
           ],
           turn: {
             team: 1,
@@ -302,13 +298,32 @@ describe("game state updates", () => {
 
     it("reveals a team word", () => {
       const game = new Codenames(
-        buildExampleGameState(),
+        buildExampleGameState({
+          turn: {
+            team: 1,
+            until: new Date(),
+            hint: {
+              hint: "fruit",
+              count: 2,
+            },
+          },
+          hintHistory: [
+            { hint: "fruit", count: 2, team: 0 },
+            { hint: "animal", count: 2, team: 1 },
+            { hint: "vegetable", count: 2, team: 0 },
+          ],
+        }),
         classicWordList,
         onScheduleTurnCallback
       );
 
       game.revealWord("apple");
 
+      const word = game
+        .getGameState()
+        .board.find((card) => card.word === "apple");
+
+      expect(word?.revealed).toEqual({ byTeam: 1, inTurn: 3 });
       const gameResult = game.getGameResult();
       expect(gameResult).toBeDefined();
       expect(gameResult).toEqual({
@@ -317,9 +332,36 @@ describe("game state updates", () => {
       });
     });
 
+    it("throws on attempt to reveal word without hint", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: undefined,
+          },
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      expect(() => game.revealWord("apple")).toThrowError(
+        new GameError("Cannot reveal words without a hint")
+      );
+    });
+
     it("throws if advancing on a finished game", () => {
       const game = new Codenames(
-        buildExampleGameState(),
+        buildExampleGameState({
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: {
+              hint: "fruit",
+              count: 2,
+            },
+          },
+        }),
         classicWordList,
         onScheduleTurnCallback
       );
@@ -341,10 +383,14 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState({
           board: [
-            { word: "apple", isAssassin: false, team: 0, isRevealed: false },
-            { word: "banana", isAssassin: false, team: 1, isRevealed: false },
-            { word: "car", isAssassin: false, isRevealed: false },
-            { word: "bomb", isAssassin: true, isRevealed: true },
+            { word: "apple", isAssassin: false, team: 0 },
+            { word: "banana", isAssassin: false, team: 1 },
+            { word: "car", isAssassin: false },
+            {
+              word: "bomb",
+              isAssassin: true,
+              revealed: { byTeam: 0, inTurn: 0 },
+            },
           ],
           turn: {
             team: 1,

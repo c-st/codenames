@@ -167,7 +167,19 @@ export class Codenames {
       throw new GameError("Word not found on board");
     }
 
-    wordCard.isRevealed = true;
+    if (!this.gameState.turn) {
+      throw new GameError("Game has not started yet");
+    }
+
+    if (!this.gameState.turn.hint) {
+      throw new GameError("Cannot reveal words without a hint");
+    }
+
+    wordCard.revealed = {
+      byTeam: this.gameState.turn.team,
+      inTurn: this.gameState.hintHistory.length,
+    };
+
     this.updateCard(wordCard);
 
     const gameResult = this.getGameResult();
@@ -187,7 +199,7 @@ export class Codenames {
     const { teamCount } = this.parameters;
     const remainingWordsByTeam = this.gameState.board.reduce(
       (teams, word) => {
-        if (word.team !== undefined && !word.isRevealed) {
+        if (word.team !== undefined && word.revealed === undefined) {
           const currentCount = teams.get(word.team) ?? 0;
           teams.set(word.team, currentCount + 1);
         }
@@ -204,7 +216,7 @@ export class Codenames {
     | { winningTeam?: number; losingTeam?: number }
     | undefined {
     const isAssassinRevealed = this.gameState.board.some(
-      (card) => card.isAssassin && card.isRevealed
+      (card) => card.isAssassin && card.revealed !== undefined
     );
 
     const losingTeam = isAssassinRevealed
