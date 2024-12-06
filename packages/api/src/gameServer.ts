@@ -158,11 +158,11 @@ export class CodenamesGame extends DurableObject {
         const censoredGameBoard: WordCard[] = gameState.board.map((card) => ({
           ...card,
           isAssassin:
-            card.isRevealed || isSpymaster || isGameOver
+            !!card.revealed || isSpymaster || isGameOver
               ? card.isAssassin
-              : false, // TODO: this should be undefined
+              : false, // TODO: this should be undefined if not published
           team:
-            card.isRevealed || isSpymaster || isGameOver
+            !!card.revealed || isSpymaster || isGameOver
               ? card.team
               : undefined,
         }));
