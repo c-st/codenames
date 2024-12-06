@@ -1,0 +1,9 @@
+{
+  "name": "codenames",
+  "description": "The game of codenames for the browser.",
+  "scripts": {
+    "test": "pnpm -r test",
+    "update-dependencies": "npx npm-check-updates -u --deep"
+  },
+  "license": "GPL-3.0-only"
+}
