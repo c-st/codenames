@@ -116,6 +116,11 @@ export class CodenamesGame extends DurableObject {
     } catch (error) {
       if (error instanceof GameError) {
         console.info("Command was rejected. Reason:", error.message);
+        const commandRejectedEvent = {
+          type: "commandRejected",
+          reason: error.message,
+        };
+        ws.send(JSON.stringify(commandRejectedEvent));
       } else {
         console.error("Failed to handle command:", error);
       }
@@ -187,7 +192,12 @@ export class CodenamesGame extends DurableObject {
           gameResult: game.getGameResult(),
         };
 
-        return ws.send(JSON.stringify(gameStateForClient));
+        const gameStateUpdatedEvent = {
+          type: "gameStateUpdated",
+          gameState: gameStateForClient,
+        };
+
+        return ws.send(JSON.stringify(gameStateUpdatedEvent));
       });
 
     await Promise.all(promises);
@@ -238,12 +248,10 @@ export class CodenamesGame extends DurableObject {
 
       case "giveHint": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.info("Not player's turn");
-          return;
+          throw new GameError("Not player's turn");
         }
         if (player.role !== "spymaster") {
-          console.info("Not spymaster");
-          return;
+          throw new GameError("Not spymaster");
         }
         game.giveHint({ hint: command.hint, count: command.count });
         await this.persistAndBroadcastGameState(game);
@@ -252,11 +260,11 @@ export class CodenamesGame extends DurableObject {
 
       case "revealWord": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.info("Not player's turn");
+          throw new GameError("Not player's turn");
           return;
         }
         if (player.role === "spymaster") {
-          console.info("Spymaster cannot reveal words");
+          throw new GameError("Spymaster cannot reveal words");
           return;
         }
         game.revealWord(command.word);
@@ -266,7 +274,7 @@ export class CodenamesGame extends DurableObject {
 
       case "endTurn": {
         if (player.team !== game.getGameState().turn?.team) {
-          console.info("Not player's turn");
+          throw new GameError("Not player's turn");
           return;
         }
         game.advanceTurn();
@@ -282,7 +290,7 @@ export class CodenamesGame extends DurableObject {
       }
 
       default:
-        console.error("Unknown command type:", command);
+        throw new GameError("Unknown command type. ¯\_(ツ)_/¯");
     }
   }
 }

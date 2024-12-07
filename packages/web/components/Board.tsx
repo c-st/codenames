@@ -304,7 +304,7 @@ function Word({
     if (wordCard.team === undefined && !wordCard.isAssassin) {
       bgColor = "bg-gray-400";
     } else if (wordCard.isAssassin) {
-      bgColor = "bg-red-500"; // black?
+      bgColor = "bg-red-500";
     } else if (wordCard.team !== undefined) {
       const color = getTeamColor(wordCard.team);
       bgColor = `bg-${color}-500`;

@@ -1,5 +1,6 @@
 import {
   Command,
+  gameEventSchema,
   GameResult,
   GameStateForClient,
   gameStateSchemaForClient,
@@ -38,15 +39,23 @@ const useCodenames = () => {
     if (!incomingMessage) {
       return;
     }
-    const parseResult = gameStateSchemaForClient.safeParse(
-      JSON.parse(incomingMessage),
-    );
+    // check for gameState or commandStatus
+    const parseResult = gameEventSchema.safeParse(JSON.parse(incomingMessage));
     if (!parseResult.success) {
       console.error("Failed to parse incoming message:", parseResult.error);
       return;
     }
-    const gameState = parseResult.data;
-    // console.log("Updating game state:", newGameState);
+    if (parseResult.data.type === "commandRejected") {
+      console.warn("Command rejected:", parseResult.data.reason);
+      return;
+    }
+    if (parseResult.data.type !== "gameStateUpdated") {
+      console.error("Unexpected message type:", parseResult);
+      return;
+    }
+
+    const gameState = parseResult.data.gameState;
+    // console.log(newGameState);
     setGameState(gameState);
     const {
       players,
@@ -63,7 +72,7 @@ const useCodenames = () => {
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
     if (gameResult) {
-      console.log("Game has ended", {
+      console.info("Game has ended", {
         players,
         board,
         turn,
