@@ -9,7 +9,12 @@ import {
   WordCard,
 } from "schema";
 import { Env } from "./worker";
-import { Codenames, defaultParameters, initialGameState } from "game";
+import {
+  Codenames,
+  defaultParameters,
+  GameError,
+  initialGameState,
+} from "game";
 import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
@@ -109,7 +114,11 @@ export class CodenamesGame extends DurableObject {
       const command = parsedCommand;
       await this.handleCommand(command, ws);
     } catch (error) {
-      console.error("Failed to handle command:", error);
+      if (error instanceof GameError) {
+        console.info("Command was rejected. Reason:", error.message);
+      } else {
+        console.error("Failed to handle command:", error);
+      }
     }
   }
 
@@ -269,13 +278,6 @@ export class CodenamesGame extends DurableObject {
         game.endGame();
         await this.ctx.storage.deleteAlarm();
         await this.persistAndBroadcastGameState(game);
-        break;
-      }
-
-      case "resetGame": {
-        await this.ctx.storage.delete(GAME_STATE);
-        const newGame = await this.getGameInstance();
-        await this.persistAndBroadcastGameState(newGame);
         break;
       }
 

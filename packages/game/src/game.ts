@@ -1,5 +1,5 @@
 import { GameState, Hint, Player, WordCard } from "../../schema/src/game";
-import { setupBoard } from "./setup-board";
+import { shuffleBoard } from "./shuffle-board";
 import { advanceDateBySeconds } from "./date";
 import { GameError } from "./error";
 
@@ -107,7 +107,7 @@ export class Codenames {
       );
     }
     this.gameState.hintHistory = [];
-    this.gameState.board = setupBoard(this.parameters, this.words);
+    this.gameState.board = shuffleBoard(this.parameters, this.words);
     this.gameState.turn = {
       team: 0, // first team starts
       until: advanceDateBySeconds(
