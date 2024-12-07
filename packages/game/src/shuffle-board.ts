@@ -2,7 +2,7 @@ import { getRandomIndices, getRandomWords } from "words";
 import { GameParameters } from "./game";
 import { WordCard } from "../../schema/src/game";
 
-export const setupBoard = (
+export const shuffleBoard = (
   parameters: GameParameters,
   words: string[]
 ): WordCard[] => {
@@ -24,7 +24,7 @@ export const setupBoard = (
     return {
       word,
       isRevealed: false,
-      isAssassin: index === assassinIndex,
+      isAssassin: index === assassinIndex ? true : undefined,
     };
   });
 

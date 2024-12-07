@@ -45,9 +45,9 @@ const useCodenames = () => {
       console.error("Failed to parse incoming message:", parseResult.error);
       return;
     }
-    const newGameState = parseResult.data;
+    const gameState = parseResult.data;
     // console.log("Updating game state:", newGameState);
-    setGameState(newGameState);
+    setGameState(gameState);
     const {
       players,
       board,
@@ -55,13 +55,22 @@ const useCodenames = () => {
       hintHistory,
       remainingWordsByTeam,
       gameResult,
-    } = newGameState;
+    } = gameState;
     setPlayers(players);
     setBoard(board);
     setTurn(turn);
     setHintHistory(hintHistory);
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
+    if (gameResult) {
+      console.log("Game has ended", {
+        players,
+        board,
+        turn,
+        hintHistory,
+        gameResult,
+      });
+    }
   }, [incomingMessage]);
 
   const sendCommand = (command: Command) =>
@@ -84,7 +93,6 @@ const useCodenames = () => {
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
     // Commands
-    resetGame: () => sendCommand({ type: "resetGame" }),
     setName: (name: string) => sendCommand({ type: "setName", name }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),

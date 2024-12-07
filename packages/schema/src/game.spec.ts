@@ -1,4 +1,4 @@
-import { toGameState, GameState } from "../../schema/src/game";
+import { toGameState, GameState } from "./game";
 
 const exampleGameState: GameState = {
   players: [
@@ -8,10 +8,10 @@ const exampleGameState: GameState = {
     { id: "player-4", name: "Dana", team: 1, role: "operative" },
   ],
   board: [
-    { word: "apple", isAssassin: false, team: 0, isRevealed: false },
-    { word: "banana", isAssassin: false, team: 1, isRevealed: false },
-    { word: "car", isAssassin: false, isRevealed: false },
-    { word: "bomb", isAssassin: true, isRevealed: false },
+    { word: "apple", isAssassin: false, team: 0 },
+    { word: "banana", isAssassin: false, team: 1 },
+    { word: "car", isAssassin: false },
+    { word: "bomb", isAssassin: true },
   ],
   turn: { team: 0, until: new Date() },
   hintHistory: [],

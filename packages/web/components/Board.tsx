@@ -296,7 +296,7 @@ function Word({
   onRevealWord: (word: string) => void;
 }) {
   const isSpymaster = currentPlayer.role === "spymaster";
-  const showWord = wordCard.isRevealed || isSpymaster || isGameOver;
+  const showWord = !!wordCard.revealed || isSpymaster || isGameOver;
 
   // Determine colors
   let bgColor = "bg-white";
@@ -313,12 +313,12 @@ function Word({
 
   const textColor = showWord ? "text-white" : "text-black";
   const opacity =
-    !wordCard.isRevealed && (isSpymaster || isGameOver) ? 0.5 : 0.95;
+    !wordCard.revealed && (isSpymaster || isGameOver) ? 0.5 : 0.95;
 
   return (
     <motion.div
       key={wordCard.word}
-      className={`justify-top flex h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
+      className={`justify-top flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.08, opacity: 0.9 }}
       whileTap={{ scale: 0.95 }}
