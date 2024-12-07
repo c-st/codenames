@@ -3,8 +3,7 @@ import {
   gameEventSchema,
   GameResult,
   GameStateForClient,
-  gameStateSchemaForClient,
-  Hint,
+  HintHistory,
   Player,
   Turn,
   WordCard,
@@ -12,14 +11,12 @@ import {
 import useGameSession from "./useGameSession";
 import { useEffect, useState } from "react";
 
-export type HintHistoryItem = Hint & { team: number };
-
 const useCodenames = () => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
-  const [hintHistory, setHintHistory] = useState<HintHistoryItem[]>([]);
+  const [hintHistory, setHintHistory] = useState<HintHistory>([]);
   const [gameResult, setGameResult] = useState<GameResult>();
   const [remainingWordsByTeam, setRemainingWordsByTeam] = useState<number[]>(
     [],
@@ -71,7 +68,7 @@ const useCodenames = () => {
     setHintHistory(hintHistory);
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
-    if (gameResult) {
+    if (gameResult && turn) {
       console.info("Game has ended", {
         players,
         board,
