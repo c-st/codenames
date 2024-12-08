@@ -1,6 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
 import { useState } from "react";
-import { Button } from "./ui/Button";
-import { TextInput } from "./ui/TextInput";
 
 export default function HintInput({
   giveHint,

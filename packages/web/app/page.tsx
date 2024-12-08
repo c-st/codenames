@@ -1,11 +1,11 @@
 "use client";
 
-import SessionStatus from "@/components/SessionStatus";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
-import Lobby from "@/components/Lobby";
-import Board from "@/components/Board";
-import GameControls from "@/components/GameControls";
+import Lobby from "@/components/Game/Lobby/Lobby";
+import GameControls from "@/components/Game/GameControls";
+import Board from "@/components/Game/Board/Board";
+import SessionStatus from "@/components/Game/SessionStatus";
 
 export default function Home() {
   const {
