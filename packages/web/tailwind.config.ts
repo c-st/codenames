@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import daisyui from "daisyui";
 
 export default {
   content: [
@@ -8,7 +9,7 @@ export default {
   ],
   darkMode: "class",
   safelist: [
-    // dynamically calculated colors need to appear here
+    // programmatically assigned classes:
     "border-purple-500/40",
     "border-green-500/40",
     "border-pink-500/40",
@@ -37,5 +38,8 @@ export default {
       },
     },
   },
-  plugins: [],
+  daisyui: {
+    themes: ["night"],
+  },
+  plugins: [daisyui],
 } satisfies Config;

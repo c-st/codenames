@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button } from "./ui/Button";
-import { TextInput } from "./ui/TextInput";
+import { Button } from "../../ui/Button";
+import { TextInput } from "../../ui/TextInput";
 
 export default function NameInput({
   name,

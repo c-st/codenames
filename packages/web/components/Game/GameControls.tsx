@@ -1,5 +1,5 @@
 import { GameResult, Player, Turn } from "schema";
-import { Button } from "./ui/Button";
+import { Button } from "../ui/Button";
 
 export default function GameControls({
   gameResult,

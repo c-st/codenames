@@ -11,14 +11,15 @@ export function Button({
 }) {
   return (
     <motion.div
-      className={`flex h-12 cursor-pointer select-none items-center justify-center rounded-full ${type === "primary" ? "bg-blue-500" : "bg-red-500"} text-md bg-blue-500 p-6 font-bold text-white md:text-xl`}
-      whileHover={{ scale: 1.2 }}
-      whileTap={{ scale: 0.9 }}
+      className={`btn ${type === "primary" ? "btn-primary" : "btn-error"} font-bold text-white md:btn-lg md:text-xl`}
+      whileHover={{ scale: 1.3 }}
+      whileTap={{ scale: 0.8 }}
+      whileFocus={{ scale: 1.3 }}
       onClick={onClick}
       transition={{
         type: "spring",
-        stiffness: 400,
-        damping: 17,
+        damping: 10,
+        stiffness: 300,
       }}
     >
       {title}

@@ -1,6 +1,6 @@
 "use client";
 
-import CopyClipboardButton from "./ui/CopyClipboardButton";
+import CopyClipboardButton from "../ui/CopyClipboardButton";
 
 type SessionStatusProps = {
   isConnected: boolean;
