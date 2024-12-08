@@ -74,7 +74,7 @@ export default function Home() {
           />
         )}
       </main>
-      <footer className="row-start-3">
+      <footer className="row-start-3 mb-2">
         <GameControls
           gameResult={gameResult}
           gameIsRunning={gameIsRunning}

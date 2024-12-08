@@ -38,5 +38,8 @@ export default {
       },
     },
   },
+  daisyui: {
+    themes: ["night"],
+  },
   plugins: [daisyui],
 } satisfies Config;
