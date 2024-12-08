@@ -2,13 +2,16 @@ import { AnimatePresence, Reorder } from "motion/react";
 import { useState, useEffect } from "react";
 import { Player } from "schema";
 import PlayerCard from "../PlayerCard";
+import { getTeamColor } from "../Board/getTeamColor";
 
 export default function TeamTable({
-  team,
+  players,
+  teamId,
   onNewSpymaster,
   currentPlayerId,
 }: {
-  team: Player[];
+  players: Player[];
+  teamId: number;
   currentPlayerId: string;
   onNewSpymaster: (playerId: string) => void;
 }) {
@@ -18,9 +21,9 @@ export default function TeamTable({
   >();
 
   useEffect(() => {
-    if (team.length === 0) return;
-    setSortedTeam([...team].sort((a) => (a.role === "spymaster" ? -1 : 1)));
-  }, [team]);
+    if (players.length === 0) return;
+    setSortedTeam([...players].sort((a) => (a.role === "spymaster" ? -1 : 1)));
+  }, [players]);
 
   useEffect(() => {
     if (sortedTeam.length === 0) {
@@ -39,10 +42,15 @@ export default function TeamTable({
   return (
     <AnimatePresence>
       <div className="flex flex-col items-center gap-4">
-        <div className="flex min-w-32 flex-col gap-2 rounded-lg p-4 shadow-md dark:bg-gray-800">
+        <div
+          className={`flex min-w-32 flex-col gap-3 rounded-lg p-4 shadow-md bg-${getTeamColor(teamId)}-500`}
+        >
+          <h2 className={`text-lg font-bold opacity-90 md:text-xl`}>
+            Team {teamId}
+          </h2>
           <Reorder.Group
             axis="y"
-            values={team}
+            values={players}
             onReorder={setSortedTeam}
             className="flex flex-col items-center gap-4"
           >

@@ -41,17 +41,19 @@ export default function Lobby({
         </label>
       </div>
       <div>
-        <p className="text-xl font-black md:text-xl">
-          Your role is{" "}
-          {currentPlayer.role === "spymaster" ? "Spymaster" : "Operative"}
+        <p className="text-xl font-semibold md:text-2xl">
+          Your role:{" "}
+          {currentPlayer.role === "spymaster" ? "Spymaster" : "Operative"}.
         </p>
       </div>
+      <div className="divider"></div>
       <div className="flex flex-wrap justify-center gap-8">
         {Object.keys(teams).map((team) => {
           return (
             <TeamTable
               key={team}
-              team={teams[parseInt(team)]}
+              teamId={parseInt(team)}
+              players={teams[parseInt(team)]}
               currentPlayerId={currentPlayerId}
               onNewSpymaster={promoteToSpymaster}
             />
