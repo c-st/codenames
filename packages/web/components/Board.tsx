@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { GameResult, Player, Turn, WordCard } from "schema";
+import { GameResult, HintHistory, Player, Turn, WordCard } from "schema";
 import HintInput from "./HintInput";
 import PlayerCard from "./PlayerCard";
 import { useWarnBeforeReloading } from "./hooks/useWarnBeforeReloading";
-import { HintHistoryItem } from "./hooks/useCodenames";
 import { AnimatePresence, motion } from "motion/react";
 
 export default function Board({
@@ -23,7 +22,7 @@ export default function Board({
   currentPlayerId: string;
   words?: WordCard[];
   turn: Turn;
-  hintHistory: HintHistoryItem[];
+  hintHistory: HintHistory;
   remainingWordsByTeam: number[];
   gameResult?: GameResult;
   gameCanBeStarted: boolean;
@@ -304,7 +303,7 @@ function Word({
     if (wordCard.team === undefined && !wordCard.isAssassin) {
       bgColor = "bg-gray-400";
     } else if (wordCard.isAssassin) {
-      bgColor = "bg-red-500"; // black?
+      bgColor = "bg-red-500";
     } else if (wordCard.team !== undefined) {
       const color = getTeamColor(wordCard.team);
       bgColor = `bg-${color}-500`;

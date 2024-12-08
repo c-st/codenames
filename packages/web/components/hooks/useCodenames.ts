@@ -1,9 +1,9 @@
 import {
   Command,
+  gameEventSchema,
   GameResult,
   GameStateForClient,
-  gameStateSchemaForClient,
-  Hint,
+  HintHistory,
   Player,
   Turn,
   WordCard,
@@ -11,14 +11,12 @@ import {
 import useGameSession from "./useGameSession";
 import { useEffect, useState } from "react";
 
-export type HintHistoryItem = Hint & { team: number };
-
 const useCodenames = () => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
-  const [hintHistory, setHintHistory] = useState<HintHistoryItem[]>([]);
+  const [hintHistory, setHintHistory] = useState<HintHistory>([]);
   const [gameResult, setGameResult] = useState<GameResult>();
   const [remainingWordsByTeam, setRemainingWordsByTeam] = useState<number[]>(
     [],
@@ -38,15 +36,23 @@ const useCodenames = () => {
     if (!incomingMessage) {
       return;
     }
-    const parseResult = gameStateSchemaForClient.safeParse(
-      JSON.parse(incomingMessage),
-    );
+    // check for gameState or commandStatus
+    const parseResult = gameEventSchema.safeParse(JSON.parse(incomingMessage));
     if (!parseResult.success) {
       console.error("Failed to parse incoming message:", parseResult.error);
       return;
     }
-    const gameState = parseResult.data;
-    // console.log("Updating game state:", newGameState);
+    if (parseResult.data.type === "commandRejected") {
+      console.warn("Command rejected:", parseResult.data.reason);
+      return;
+    }
+    if (parseResult.data.type !== "gameStateUpdated") {
+      console.error("Unexpected message type:", parseResult);
+      return;
+    }
+
+    const gameState = parseResult.data.gameState;
+    // console.log(newGameState);
     setGameState(gameState);
     const {
       players,
@@ -62,8 +68,8 @@ const useCodenames = () => {
     setHintHistory(hintHistory);
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
-    if (gameResult) {
-      console.log("Game has ended", {
+    if (gameResult && turn) {
+      console.info("Game has ended", {
         players,
         board,
         turn,

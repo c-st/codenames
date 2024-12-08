@@ -25,7 +25,7 @@ const useWebSocket = (url: string, skip: boolean) => {
     socketRef.current.onclose = (e) => {
       setIsConnected(false);
       setIncomingMessage(undefined);
-      console.log("WebSocket disconnected", e);
+      console.info("WebSocket disconnected", e);
     };
 
     return () => {
@@ -36,6 +36,8 @@ const useWebSocket = (url: string, skip: boolean) => {
   const sendMessage = (message: string) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(message);
+    } else {
+      console.warn("WebSocket not connected, message not sent", message);
     }
   };
 

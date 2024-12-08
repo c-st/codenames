@@ -30,16 +30,18 @@ const turnSchema = z.object({
   hint: hintSchema.optional(),
 });
 
+const hintHistorySchema = z.array(
+  hintSchema.extend({
+    team: z.number(),
+    inTurn: z.number(),
+  })
+);
+
 export const gameStateSchema = z.object({
   players: z.array(playerSchema),
   board: z.array(wordCardSchema),
   turn: turnSchema.optional(),
-  hintHistory: z.array(
-    hintSchema.extend({
-      team: z.number(),
-      inTurn: z.number(),
-    })
-  ),
+  hintHistory: hintHistorySchema,
 });
 
 export const gameResult = z.object({
@@ -60,6 +62,7 @@ export type WordCard = z.infer<typeof wordCardSchema>;
 export type Player = z.infer<typeof playerSchema>;
 export type Turn = z.infer<typeof turnSchema>;
 export type Hint = z.infer<typeof hintSchema>;
+export type HintHistory = z.infer<typeof hintHistorySchema>;
 export type GameResult = z.infer<typeof gameResult>;
 
 export const toGameState = (object: unknown): GameState =>
