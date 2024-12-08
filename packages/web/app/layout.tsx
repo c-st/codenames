@@ -15,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "codenames",
-  description: "A codenames game",
+  title: "codenam.es",
+  description: "The game of codenames",
 };
 
 export default function RootLayout({

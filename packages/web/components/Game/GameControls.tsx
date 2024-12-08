@@ -21,14 +21,28 @@ export default function GameControls({
   endTurn: () => void;
 }) {
   return (
-    <div className="flex flex-col justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-4">
       {!gameResult && gameCanBeStarted && currentPlayer.team === turn?.team && (
         <Button title="End turn" onClick={endTurn} />
       )}
-      {!gameResult && gameCanBeStarted && (
+      {!gameResult && (
         <div className="">
           <Button title="End game" type="destructive" onClick={endGame} />
         </div>
+      )}
+      {!gameCanBeStarted && (
+        <>
+          <div
+            role="alert"
+            className="alert alert-warning m-8 flex max-w-96 flex-col items-start"
+          >
+            <h2 className="text-xl font-bold">Waiting for more players</h2>
+            <p className="text-lg font-medium">
+              Each team needs at least one spymaster (giving hints) and one
+              operative (guessing).
+            </p>
+          </div>
+        </>
       )}
       {gameResult && gameCanBeStarted && (
         <Button title="Start new game" onClick={startGame} />
@@ -41,15 +55,6 @@ export default function GameControls({
             onClick={endGame}
           />
         </>
-      )}
-      {!gameIsRunning && !gameCanBeStarted && (
-        <span className="p-2">
-          <h2 className="text-xl font-bold">Waiting for more players</h2>
-          <p className="text-lg font-medium">
-            Each team needs at least one spymaster (giving hints) and one
-            operative (guessing).
-          </p>
-        </span>
       )}
     </div>
   );
