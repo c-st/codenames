@@ -10,7 +10,7 @@ export function Button({
   onClick?: () => void;
 }) {
   return (
-    <motion.div
+    <motion.button
       className={`btn ${type === "primary" ? "btn-primary" : "btn-error"} font-bold text-white md:btn-lg md:text-xl`}
       whileHover={{ scale: 1.3 }}
       whileTap={{ scale: 0.8 }}
@@ -23,6 +23,6 @@ export function Button({
       }}
     >
       {title}
-    </motion.div>
+    </motion.button>
   );
 }

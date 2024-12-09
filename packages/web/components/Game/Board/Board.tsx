@@ -146,7 +146,7 @@ function Timer({ until }: { until: Date }) {
 
   return (
     <div className="flex items-center">
-      <span className="countdown font-mono text-2xl">
+      <span className="countdown select-none font-mono text-2xl">
         <span
           style={{ ["--value"]: timeLeft.minutes } as React.CSSProperties}
         ></span>
@@ -231,15 +231,15 @@ function Word({
       className={`justify-top flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.08, opacity: 0.9 }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.9 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={{ opacity: 0, scale: 1.5, y: -20 }}
       transition={{
         type: "spring",
-        stiffness: 300,
+        stiffness: 400,
         damping: 10,
-        duration: 0.5,
+        duration: 0.4,
       }}
     >
       <p

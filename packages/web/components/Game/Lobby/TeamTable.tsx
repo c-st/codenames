@@ -43,7 +43,7 @@ export default function TeamTable({
     <AnimatePresence>
       <div className="flex flex-col items-center gap-4">
         <div
-          className={`flex min-w-32 flex-col gap-3 rounded-lg p-4 shadow-md bg-${getTeamColor(teamId)}-500`}
+          className={`flex min-w-32 flex-col gap-3 rounded-lg p-4 shadow-md bg-${getTeamColor(teamId)}-500 select-none`}
         >
           <h2 className={`text-lg font-bold opacity-90 md:text-xl`}>
             Team {teamId}
@@ -75,7 +75,7 @@ export default function TeamTable({
         </div>
         {spymasterToPromote && (
           <button
-            className="btn btn-secondary btn-md text-white"
+            className="btn btn-secondary btn-md select-none text-white"
             onClick={() => onNewSpymaster(spymasterToPromote.id)}
           >
             Make {spymasterToPromote.name} Spymaster

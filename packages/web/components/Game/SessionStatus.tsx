@@ -19,7 +19,9 @@ export default function SessionStatus({
           <span className="">⚡️</span>
         </div>
       )}
-      <p className="font-mono text-sm font-bold md:text-base">{sessionName}</p>
+      <p className="select-none font-mono text-sm font-bold md:text-base">
+        {sessionName}
+      </p>
       <CopyClipboardButton
         onClick={() =>
           navigator.clipboard.writeText(
