@@ -38,7 +38,7 @@ export default function Home() {
   const gameIsRunning = turn !== undefined;
 
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] justify-items-center p-1.5 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
+    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] justify-items-center p-2 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
       <header className="row-start-1 flex w-full items-center justify-between">
         <Logo />
         <div className="">

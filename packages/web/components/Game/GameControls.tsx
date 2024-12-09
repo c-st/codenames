@@ -32,12 +32,9 @@ export default function GameControls({
       )}
       {!gameCanBeStarted && (
         <>
-          <div
-            role="alert"
-            className="alert alert-warning m-8 flex max-w-96 flex-col items-start"
-          >
+          <div role="alert" className="alert flex flex-col items-start">
             <h2 className="text-xl font-bold">Waiting for more players</h2>
-            <p className="text-lg font-medium">
+            <p className="text-left text-lg font-medium">
               Each team needs at least one spymaster (giving hints) and one
               operative (guessing).
             </p>

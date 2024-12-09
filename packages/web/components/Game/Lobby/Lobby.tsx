@@ -36,7 +36,7 @@ export default function Lobby({
       <h1 className="text-2xl font-black md:text-4xl">Lobby</h1>
       <div className="flex items-center gap-4">
         <label className="form-control w-full max-w-xs">
-          <p className="label text-lg font-medium">Your name</p>
+          <p className="label text-xl font-bold">Your name</p>
           <NameInput name={currentPlayer.name} setName={setName} />
         </label>
       </div>
