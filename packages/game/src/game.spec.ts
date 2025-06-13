@@ -1,7 +1,7 @@
-import type { GameState } from "../../schema/src/game";
-import { Codenames, defaultParameters } from "./game";
 import { classic as classicWordList } from "words";
+import type { GameState } from "../../schema/src/game";
 import { GameError } from "./error";
+import { Codenames, defaultParameters } from "./game";
 
 const buildExampleGameState = (input: Partial<GameState> = {}): GameState => ({
 	players: [

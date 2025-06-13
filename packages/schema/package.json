@@ -1,13 +1,16 @@
 {
-  "name": "schema",
-  "type": "module",
-  "main": "src/index.ts",
-  "scripts": {},
-  "dependencies": {
-    "game": "workspace:*",
-    "zod": "^3.25.64"
-  },
-  "devDependencies": {
-    "vitest": "^3.2.3"
-  }
+	"name": "schema",
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"lint": "biome check --write ./src"
+	},
+	"dependencies": {
+		"game": "workspace:*",
+		"zod": "^3.25.64"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"vitest": "^3.2.3"
+	}
 }

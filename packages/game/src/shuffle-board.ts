@@ -1,6 +1,6 @@
 import { getRandomIndices, getRandomWords } from "words";
-import type { GameParameters } from "./game";
 import type { WordCard } from "../../schema/src/game";
+import type { GameParameters } from "./game";
 
 export const shuffleBoard = (
 	parameters: GameParameters,

@@ -1,6 +1,6 @@
 import adjectives from "../resources/adjectives.json";
-import animals from "../resources/animals.json";
 import animalEmojis from "../resources/animal-emojis.json";
+import animals from "../resources/animals.json";
 
 export const getRandomWords = (words: string[], count: number): string[] =>
 	Array.from(new Set(words))

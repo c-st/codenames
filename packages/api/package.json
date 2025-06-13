@@ -1,20 +1,22 @@
 {
-  "name": "api",
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev --env=local",
-    "deploy": "wrangler deploy --minify"
-  },
-  "dependencies": {
-    "game": "workspace:*",
-    "nanoid": "^5.1.5",
-    "schema": "workspace:*",
-    "words": "workspace:*",
-    "zod": "^3.25.64"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250613.0",
-    "vitest": "^3.2.3",
-    "wrangler": "^4.20.0"
-  }
+	"name": "api",
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev --env=local",
+		"deploy": "wrangler deploy --minify",
+		"lint": "biome check --write ./src"
+	},
+	"dependencies": {
+		"game": "workspace:*",
+		"nanoid": "^5.1.5",
+		"schema": "workspace:*",
+		"words": "workspace:*",
+		"zod": "^3.25.64"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@cloudflare/workers-types": "^4.20250613.0",
+		"vitest": "^3.2.3",
+		"wrangler": "^4.20.0"
+	}
 }

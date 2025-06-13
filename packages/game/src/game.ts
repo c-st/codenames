@@ -1,7 +1,7 @@
 import type { GameState, Hint, Player, WordCard } from "../../schema/src/game";
-import { shuffleBoard } from "./shuffle-board";
 import { advanceDateBySeconds } from "./date";
 import { GameError } from "./error";
+import { shuffleBoard } from "./shuffle-board";
 
 export type GameParameters = {
 	turnDurationSeconds: number;

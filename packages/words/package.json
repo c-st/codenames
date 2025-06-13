@@ -1,14 +1,16 @@
 {
-  "name": "words",
-  "type": "module",
-  "main": "src/index.ts",
-  "scripts": {
-    "test": "vitest --run"
-  },
-  "dependencies": {
-    "typescript": "^5.8.3"
-  },
-  "devDependencies": {
-    "vitest": "^3.2.3"
-  }
+	"name": "words",
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"test": "vitest --run",
+		"lint": "biome check --write ./src"
+	},
+	"dependencies": {
+		"typescript": "^5.8.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"vitest": "^3.2.3"
+	}
 }

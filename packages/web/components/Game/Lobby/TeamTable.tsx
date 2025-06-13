@@ -1,8 +1,8 @@
 import { AnimatePresence, Reorder } from "motion/react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Player } from "schema";
-import PlayerCard from "../PlayerCard";
 import { getTeamColor } from "../Board/getTeamColor";
+import PlayerCard from "../PlayerCard";
 
 export default function TeamTable({
 	players,

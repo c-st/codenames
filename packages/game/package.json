@@ -1,15 +1,17 @@
 {
-  "name": "game",
-  "type": "module",
-  "main": "src/index.ts",
-  "scripts": {
-    "test": "vitest --run"
-  },
-  "dependencies": {
-    "zod": "^3.25.64",
-    "words": "workspace:*"
-  },
-  "devDependencies": {
-    "vitest": "^3.2.3"
-  }
+	"name": "game",
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"test": "vitest --run",
+		"lint": "biome check --write ./src"
+	},
+	"dependencies": {
+		"words": "workspace:*",
+		"zod": "^3.25.64"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"vitest": "^3.2.3"
+	}
 }

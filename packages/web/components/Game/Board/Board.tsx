@@ -1,10 +1,10 @@
+import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloading";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { GameResult, HintHistory, Player, Turn, WordCard } from "schema";
-import { motion } from "motion/react";
-import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloading";
 import HintInput from "./HintInput";
-import { getTeamColor } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
+import { getTeamColor } from "./getTeamColor";
 
 export default function Board({
 	isConnected,
@@ -147,15 +147,10 @@ function Timer({ until }: { until: Date }) {
 	return (
 		<div className="flex items-center">
 			<span className="countdown select-none font-mono text-2xl">
-				<span
-					style={{ ["--value"]: timeLeft.minutes } as React.CSSProperties}
-				/>
-				:
+				<span style={{ "--value": timeLeft.minutes } as React.CSSProperties} />:
 			</span>
 			<span className="countdown font-mono text-2xl">
-				<span
-					style={{ [`--value`]: timeLeft.seconds } as React.CSSProperties}
-				/>
+				<span style={{ "--value": timeLeft.seconds } as React.CSSProperties} />
 			</span>
 		</div>
 	);

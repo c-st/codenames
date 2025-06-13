@@ -1,4 +1,4 @@
-import { toGameState, type GameState } from "./game";
+import { type GameState, toGameState } from "./game";
 
 const exampleGameState: GameState = {
 	players: [

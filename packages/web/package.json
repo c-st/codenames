@@ -1,33 +1,32 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "deploy": "wrangler pages deploy ./dist --project-name=codenames-web --commit-dirty=true"
-  },
-  "dependencies": {
-    "motion": "12.18.1",
-    "next": "15.3.3",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "schema": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/node": "^24",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "daisyui": "^5.0.43",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.3",
-    "postcss": "^8",
-    "prettier": "^3.5.3",
-    "prettier-plugin-tailwindcss": "^0.6.12",
-    "tailwindcss": "^4.1.10",
-    "typescript": "^5",
-    "wrangler": "^4.20.0"
-  }
+	"name": "web",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "biome check --write ./components ./app",
+		"deploy": "wrangler pages deploy ./dist --project-name=codenames-web --commit-dirty=true"
+	},
+	"dependencies": {
+		"motion": "12.18.1",
+		"next": "15.3.3",
+		"react": "19.1.0",
+		"react-dom": "19.1.0",
+		"schema": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/node": "^24",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"daisyui": "^5.0.43",
+		"eslint": "^9",
+		"eslint-config-next": "15.3.3",
+		"postcss": "^8",
+		"tailwindcss": "^4.1.10",
+		"typescript": "^5",
+		"wrangler": "^4.20.0"
+	}
 }
