@@ -3,7 +3,14 @@
   "description": "The game of codenames for the browser.",
   "scripts": {
     "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
     "upgrade-dependencies": "npx npm-check-updates -u --deep && pnpm install"
   },
-  "license": "GPL-3.0-only"
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
 }

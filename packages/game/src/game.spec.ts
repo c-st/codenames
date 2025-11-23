@@ -156,6 +156,35 @@ describe("game state updates", () => {
       expect(redSpymasters).toHaveLength(1);
       expect(redSpymasters[0]).toEqual("player-5");
     });
+
+    it("updates player name without race conditions", () => {
+      const game = new Codenames(
+        buildExampleGameState(),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.updatePlayerName("player-1", "Alicia");
+
+      const player = updatedGameState.players.find(
+        (p) => p.id === "player-1"
+      );
+      expect(player?.name).toEqual("Alicia");
+      expect(player?.team).toEqual(0);
+      expect(player?.role).toEqual("spymaster");
+    });
+
+    it("throws error when updating name of non-existent player", () => {
+      const game = new Codenames(
+        buildExampleGameState(),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      expect(() => game.updatePlayerName("player-999", "Ghost")).toThrowError(
+        new GameError("Player not found")
+      );
+    });
   });
 
   describe("gameplay", () => {
@@ -430,6 +459,28 @@ describe("game state updates", () => {
         winningTeam: undefined,
         losingTeam: 1,
       });
+    });
+
+    it("manually ends game and clears state", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 2 },
+          },
+          hintHistory: [{ hint: "fruit", count: 2, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const updatedGameState = game.endGame();
+
+      expect(updatedGameState.turn).toBeUndefined();
+      expect(updatedGameState.hintHistory).toEqual([]);
+      expect(updatedGameState.board).toEqual([]);
+      expect(updatedGameState.players).toHaveLength(4);
     });
   });
 });

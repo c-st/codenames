@@ -16,8 +16,10 @@ import {
   initialGameState,
 } from "game";
 import { classic, randomAnimalEmoji } from "words";
+import { Logger } from "./logger";
 
 const GAME_STATE = "gameState";
+const logger = new Logger("CodenamesGame");
 
 export class CodenamesGame extends DurableObject {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -59,7 +61,7 @@ export class CodenamesGame extends DurableObject {
         defaultParameters
       );
     } catch (error) {
-      console.error("Error initializing game state:", error);
+      logger.error("Error initializing game state", { error });
     }
     return new Codenames(
       initialGameState,
@@ -69,9 +71,7 @@ export class CodenamesGame extends DurableObject {
     );
   }
 
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    // const sessionName = url.pathname.split("/").at(1);
+  async fetch(_request: Request): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
 
@@ -105,7 +105,7 @@ export class CodenamesGame extends DurableObject {
     try {
       parsedCommand = commandSchema.parse(JSON.parse(message.toString()));
     } catch (error) {
-      console.error("Failed to parse JSON:", error);
+      logger.error("Failed to parse WebSocket message", { error, message });
       return;
     }
 
@@ -115,14 +115,14 @@ export class CodenamesGame extends DurableObject {
       await this.handleCommand(command, ws);
     } catch (error) {
       if (error instanceof GameError) {
-        console.info("Command was rejected. Reason:", error.message);
+        logger.info("Command rejected", { reason: error.message });
         const commandRejectedEvent = {
           type: "commandRejected",
           reason: error.message,
         };
         ws.send(JSON.stringify(commandRejectedEvent));
       } else {
-        console.error("Failed to handle command:", error);
+        logger.error("Failed to handle command", { error });
       }
     }
   }
@@ -209,19 +209,19 @@ export class CodenamesGame extends DurableObject {
 
     const player = game.getGameState().players.find((p) => p.id === playerId);
     if (!player) {
-      console.error("Player not found:", playerId);
+      logger.error("Player not found", { playerId });
       return;
     }
 
-    console.info(`${player.name}: ${JSON.stringify(command)}`);
+    logger.info("Command received", {
+      player: player.name,
+      playerId,
+      command: command.type,
+    });
 
     switch (command.type) {
       case "setName": {
-        game.addOrUpdatePlayer({
-          ...player,
-          id: playerId,
-          name: command.name,
-        });
+        game.updatePlayerName(playerId, command.name);
         await this.persistAndBroadcastGameState(game);
         break;
       }
@@ -261,11 +261,9 @@ export class CodenamesGame extends DurableObject {
       case "revealWord": {
         if (player.team !== game.getGameState().turn?.team) {
           throw new GameError("Not player's turn");
-          return;
         }
         if (player.role === "spymaster") {
           throw new GameError("Spymaster cannot reveal words");
-          return;
         }
         game.revealWord(command.word);
         await this.persistAndBroadcastGameState(game);
@@ -275,7 +273,6 @@ export class CodenamesGame extends DurableObject {
       case "endTurn": {
         if (player.team !== game.getGameState().turn?.team) {
           throw new GameError("Not player's turn");
-          return;
         }
         game.advanceTurn();
         await this.persistAndBroadcastGameState(game);

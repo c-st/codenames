@@ -3,7 +3,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --env=local",
-    "deploy": "wrangler deploy --minify"
+    "deploy": "wrangler deploy --minify",
+    "test": "echo 'Skipping API tests - requires Cloudflare Workers environment' && exit 0",
+    "lint": "eslint src"
   },
   "dependencies": {
     "game": "workspace:*",

@@ -270,11 +270,19 @@ export class Codenames {
     return allTeamsHaveSpymaster && allTeamsHaveOperative;
   }
 
-  private updatePlayer(player: Player): GameState {
+  public updatePlayer(player: Player): GameState {
     this.gameState.players = this.gameState.players.map((p) =>
       p.id === player.id ? player : p
     );
     return this.gameState;
+  }
+
+  public updatePlayerName(playerId: string, name: string): GameState {
+    const player = this.gameState.players.find((p) => p.id === playerId);
+    if (!player) {
+      throw new GameError("Player not found");
+    }
+    return this.updatePlayer({ ...player, name });
   }
 
   private updateCard(card: WordCard): GameState {

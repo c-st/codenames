@@ -3,7 +3,8 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "lint": "eslint src"
   },
   "dependencies": {
     "typescript": "^5.7.2"
