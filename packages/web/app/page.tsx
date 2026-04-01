@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
@@ -10,6 +10,9 @@ import Board from "@/components/Game/Board/Board";
 import SessionStatus from "@/components/Game/SessionStatus";
 import SplashScreen from "@/components/SplashScreen";
 import Tutorial from "@/components/Tutorial/Tutorial";
+import useSoundEffects from "@/components/hooks/useSoundEffects";
+import Confetti from "@/components/Confetti";
+import { GameResult, WordCard } from "schema";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -39,6 +42,58 @@ export default function Home() {
     endGame,
     giveHint,
   } = useCodenames(skipConnection);
+
+  const sound = useSoundEffects();
+
+  // Sound effects based on game state changes
+  const prevTurnTeamRef = useRef<number | undefined>(undefined);
+  const prevGameResultRef = useRef<GameResult | undefined>(undefined);
+  const prevBoardRef = useRef<WordCard[] | undefined>(undefined);
+
+  useEffect(() => {
+    // Detect turn change
+    if (
+      turn?.team !== undefined &&
+      prevTurnTeamRef.current !== undefined &&
+      turn.team !== prevTurnTeamRef.current
+    ) {
+      sound.turnChange();
+    }
+    prevTurnTeamRef.current = turn?.team;
+
+    // Detect game result
+    if (gameResult && !prevGameResultRef.current) {
+      if (gameResult.losingTeam !== undefined && gameResult.winningTeam === undefined) {
+        sound.assassinReveal();
+      } else {
+        sound.gameWin();
+      }
+    }
+    prevGameResultRef.current = gameResult;
+
+    // Detect card reveals
+    if (board && prevBoardRef.current && board !== prevBoardRef.current) {
+      const prevRevealed = prevBoardRef.current.filter((c) => c.revealed).length;
+      const nowRevealed = board.filter((c) => c.revealed).length;
+      if (nowRevealed > prevRevealed) {
+        const newlyRevealed = board.find(
+          (c) =>
+            c.revealed &&
+            !prevBoardRef.current?.find((p) => p.word === c.word)?.revealed
+        );
+        if (newlyRevealed) {
+          if (newlyRevealed.isAssassin) {
+            // assassin sound handled by game result
+          } else if (newlyRevealed.team === turn?.team || newlyRevealed.team === prevTurnTeamRef.current) {
+            sound.correctGuess();
+          } else {
+            sound.wrongGuess();
+          }
+        }
+      }
+    }
+    prevBoardRef.current = board;
+  }, [board, turn?.team, gameResult, sound]);
 
   // Show tutorial if requested
   if (showTutorial) {
@@ -108,6 +163,7 @@ export default function Home() {
           endTurn={endTurn}
         />
       </footer>
+      <Confetti active={!!gameResult} />
     </div>
   );
 }

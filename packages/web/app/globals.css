@@ -43,3 +43,18 @@
 .card-shadow-assassin {
   box-shadow: 0 6px 0 #a03040, 0 8px 16px rgba(0, 0, 0, 0.3);
 }
+
+@keyframes confetti {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confetti linear forwards;
+}
