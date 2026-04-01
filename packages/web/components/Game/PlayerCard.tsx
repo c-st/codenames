@@ -23,7 +23,7 @@ export default function PlayerCard({
           Spymaster
         </motion.span>
       )}
-      <span className="text-base font-bold text-white md:text-lg">
+      <span className="text-base font-bold !text-white md:text-lg">
         {player.name}
         {player.id === currentPlayerId && " (you!)"}
       </span>

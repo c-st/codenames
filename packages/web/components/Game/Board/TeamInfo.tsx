@@ -60,12 +60,12 @@ export default function TeamInfo({
               )}
 
               <div className="flex items-center justify-between px-1">
-                <h2 className="select-none text-lg font-black md:text-xl">
+                <h2 className="select-none text-lg font-black !text-white md:text-xl">
                   Team {teamId}
                 </h2>
                 <motion.span
                   key={remainingWordsByTeam[teamIndex]}
-                  className="select-none text-2xl font-black"
+                  className="select-none text-2xl font-black !text-white"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1.2 }}
                   exit={{ scale: 0 }}
