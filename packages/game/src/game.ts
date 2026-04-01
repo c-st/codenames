@@ -168,6 +168,10 @@ export class Codenames {
       throw new GameError("Word not found on board");
     }
 
+    if (wordCard.revealed) {
+      throw new GameError("Word already revealed");
+    }
+
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }

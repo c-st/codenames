@@ -398,6 +398,31 @@ describe("game state updates", () => {
       });
     });
 
+    it("throws when revealing an already revealed word", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0, revealed: { byTeam: 1, inTurn: 1 } },
+            { word: "banana", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 1 },
+          },
+          hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      expect(() => game.revealWord("apple")).toThrowError(
+        new GameError("Word already revealed")
+      );
+    });
+
     it("ends game for revealed assassin word", () => {
       const game = new Codenames(
         buildExampleGameState({
