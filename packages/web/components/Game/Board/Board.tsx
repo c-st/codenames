@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { GameResult, HintHistory, Player, Turn, WordCard } from "schema";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloading";
 import HintInput from "./HintInput";
 import { getTeamColor } from "./getTeamColor";
@@ -118,10 +118,15 @@ export default function Board({
 function Result({ gameResult }: { gameResult?: GameResult }) {
   const { winningTeam, losingTeam } = gameResult || {};
   return (
-    <span className="text-2xl font-bold">
-      {winningTeam !== undefined && `Team ${winningTeam} wins!`}
-      {losingTeam !== undefined && `Team ${losingTeam} loses...`}
-    </span>
+    <motion.span
+      className="text-2xl font-bold"
+      initial={{ opacity: 0, scale: 0.5, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.2 }}
+    >
+      {winningTeam !== undefined && `Team ${winningTeam} wins! 🎉`}
+      {losingTeam !== undefined && `Team ${losingTeam} loses... 💀`}
+    </motion.span>
   );
 }
 
@@ -136,13 +141,30 @@ function Hint({
 }) {
   return (
     <div>
-      <div className="">
+      <AnimatePresence mode="wait">
         {turn.hint ? (
-          <p className="font-mono text-2xl font-bold">{turn.hint.hint}</p>
+          <motion.p
+            key={turn.hint.hint}
+            className="font-mono text-2xl font-bold"
+            initial={{ opacity: 0, scale: 0.8, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          >
+            {turn.hint.hint} ({turn.hint.count})
+          </motion.p>
         ) : (
-          isCurrentlySpymaster && <HintInput giveHint={giveHint} />
+          isCurrentlySpymaster && (
+            <motion.div
+              key="hint-input"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <HintInput giveHint={giveHint} />
+            </motion.div>
+          )
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -196,13 +218,14 @@ function WordMatrix({
     <div
       className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-2xl border-8 border-solid ${teamColor.border} p-2`}
     >
-      {words.map((wordCard) => (
+      {words.map((wordCard, index) => (
         <Word
           isGameOver={isGameOver}
           key={wordCard.word}
           wordCard={wordCard}
           currentPlayer={currentPlayer}
           onRevealWord={onRevealWord}
+          index={index}
         />
       ))}
     </div>
@@ -214,11 +237,13 @@ function Word({
   wordCard,
   currentPlayer,
   onRevealWord,
+  index = 0,
 }: {
   isGameOver: boolean;
   wordCard: WordCard;
   currentPlayer: Player;
   onRevealWord: (word: string) => void;
+  index?: number;
 }) {
   const isSpymaster = currentPlayer.role === "spymaster";
   const showWord = !!wordCard.revealed || isSpymaster || isGameOver;
@@ -250,14 +275,14 @@ function Word({
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.08, y: -3 }}
       whileTap={{ scale: 0.9 }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity, y: 0 }}
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+      animate={{ opacity, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 1.5, y: -20 }}
       transition={{
         type: "spring",
         stiffness: 400,
-        damping: 10,
-        duration: 0.4,
+        damping: 15,
+        delay: index * 0.02,
       }}
     >
       <p

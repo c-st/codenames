@@ -8,24 +8,51 @@ export default function SplashScreen({
   onPlay: () => void;
   onLearnToPlay: () => void;
 }) {
+  const emojis = ["🦊", "🦉", "🐱", "🐶", "🐼"];
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)]">
-      <motion.div
-        className="text-center"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-      >
-        <div className="mb-4 text-5xl tracking-widest">
-          🦊 🦉 🐱 🐶 🐼
+      <div className="text-center">
+        <div className="mb-4 flex justify-center gap-3">
+          {emojis.map((emoji, i) => (
+            <motion.span
+              key={emoji}
+              className="text-5xl"
+              initial={{ opacity: 0, y: -30, scale: 0 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 15,
+                delay: 0.1 + i * 0.08,
+              }}
+            >
+              {emoji}
+            </motion.span>
+          ))}
         </div>
-        <div className="mb-2">
+        <motion.div
+          className="mb-2"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.5 }}
+        >
           <Logo size="large" />
-        </div>
-        <p className="mb-10 text-lg text-purple-400/70">
+        </motion.div>
+        <motion.p
+          className="mb-10 text-lg text-purple-400/70"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.5 }}
+        >
           A word guessing game for clever animals
-        </p>
-        <div className="flex justify-center gap-4">
+        </motion.p>
+        <motion.div
+          className="flex justify-center gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.9 }}
+        >
           <motion.button
             className="rounded-2xl bg-gradient-to-br from-primary to-accent px-12 py-4 text-xl font-bold text-white shadow-lg shadow-primary/40"
             whileHover={{ scale: 1.05 }}
@@ -44,8 +71,8 @@ export default function SplashScreen({
           >
             Learn to play
           </motion.button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
