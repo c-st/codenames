@@ -170,7 +170,7 @@ export default function Home() {
           endTurn={endTurn}
         />
       </footer>
-      <Confetti active={!!gameResult} />
+      <Confetti active={!!gameResult?.winningTeam} />
     </div>
   );
 }

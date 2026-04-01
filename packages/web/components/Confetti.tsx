@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const EMOJI_LIST = ["🎉", "🎊", "✨", "⭐", "🌟", "🦊", "🦉", "🐱", "🐶", "🐼"];
+const EMOJI_LIST = ["✨", "⭐", "🌟", "🎉"];
 
 type Particle = {
   id: number;
@@ -21,18 +21,22 @@ export default function Confetti({ active }: { active: boolean }) {
       setParticles([]);
       return;
     }
-    const newParticles: Particle[] = Array.from({ length: 40 }, (_, i) => ({
+    const newParticles: Particle[] = Array.from({ length: 15 }, (_, i) => ({
       id: i,
       emoji: EMOJI_LIST[Math.floor(Math.random() * EMOJI_LIST.length)],
-      left: Math.random() * 100,
-      delay: Math.random() * 2,
-      duration: 2 + Math.random() * 3,
-      size: 1 + Math.random() * 1.5,
+      left: 10 + Math.random() * 80,
+      delay: Math.random() * 1.5,
+      duration: 2.5 + Math.random() * 2,
+      size: 0.8 + Math.random() * 1,
     }));
     setParticles(newParticles);
+
+    // Clear after animation completes
+    const timer = setTimeout(() => setParticles([]), 5000);
+    return () => clearTimeout(timer);
   }, [active]);
 
-  if (!active) return null;
+  if (particles.length === 0) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
