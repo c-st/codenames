@@ -39,14 +39,14 @@ export default function TeamInfo({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: isGameOver ? 1 : isActive ? 1 : 0.5, y: 0, scale: isGameOver ? 1 : isActive ? 1 : 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className={`indicator relative flex flex-1 flex-col gap-2 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} p-3 px-4 ${!isGameOver && isActive ? "ring-2 ring-amber-400/60 ring-offset-2 ring-offset-base" : ""}`}
+              className={`relative flex flex-1 flex-col gap-2 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} p-3 px-4 ${!isGameOver && isActive ? "ring-2 ring-amber-400/60 ring-offset-2 ring-offset-base" : ""}`}
             >
               {turn.team === teamIndex && !isGameOver && (
                 <motion.div
-                  className="badge indicator-item indicator-start rounded-lg bg-amber-400 p-3 px-3 text-black drop-shadow-md"
-                  initial={{ opacity: 1, x: -50, y: -15 }}
-                  animate={{ opacity: 1, x: -10, y: -15 }}
-                  exit={{ opacity: 0, x: 200, y: -15 }}
+                  className="absolute -top-3 left-2 z-10 rounded-lg bg-amber-400 px-3 py-1 text-sm font-bold text-black drop-shadow-md"
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 100 }}
                   transition={{
                     type: "spring",
                     stiffness: 300,
