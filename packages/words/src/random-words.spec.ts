@@ -36,6 +36,22 @@ describe("random words", () => {
   });
 });
 
+describe("getRandomIndices", () => {
+  it("returns the requested number of unique indices within range", () => {
+    const result = getRandomIndices(5, 10);
+    expect(result).toHaveLength(5);
+    expect(new Set(result).size).toBe(5);
+    result.forEach((idx) => {
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(10);
+    });
+  });
+
+  it("throws when count exceeds max", () => {
+    expect(() => getRandomIndices(10, 5)).toThrow();
+  });
+});
+
 describe("getRandomWords", () => {
   it("returns the requested number of unique words", () => {
     const words = ["a", "b", "c", "d", "e"];
