@@ -35,14 +35,14 @@ export class CodenamesGame extends DurableObject {
         websockets.map((ws) => ws.deserializeAttachment()?.playerId)
       );
 
-      let changed = false;
-      for (const player of game.getGameState().players) {
-        if (!connectedPlayerIds.has(player.id)) {
-          game.removePlayer(player.id);
-          changed = true;
-        }
+      const stalePlayerIds = game
+        .getGameState()
+        .players.filter((p) => !connectedPlayerIds.has(p.id))
+        .map((p) => p.id);
+      for (const id of stalePlayerIds) {
+        game.removePlayer(id);
       }
-      if (changed) {
+      if (stalePlayerIds.length > 0) {
         await this.persistAndBroadcastGameState(game);
       }
     });

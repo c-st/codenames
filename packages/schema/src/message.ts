@@ -11,7 +11,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("promoteToSpymaster"),
-    playerId: z.string(),
+    playerId: z.string().min(1),
   }),
   z.object({
     type: z.literal("startGame"),
@@ -23,7 +23,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("revealWord"),
-    word: z.string(),
+    word: z.string().min(1),
   }),
   z.object({
     type: z.literal("endTurn"),

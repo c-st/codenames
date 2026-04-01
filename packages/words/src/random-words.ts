@@ -39,7 +39,7 @@ export const randomAnimalEmoji = (): string => {
 export const getRandomIndices = (count: number, max: number): number[] => {
   if (count > max) {
     throw new Error(
-      `Cannot generate ${count} unique indices from range 0-${max}`
+      `Cannot generate ${count} unique indices from range of size ${max}`
     );
   }
   const randomIndices = new Set<number>();
