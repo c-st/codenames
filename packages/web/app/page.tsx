@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Game/Lobby/Lobby";
 import GameControls from "@/components/Game/GameControls";
 import Board from "@/components/Game/Board/Board";
 import SessionStatus from "@/components/Game/SessionStatus";
+import SplashScreen from "@/components/SplashScreen";
+import Tutorial from "@/components/Tutorial/Tutorial";
 
 export default function Home() {
+  const [showTutorial, setShowTutorial] = useState(false);
+
   const {
     sessionName,
     isConnected,
-    // resetGame,
-    // closeConnection,
     promoteToSpymaster,
     setName,
     players,
@@ -30,9 +33,20 @@ export default function Home() {
     giveHint,
   } = useCodenames();
 
+  // Show tutorial if requested
+  if (showTutorial) {
+    return <Tutorial onComplete={() => setShowTutorial(false)} />;
+  }
+
+  // Show splash screen if not connected yet (no session)
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   if (!currentPlayer) {
-    return null;
+    return (
+      <SplashScreen
+        onPlay={() => {}}
+        onLearnToPlay={() => setShowTutorial(true)}
+      />
+    );
   }
 
   const gameIsRunning = turn !== undefined;
