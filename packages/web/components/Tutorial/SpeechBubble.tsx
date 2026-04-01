@@ -17,11 +17,11 @@ export default function SpeechBubble({
       >
         {speaker.emoji}
       </motion.div>
-      <span className="text-xs font-semibold text-purple-400">
+      <span className="text-sm font-bold text-purple-400">
         {speaker.name}
       </span>
       <motion.div
-        className="relative max-w-md rounded-2xl border-2 border-purple-700 bg-elevated px-6 py-4 text-center text-purple-100"
+        className="relative max-w-md rounded-2xl border-2 border-purple-700 bg-elevated px-6 py-4 text-center text-lg leading-relaxed text-purple-100"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
