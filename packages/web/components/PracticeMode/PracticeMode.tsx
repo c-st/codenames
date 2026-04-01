@@ -194,7 +194,8 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             Practice Mode
           </span>
           <motion.button
-            className="rounded-xl bg-surface px-3 py-1 text-sm font-bold text-purple-400 hover:text-white"
+            className="rounded-xl border border-purple-700/30 bg-elevated px-3 py-1 text-sm font-bold text-purple-300 hover:border-accent hover:text-white"
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onExit}
           >
@@ -239,7 +240,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                className="w-40 rounded-2xl border-2 border-purple-700 bg-surface px-3 py-2 font-mono font-bold text-white placeholder-purple-400/50 focus:border-accent focus:outline-none"
+                className="w-40 rounded-2xl border-2 border-purple-700 bg-surface px-3 py-2 font-mono font-bold text-white placeholder-purple-300/60 focus:border-accent focus:outline-none"
                 placeholder="Hint word"
                 value={hintInput}
                 onChange={(e) => setHintInput(e.target.value)}
@@ -247,7 +248,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
               />
               <input
                 type="number"
-                className="w-16 rounded-2xl border-2 border-purple-700 bg-surface px-3 py-2 text-center font-mono font-bold text-white focus:border-accent focus:outline-none"
+                className="w-16 rounded-2xl border-2 border-purple-700 bg-surface px-3 py-2 text-center font-mono font-bold text-white placeholder-purple-300/60 focus:border-accent focus:outline-none"
                 min={1}
                 max={9}
                 value={countInput}

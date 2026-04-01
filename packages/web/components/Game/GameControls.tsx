@@ -49,7 +49,7 @@ export default function GameControls({
         {!gameCanBeStarted && (
           <motion.div
             key="waiting"
-            className="flex flex-col items-start rounded-2xl bg-surface p-4"
+            className="flex flex-col items-start rounded-2xl border border-purple-700/30 bg-surface p-5 shadow-md"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

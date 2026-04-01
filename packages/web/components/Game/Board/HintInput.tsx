@@ -20,7 +20,7 @@ export default function HintInput({
     <div className="flex gap-2">
       <TextInput
         value={hint}
-        placeholder="Hint"
+        placeholder="Hint word"
         onChange={setHint}
         onSubmit={submitHint}
       />

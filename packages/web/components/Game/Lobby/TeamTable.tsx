@@ -21,7 +21,7 @@ export default function TeamTable({
       <div
         className={`flex min-w-32 flex-col gap-3 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} select-none p-4 shadow-md`}
       >
-        <h2 className="text-lg font-bold opacity-90 md:text-xl">
+        <h2 className="text-lg font-bold md:text-xl">
           Team {teamId}
         </h2>
         <div className="flex flex-col items-center gap-3">

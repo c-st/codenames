@@ -11,11 +11,11 @@ export function Button({
 }) {
   const styles = {
     primary:
-      "bg-gradient-to-br from-primary to-accent text-white shadow-lg shadow-primary/40",
+      "bg-gradient-to-br from-primary to-accent text-white shadow-lg shadow-primary/40 hover:shadow-xl hover:shadow-primary/50",
     secondary:
-      "bg-elevated border-2 border-purple-700 text-accent",
+      "bg-elevated border-2 border-purple-700 text-accent hover:border-accent hover:bg-purple-900/50",
     destructive:
-      "bg-gradient-to-br from-red-600 to-red-500 text-white shadow-lg shadow-red-600/30",
+      "bg-gradient-to-br from-red-600 to-red-500 text-white shadow-lg shadow-red-600/30 hover:shadow-xl hover:shadow-red-600/40",
   };
 
   return (

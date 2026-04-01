@@ -108,9 +108,11 @@ export default function Board({
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
       />
-      <div className="font-mono text-lg font-medium text-purple-300/60">
-        {previousHints}
-      </div>
+      {previousHints && (
+        <div className="rounded-xl bg-surface/50 px-4 py-2 font-mono text-base font-medium text-purple-300/60">
+          Previous: {previousHints}
+        </div>
+      )}
     </div>
   );
 }
@@ -118,15 +120,15 @@ export default function Board({
 function Result({ gameResult }: { gameResult?: GameResult }) {
   const { winningTeam, losingTeam } = gameResult || {};
   return (
-    <motion.span
-      className="text-2xl font-bold"
+    <motion.div
+      className="rounded-2xl bg-surface px-6 py-3 text-center text-2xl font-bold shadow-lg"
       initial={{ opacity: 0, scale: 0.5, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.2 }}
     >
       {winningTeam !== undefined && `Team ${winningTeam} wins! 🎉`}
       {losingTeam !== undefined && `Team ${losingTeam} loses... 💀`}
-    </motion.span>
+    </motion.div>
   );
 }
 

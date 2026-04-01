@@ -19,7 +19,7 @@ export default function NameInput({
     <div className="flex gap-2">
       <TextInput
         value={newName}
-        placeholder="Hint"
+        placeholder="Your name"
         onChange={setNewName}
         onSubmit={() => {
           setName(newName);
