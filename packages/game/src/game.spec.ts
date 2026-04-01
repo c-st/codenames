@@ -473,5 +473,178 @@ describe("game state updates", () => {
         losingTeam: 1,
       });
     });
+
+    it("auto-advances turn on wrong guess", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "cherry", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "grape", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 2 },
+          },
+          hintHistory: [{ hint: "fruit", count: 2, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      // Reveal opponent's word — should auto-advance to team 1
+      const state = game.revealWord("banana");
+
+      expect(state.turn?.team).toBe(1);
+      expect(onScheduleTurnCallback).toHaveBeenCalled();
+    });
+
+    it("does not advance turn on correct guess", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 2 },
+          },
+          hintHistory: [{ hint: "fruit", count: 2, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      // Reveal own team's word — turn should NOT advance
+      const state = game.revealWord("apple");
+
+      expect(state.turn?.team).toBe(0);
+    });
+
+    it("ends game when revealing the assassin", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "explosive", count: 1 },
+          },
+          hintHistory: [{ hint: "explosive", count: 1, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      game.revealWord("bomb");
+
+      const result = game.getGameResult();
+      expect(result).toEqual({
+        winningTeam: undefined,
+        losingTeam: 0,
+      });
+      // Turn should NOT advance after game-ending reveal
+      expect(onScheduleTurnCallback).not.toHaveBeenCalled();
+    });
+
+    it("auto-advances turn on neutral word guess", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "vehicle", count: 1 },
+          },
+          hintHistory: [{ hint: "vehicle", count: 1, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      // Reveal neutral word — should auto-advance
+      const state = game.revealWord("car");
+
+      expect(state.turn?.team).toBe(1);
+    });
+
+    it("throws when giving a hint before game starts", () => {
+      const game = new Codenames(
+        buildExampleGameState({ turn: undefined }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      expect(() => game.giveHint({ hint: "test", count: 1 })).toThrowError(
+        new GameError("Game has not started yet")
+      );
+    });
+
+    it("returns remaining words by team correctly", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "cherry", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "grape", team: 1, revealed: { byTeam: 0, inTurn: 1 } },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const remaining = game.getRemainingWordsByTeam();
+
+      expect(remaining.get(0)).toBe(2);
+      expect(remaining.get(1)).toBe(1); // grape is revealed, only banana remains
+    });
+
+    it("clears all state when ending a game", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "banana", team: 1 },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 1 },
+          },
+          hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const state = game.endGame();
+
+      expect(state.turn).toBeUndefined();
+      expect(state.board).toHaveLength(0);
+      expect(state.hintHistory).toHaveLength(0);
+      // Players should still be present
+      expect(state.players).toHaveLength(4);
+    });
   });
 });
