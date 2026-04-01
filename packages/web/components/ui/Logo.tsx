@@ -8,7 +8,7 @@ export default function Logo({ size = "default" }: { size?: "default" | "large" 
     <div className={`select-none ${textClass}`}>
       <span className="text-white">code</span>
       <span className="text-accent">nam</span>
-      <span className="text-pink-400">.</span>
+      <span className="text-white">.</span>
       <span className="text-accent">es</span>
     </div>
   );
