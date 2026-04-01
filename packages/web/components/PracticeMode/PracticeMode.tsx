@@ -3,17 +3,40 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { WordCard } from "schema";
-import { shuffleBoard } from "game";
-import { classic } from "words";
+import classicWords from "./words.json";
 import { getTeamColor } from "../Game/Board/getTeamColor";
 import Logo from "../ui/Logo";
 
-const PARAMS = {
-  turnDurationSeconds: 0,
-  totalWordCount: 25,
-  wordsToGuessCount: 8,
-  teamCount: 2,
-};
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateBoard(): WordCard[] {
+  const totalWords = 25;
+  const wordsPerTeam = 8;
+  const words = shuffle(classicWords).slice(0, totalWords);
+
+  const indices = shuffle(Array.from({ length: totalWords }, (_, i) => i));
+  const assassinIdx = indices.pop()!;
+
+  const board: WordCard[] = words.map((word, i) => ({
+    word,
+    isAssassin: i === assassinIdx ? true : undefined,
+  }));
+
+  for (let team = 0; team < 2; team++) {
+    for (let j = 0; j < wordsPerTeam; j++) {
+      board[indices.pop()!].team = team;
+    }
+  }
+
+  return board;
+}
 
 type Phase = "spymaster" | "operative";
 
@@ -29,7 +52,7 @@ type PracticeState = {
 
 function initState(): PracticeState {
   return {
-    board: shuffleBoard(PARAMS, classic),
+    board: generateBoard(),
     currentTeam: 0,
     phase: "spymaster",
     hint: "",
