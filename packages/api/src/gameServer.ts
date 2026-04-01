@@ -277,8 +277,7 @@ export class CodenamesGame extends DurableObject {
 
     const player = game.getGameState().players.find((p) => p.id === playerId);
     if (!player) {
-      console.error("Player not found:", playerId);
-      return;
+      throw new GameError("Player not found in game");
     }
 
     console.info(`${player.name}: ${JSON.stringify(command)}`);
@@ -299,7 +298,7 @@ export class CodenamesGame extends DurableObject {
           .getGameState()
           .players.find((p) => p.id === command.playerId);
         if (!newSpymaster) {
-          return;
+          throw new GameError("Player to promote not found");
         }
         game.addOrUpdatePlayer({ ...newSpymaster, role: "spymaster" });
         await this.persistAndBroadcastGameState(game);
