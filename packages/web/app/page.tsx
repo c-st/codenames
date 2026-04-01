@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Game/Lobby/Lobby";
@@ -11,7 +12,13 @@ import SplashScreen from "@/components/SplashScreen";
 import Tutorial from "@/components/Tutorial/Tutorial";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const hasSession = !!searchParams?.get("session");
   const [showTutorial, setShowTutorial] = useState(false);
+  const [wantsToPlay, setWantsToPlay] = useState(false);
+
+  // Skip connection until user clicks Play (or has a session URL)
+  const skipConnection = !hasSession && !wantsToPlay;
 
   const {
     sessionName,
@@ -31,22 +38,25 @@ export default function Home() {
     endTurn,
     endGame,
     giveHint,
-  } = useCodenames();
+  } = useCodenames(skipConnection);
 
   // Show tutorial if requested
   if (showTutorial) {
     return <Tutorial onComplete={() => setShowTutorial(false)} />;
   }
 
-  // Show splash screen if not connected yet (no session)
+  // Show splash screen if not connecting yet
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   if (!currentPlayer) {
-    return (
-      <SplashScreen
-        onPlay={() => {}}
-        onLearnToPlay={() => setShowTutorial(true)}
-      />
-    );
+    if (skipConnection) {
+      return (
+        <SplashScreen
+          onPlay={() => setWantsToPlay(true)}
+          onLearnToPlay={() => setShowTutorial(true)}
+        />
+      );
+    }
+    return null;
   }
 
   const gameIsRunning = turn !== undefined;

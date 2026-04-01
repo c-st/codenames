@@ -29,7 +29,7 @@ const storePlayerId = (sessionName: string, playerId: string) => {
   }
 };
 
-const useGameSession = (websocketEndpointUrl: string) => {
+const useGameSession = (websocketEndpointUrl: string, skip: boolean) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -62,6 +62,7 @@ const useGameSession = (websocketEndpointUrl: string) => {
   );
 
   useEffect(() => {
+    if (skip) return;
     const abortController = new AbortController();
 
     const setSessionNameFromRedirectLocation = async () => {
@@ -88,7 +89,7 @@ const useGameSession = (websocketEndpointUrl: string) => {
     }
 
     return () => abortController.abort();
-  }, [sessionSearchParam, pathname, router, websocketEndpointUrl]);
+  }, [sessionSearchParam, pathname, router, websocketEndpointUrl, skip]);
 
   return {
     sessionName,

@@ -11,7 +11,7 @@ import {
 import useGameSession from "./useGameSession";
 import { useEffect, useState } from "react";
 
-const useCodenames = () => {
+const useCodenames = (skip: boolean = false) => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
@@ -31,6 +31,7 @@ const useCodenames = () => {
     onPlayerIdReceived,
   } = useGameSession(
     isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es",
+    skip,
   );
 
   useEffect(() => {
