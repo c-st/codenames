@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Player } from "schema";
 import { getTeamColor } from "../Board/getTeamColor";
+import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function TeamTable({
   players,
@@ -49,7 +50,7 @@ export default function TeamTable({
                     <span
                       className={`text-xs font-semibold ${isSpymaster ? "text-amber-400" : "text-purple-400"}`}
                     >
-                      {isSpymaster ? "Spymaster" : "Operative"}
+                      {isSpymaster ? getSpymasterTitle() : "Operative"}
                     </span>
                   </div>
                   {!isSpymaster && (

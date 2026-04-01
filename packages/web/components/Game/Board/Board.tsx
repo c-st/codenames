@@ -5,6 +5,7 @@ import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloadin
 import HintInput from "./HintInput";
 import { getTeamColor } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
+import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function Board({
   isConnected,
@@ -61,7 +62,7 @@ export default function Board({
     if (currentPlayer.role === "spymaster" && !turn.hint) return "Your turn — give a hint!";
     if (currentPlayer.role === "spymaster" && turn.hint) return "Your team is guessing...";
     if (turn.hint) return "Your turn — tap a word to guess!";
-    return "Waiting for your Spymaster's hint...";
+    return `Waiting for your ${getSpymasterTitle()}'s hint...`;
   })();
 
   return (

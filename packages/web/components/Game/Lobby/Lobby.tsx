@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Player } from "schema";
 import NameInput from "./NameInput";
 import TeamTable from "./TeamTable";
+import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function Lobby({
   players,
@@ -35,7 +36,7 @@ export default function Lobby({
   );
 
   const roleEmoji = currentPlayer.role === "spymaster" ? "🕵️" : "🔍";
-  const roleName = currentPlayer.role === "spymaster" ? "Spymaster" : "Operative";
+  const roleName = currentPlayer.role === "spymaster" ? getSpymasterTitle() : "Operative";
 
   return (
     <motion.div

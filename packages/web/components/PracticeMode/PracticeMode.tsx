@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { WordCard } from "schema";
 import classicWords from "./words.json";
 import { getTeamColor } from "../Game/Board/getTeamColor";
+import { getSpymasterTitle } from "../Game/spymasterTitle";
 import Logo from "../ui/Logo";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -58,7 +59,7 @@ function initState(): PracticeState {
     hint: "",
     hintCount: 0,
     guessesLeft: 0,
-    message: "You're the Spymaster. Look at the board and give a hint!",
+    message: `You're the ${getSpymasterTitle()}. Look at the board and give a hint!`,
   };
 }
 
@@ -134,7 +135,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             phase: "spymaster",
             hint: "",
             guessesLeft: 0,
-            message: `Wrong! That was ${card.team !== undefined ? `Team ${card.team}'s` : "a neutral"} card. Switching to Team ${nextTeam}'s spymaster turn.`,
+            message: `Wrong! That was ${card.team !== undefined ? `Team ${card.team}'s` : "a neutral"} card. Switching to Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
           };
         }
 
@@ -149,7 +150,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             phase: "spymaster",
             hint: "",
             guessesLeft: 0,
-            message: `No guesses left. Switching to Team ${nextTeam}'s spymaster turn.`,
+            message: `No guesses left. Switching to Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
           };
         }
 
@@ -173,7 +174,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
         phase: "spymaster",
         hint: "",
         guessesLeft: 0,
-        message: `Turn ended. Team ${nextTeam}'s spymaster turn.`,
+        message: `Turn ended. Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
       };
     });
   }, []);
@@ -235,7 +236,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             exit={{ opacity: 0, y: -10 }}
           >
             <span className="rounded-xl bg-amber-400/20 px-4 py-1 text-sm font-bold text-amber-300">
-              🕵️ Spymaster View — cards are visible
+              🕵️ {getSpymasterTitle()} View — cards are visible
             </span>
             <div className="flex items-center gap-2">
               <input

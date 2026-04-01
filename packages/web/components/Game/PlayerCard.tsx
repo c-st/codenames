@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Player } from "schema";
+import { getSpymasterTitle } from "./spymasterTitle";
 
 export default function PlayerCard({
   player,
@@ -20,7 +21,7 @@ export default function PlayerCard({
           animate={{ opacity: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          Spymaster
+          {getSpymasterTitle()}
         </motion.span>
       )}
       <span className="text-base font-bold !text-white md:text-lg">
