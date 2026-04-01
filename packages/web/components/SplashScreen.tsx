@@ -4,9 +4,11 @@ import Logo from "./ui/Logo";
 export default function SplashScreen({
   onPlay,
   onLearnToPlay,
+  onPractice,
 }: {
   onPlay: () => void;
   onLearnToPlay: () => void;
+  onPractice: () => void;
 }) {
   const emojis = ["🦊", "🦉", "🐱", "🐶", "🐼"];
 
@@ -61,6 +63,15 @@ export default function SplashScreen({
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
           >
             Play
+          </motion.button>
+          <motion.button
+            className="rounded-2xl border-2 border-purple-700 bg-elevated px-8 py-4 text-xl font-bold text-accent"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onPractice}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+          >
+            Practice solo
           </motion.button>
           <motion.button
             className="rounded-2xl border-2 border-purple-700 bg-elevated px-8 py-4 text-xl font-bold text-accent"

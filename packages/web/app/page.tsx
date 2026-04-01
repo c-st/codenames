@@ -9,6 +9,7 @@ import GameControls from "@/components/Game/GameControls";
 import Board from "@/components/Game/Board/Board";
 import SessionStatus from "@/components/Game/SessionStatus";
 import SplashScreen from "@/components/SplashScreen";
+import PracticeMode from "@/components/PracticeMode/PracticeMode";
 import Tutorial from "@/components/Tutorial/Tutorial";
 import useSoundEffects from "@/components/hooks/useSoundEffects";
 import Confetti from "@/components/Confetti";
@@ -18,6 +19,7 @@ export default function Home() {
   const searchParams = useSearchParams();
   const hasSession = !!searchParams?.get("session");
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
   const [wantsToPlay, setWantsToPlay] = useState(false);
 
   // Skip connection until user clicks Play (or has a session URL)
@@ -100,6 +102,10 @@ export default function Home() {
     return <Tutorial onComplete={() => setShowTutorial(false)} />;
   }
 
+  if (showPractice) {
+    return <PracticeMode onExit={() => setShowPractice(false)} />;
+  }
+
   // Show splash screen if not connecting yet
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   if (!currentPlayer) {
@@ -108,6 +114,7 @@ export default function Home() {
         <SplashScreen
           onPlay={() => setWantsToPlay(true)}
           onLearnToPlay={() => setShowTutorial(true)}
+          onPractice={() => setShowPractice(true)}
         />
       );
     }
