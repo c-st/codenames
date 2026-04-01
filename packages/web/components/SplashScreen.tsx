@@ -1,5 +1,21 @@
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import Logo from "./ui/Logo";
+
+const allAnimals = [
+  "🦊", "🦉", "🐱", "🐶", "🐼", "🐰", "🐨", "🦝",
+  "🐻", "🦦", "🐧", "🦎", "🐸", "🐬", "🦒", "🦅",
+  "🐯", "🦁", "🐮", "🐷", "🐵", "🦄", "🐲", "🦋",
+];
+
+function pickRandom(arr: string[], count: number): string[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
 
 export default function SplashScreen({
   onPlay,
@@ -10,7 +26,7 @@ export default function SplashScreen({
   onLearnToPlay: () => void;
   onPractice: () => void;
 }) {
-  const emojis = ["🦊", "🦉", "🐱", "🐶", "🐼"];
+  const emojis = useMemo(() => pickRandom(allAnimals, 5), []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)]">

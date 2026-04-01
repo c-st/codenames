@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { tutorialSteps } from "./tutorialSteps";
+import { tutorialSteps, tutorialCharacters } from "./tutorialSteps";
 import SpeechBubble from "./SpeechBubble";
 import TutorialBoard from "./TutorialBoard";
 import Logo from "../ui/Logo";
@@ -48,11 +48,11 @@ export default function Tutorial({ onComplete }: { onComplete: () => void }) {
           />
 
           <div className="flex items-center gap-3">
-            <div className="text-3xl">🐱</div>
+            <div className="text-3xl">{tutorialCharacters.player.emoji}</div>
             <span className="text-xs font-semibold text-purple-400">You</span>
-            <div className="text-3xl">🐶</div>
+            <div className="text-3xl">{tutorialCharacters.teammate.emoji}</div>
             <span className="text-xs font-semibold text-purple-400">
-              Teammate Dog
+              Teammate {tutorialCharacters.teammate.name}
             </span>
           </div>
         </motion.div>
