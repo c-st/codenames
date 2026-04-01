@@ -83,7 +83,9 @@ export default function Board({
         currentPlayer={currentPlayer}
         onRevealWord={revealWord}
       />
-      <div className="font-mono text-lg font-medium">{previousHints}</div>
+      <div className="font-mono text-lg font-medium text-purple-300/60">
+        {previousHints}
+      </div>
     </div>
   );
 }
@@ -121,24 +123,21 @@ function Hint({
 }
 
 function Timer({ until }: { until: Date }) {
-  const [timeLeft, setTimeLeft] = useState({ minutes: "", seconds: "" });
+  const [timeLeft, setTimeLeft] = useState({ minutes: "0", seconds: "00" });
 
   useEffect(() => {
     const timer = setInterval(() => {
       const difference = +new Date(until) - +new Date();
-      let timeLeft = {
-        minutes: "0",
-        seconds: "00",
-      };
       if (difference > 0) {
-        timeLeft = {
+        setTimeLeft({
           minutes: Math.floor((difference / (1000 * 60)) % 60).toString(),
           seconds: Math.floor((difference / 1000) % 60)
             .toString()
             .padStart(2, "0"),
-        };
+        });
+      } else {
+        setTimeLeft({ minutes: "0", seconds: "00" });
       }
-      setTimeLeft(timeLeft);
     }, 1000);
 
     return () => clearInterval(timer);
@@ -146,16 +145,8 @@ function Timer({ until }: { until: Date }) {
 
   return (
     <div className="flex items-center">
-      <span className="countdown select-none font-mono text-2xl">
-        <span
-          style={{ ["--value"]: timeLeft.minutes } as React.CSSProperties}
-        ></span>
-        :
-      </span>
-      <span className="countdown font-mono text-2xl">
-        <span
-          style={{ ["--value"]: timeLeft.seconds } as React.CSSProperties}
-        ></span>
+      <span className="select-none font-mono text-2xl text-purple-300">
+        {timeLeft.minutes}:{timeLeft.seconds}
       </span>
     </div>
   );
@@ -175,11 +166,10 @@ function WordMatrix({
   onRevealWord: (word: string) => void;
 }) {
   const teamColor = getTeamColor(turn.team);
-  const borderColor = `border-${teamColor}-500/40`;
 
   return (
     <div
-      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-xl border-8 border-solid ${borderColor} p-2`}
+      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-2xl border-8 border-solid ${teamColor.border} p-2`}
     >
       {words.map((wordCard) => (
         <Word
@@ -208,29 +198,32 @@ function Word({
   const isSpymaster = currentPlayer.role === "spymaster";
   const showWord = !!wordCard.revealed || isSpymaster || isGameOver;
 
-  // Determine colors
-  let bgColor = "bg-white";
+  let bgColor = "bg-[#f5f0ff] card-shadow-default";
+  let textColor = "text-[#1a1530]";
+
   if (showWord) {
-    if (wordCard.team === undefined && !wordCard.isAssassin) {
-      bgColor = "bg-gray-400";
-    } else if (wordCard.isAssassin) {
-      bgColor = "bg-red-500";
+    if (wordCard.isAssassin) {
+      bgColor = "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin";
+      textColor = "text-white";
     } else if (wordCard.team !== undefined) {
       const color = getTeamColor(wordCard.team);
-      bgColor = `bg-${color}-500`;
+      bgColor = `bg-gradient-to-br ${color.from} ${color.to} ${color.shadow}`;
+      textColor = "text-white";
+    } else {
+      bgColor = "bg-[#3a3550] card-shadow-neutral";
+      textColor = "text-[#8078a0]";
     }
   }
 
-  const textColor = showWord ? "text-white" : "text-black";
   const opacity =
     !wordCard.revealed && (isSpymaster || isGameOver) ? 0.5 : 0.95;
 
   return (
     <motion.div
       key={wordCard.word}
-      className={`justify-top flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg p-4 lg:p-8 ${bgColor}`}
+      className={`flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-[14px] p-4 lg:p-8 ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
-      whileHover={{ scale: 1.08, opacity: 0.9 }}
+      whileHover={{ scale: 1.08, y: -3 }}
       whileTap={{ scale: 0.9 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity, y: 0 }}
