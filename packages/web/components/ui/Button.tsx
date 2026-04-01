@@ -6,19 +6,27 @@ export function Button({
   onClick,
 }: {
   title: string;
-  type?: "primary" | "destructive";
+  type?: "primary" | "secondary" | "destructive";
   onClick?: () => void;
 }) {
+  const styles = {
+    primary:
+      "bg-gradient-to-br from-primary to-accent text-white shadow-lg shadow-primary/40",
+    secondary:
+      "bg-elevated border-2 border-purple-700 text-accent",
+    destructive:
+      "bg-gradient-to-br from-red-600 to-red-500 text-white shadow-lg shadow-red-600/30",
+  };
+
   return (
     <motion.button
-      className={`btn ${type === "primary" ? "btn-primary" : "btn-error"} font-bold text-white md:btn-lg md:text-xl`}
-      whileHover={{ scale: 1.3 }}
-      whileTap={{ scale: 0.8 }}
-      whileFocus={{ scale: 1.3 }}
+      className={`rounded-2xl px-6 py-3 text-lg font-bold md:px-8 md:py-4 md:text-xl ${styles[type]}`}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
       transition={{
         type: "spring",
-        damping: 10,
+        damping: 15,
         stiffness: 300,
       }}
     >

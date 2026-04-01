@@ -12,7 +12,7 @@ export default function SessionStatus({
   sessionName,
 }: SessionStatusProps) {
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-1.5 py-1 pl-3 shadow-md dark:bg-gray-900">
+    <div className="flex items-center gap-2 rounded-2xl bg-surface px-1.5 py-1 pl-3 shadow-md">
       {isConnected && (
         <div className="text-l mt-1.5 md:text-xl">
           <span className="absolute animate-ping opacity-50">⚡️</span>
