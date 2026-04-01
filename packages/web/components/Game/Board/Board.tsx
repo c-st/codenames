@@ -54,6 +54,16 @@ export default function Board({
 
   const isCurrentTurn = currentPlayer.team === turn.team;
 
+  // Build status message
+  const statusMessage = (() => {
+    if (gameResult) return null;
+    if (!isCurrentTurn) return "Waiting for the other team...";
+    if (currentPlayer.role === "spymaster" && !turn.hint) return "Your turn — give a hint!";
+    if (currentPlayer.role === "spymaster" && turn.hint) return "Your team is guessing...";
+    if (turn.hint) return "Your turn — tap a word to guess!";
+    return "Waiting for your Spymaster's hint...";
+  })();
+
   return (
     <div className="flex flex-col gap-4">
       <TeamInfo
@@ -63,6 +73,21 @@ export default function Board({
         turn={turn}
         remainingWordsByTeam={remainingWordsByTeam}
       />
+      {statusMessage && (
+        <motion.div
+          key={statusMessage}
+          className={`rounded-2xl px-4 py-3 text-center text-lg font-bold ${
+            isCurrentTurn
+              ? "bg-accent/20 text-accent"
+              : "bg-surface text-purple-400/70"
+          }`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          {statusMessage}
+        </motion.div>
+      )}
       <div className="flex justify-between">
         {!gameResult && (
           <Hint

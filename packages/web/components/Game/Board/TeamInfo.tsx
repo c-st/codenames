@@ -32,12 +32,14 @@ export default function TeamInfo({
       <AnimatePresence>
         {Object.entries(teams).map(([teamId, teamPlayers], teamIndex) => {
           const color = getTeamColor(teamIndex);
+          const isActive = turn.team === teamIndex;
           return (
             <motion.div
               key={teamId}
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`indicator relative flex flex-1 flex-col gap-2 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} p-3 px-4`}
+              animate={{ opacity: isGameOver ? 1 : isActive ? 1 : 0.5, y: 0, scale: isGameOver ? 1 : isActive ? 1 : 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className={`indicator relative flex flex-1 flex-col gap-2 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} p-3 px-4 ${!isGameOver && isActive ? "ring-2 ring-amber-400/60 ring-offset-2 ring-offset-base" : ""}`}
             >
               {turn.team === teamIndex && !isGameOver && (
                 <motion.div
