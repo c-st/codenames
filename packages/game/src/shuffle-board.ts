@@ -23,7 +23,6 @@ export const shuffleBoard = (
   const board: WordCard[] = shuffledWords.map((word, index) => {
     return {
       word,
-      isRevealed: false,
       isAssassin: index === assassinIndex ? true : undefined,
     };
   });
