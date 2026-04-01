@@ -19,7 +19,7 @@ export default function SessionStatus({
           <span>⚡️</span>
         </div>
       )}
-      <p className="select-none font-mono text-sm font-bold md:text-base">
+      <p className="select-none font-mono text-sm font-bold !text-white md:text-base">
         {sessionName}
       </p>
       <CopyClipboardButton

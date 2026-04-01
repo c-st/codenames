@@ -55,7 +55,7 @@ export default function GameControls({
             exit={{ opacity: 0, y: -10 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
-            <h2 className="text-xl font-bold">Waiting for more players</h2>
+            <h2 className="text-xl font-bold !text-white">Waiting for more players</h2>
             <p className="text-left text-lg font-medium text-purple-300/70">
               Each team needs at least one spymaster (giving hints) and one
               operative (guessing).

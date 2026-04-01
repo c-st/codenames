@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Override DaisyUI's base text color to white for our dark theme */
+*,
+::before,
+::after {
+  --tw-text-opacity: 1;
+}
+[data-theme="codenames"] {
+  color: #fff;
+}
+
 .glow {
   box-shadow:
     0 0 10px rgba(160, 112, 224, 0.7),
