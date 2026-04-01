@@ -18,24 +18,32 @@ import {
 import { classic, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
+const DISCONNECT_GRACE_MS = 15_000;
 
 export class CodenamesGame extends DurableObject {
+  /** Tracks pending removal timers for disconnected players */
+  private disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
 
-    // Make sure that all players in the game are still connected
+    // Clean up players that are no longer connected (e.g. after DO restart)
     this.getGameInstance().then((game) => {
       const websockets = this.ctx.getWebSockets();
-      game.getGameState().players.forEach((player) => {
-        if (
-          !websockets.some(
-            (ws) => ws.deserializeAttachment().playerId === player.id
-          )
-        ) {
+      const connectedPlayerIds = new Set(
+        websockets.map((ws) => ws.deserializeAttachment()?.playerId)
+      );
+
+      let changed = false;
+      for (const player of game.getGameState().players) {
+        if (!connectedPlayerIds.has(player.id)) {
           game.removePlayer(player.id);
+          changed = true;
         }
-      });
-      this.persistAndBroadcastGameState(game);
+      }
+      if (changed) {
+        this.persistAndBroadcastGameState(game);
+      }
     });
   }
 
@@ -71,25 +79,40 @@ export class CodenamesGame extends DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    // const sessionName = url.pathname.split("/").at(1);
+    const requestedPlayerId = url.searchParams.get("playerId");
+
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
 
     // Restore state
     const game = await this.getGameInstance();
+    const existingPlayers = game.getGameState().players;
 
     // Accept WebSocket connection
     this.ctx.acceptWebSocket(server);
 
-    // Assign playerId
-    const playerId = nanoid();
-    server.serializeAttachment({
-      ...server.deserializeAttachment(),
-      playerId,
-    });
+    // Determine playerId: reconnect as existing player or create new one
+    let playerId: string;
+    const canReconnect =
+      requestedPlayerId &&
+      existingPlayers.some((p) => p.id === requestedPlayerId);
 
-    // Join game
-    game.joinGame({ id: playerId, name: randomAnimalEmoji() });
+    if (canReconnect) {
+      playerId = requestedPlayerId;
+
+      // Cancel pending disconnect removal if any
+      const timer = this.disconnectTimers.get(playerId);
+      if (timer) {
+        clearTimeout(timer);
+        this.disconnectTimers.delete(playerId);
+        console.info(`Player ${playerId} reconnected, cancelled removal`);
+      }
+    } else {
+      playerId = nanoid();
+      game.joinGame({ id: playerId, name: randomAnimalEmoji() });
+    }
+
+    server.serializeAttachment({ playerId });
 
     await this.persistAndBroadcastGameState(game);
 
@@ -109,10 +132,19 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
+    // Handle ping
+    if (parsedCommand.type === "ping") {
+      try {
+        ws.send(JSON.stringify({ type: "pong" }));
+      } catch {
+        // Client already gone
+      }
+      return;
+    }
+
     // Handle command
     try {
-      const command = parsedCommand;
-      await this.handleCommand(command, ws);
+      await this.handleCommand(parsedCommand, ws);
     } catch (error) {
       if (error instanceof GameError) {
         console.info("Command was rejected. Reason:", error.message);
@@ -120,7 +152,11 @@ export class CodenamesGame extends DurableObject {
           type: "commandRejected",
           reason: error.message,
         };
-        ws.send(JSON.stringify(commandRejectedEvent));
+        try {
+          ws.send(JSON.stringify(commandRejectedEvent));
+        } catch {
+          // Client already gone
+        }
       } else {
         console.error("Failed to handle command:", error);
       }
@@ -144,12 +180,38 @@ export class CodenamesGame extends DurableObject {
     _reason: string,
     _wasClean: boolean
   ) {
-    const { playerId } = ws.deserializeAttachment();
-    ws.close(code, "Bye.");
+    const attachment = ws.deserializeAttachment();
+    const playerId = attachment?.playerId;
 
-    const game = await this.getGameInstance();
-    game.removePlayer(playerId);
-    await this.persistAndBroadcastGameState(game, ws);
+    try {
+      ws.close(code, "Bye.");
+    } catch {
+      // Already closed
+    }
+
+    if (!playerId) return;
+
+    // Grace period: wait before removing the player to allow reconnection
+    this.disconnectTimers.set(
+      playerId,
+      setTimeout(async () => {
+        this.disconnectTimers.delete(playerId);
+
+        // Check if the player reconnected on a different socket
+        const websockets = this.ctx.getWebSockets();
+        const reconnected = websockets.some(
+          (s) => s.deserializeAttachment()?.playerId === playerId
+        );
+        if (reconnected) return;
+
+        const game = await this.getGameInstance();
+        game.removePlayer(playerId);
+        await this.persistAndBroadcastGameState(game);
+        console.info(
+          `Player ${playerId} removed after disconnect grace period`
+        );
+      }, DISCONNECT_GRACE_MS)
+    );
   }
 
   private async persistAndBroadcastGameState(
@@ -163,7 +225,8 @@ export class CodenamesGame extends DurableObject {
     const promises = websockets
       .filter((websocket) => websocket !== exclude)
       .map((ws) => {
-        const { playerId } = ws.deserializeAttachment();
+        const attachment = ws.deserializeAttachment();
+        const playerId = attachment?.playerId;
         const isSpymaster =
           gameState.players.find((player) => player.id === playerId)?.role ===
           "spymaster";
@@ -197,7 +260,12 @@ export class CodenamesGame extends DurableObject {
           gameState: gameStateForClient,
         };
 
-        return ws.send(JSON.stringify(gameStateUpdatedEvent));
+        try {
+          return ws.send(JSON.stringify(gameStateUpdatedEvent));
+        } catch (error) {
+          console.warn(`Failed to send to player ${playerId}:`, error);
+          return undefined;
+        }
       });
 
     await Promise.all(promises);
@@ -261,11 +329,9 @@ export class CodenamesGame extends DurableObject {
       case "revealWord": {
         if (player.team !== game.getGameState().turn?.team) {
           throw new GameError("Not player's turn");
-          return;
         }
         if (player.role === "spymaster") {
           throw new GameError("Spymaster cannot reveal words");
-          return;
         }
         game.revealWord(command.word);
         await this.persistAndBroadcastGameState(game);
@@ -275,7 +341,6 @@ export class CodenamesGame extends DurableObject {
       case "endTurn": {
         if (player.team !== game.getGameState().turn?.team) {
           throw new GameError("Not player's turn");
-          return;
         }
         game.advanceTurn();
         await this.persistAndBroadcastGameState(game);

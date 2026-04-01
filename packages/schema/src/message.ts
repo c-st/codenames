@@ -3,6 +3,9 @@ import { z } from "zod";
 
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("ping"),
+  }),
+  z.object({
     type: z.literal("setName"),
     name: z.string(),
   }),
