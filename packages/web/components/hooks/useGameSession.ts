@@ -1,5 +1,5 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useWebSocket from "./useWebsocket";
 
 const getSessionNameFromUrl = (url: string) =>
@@ -10,6 +10,22 @@ const retrieveRedirectLocation = async (url: string): Promise<string> =>
     (response) => response.url
   );
 
+const getStoredPlayerId = (sessionName: string): string | null => {
+  try {
+    return sessionStorage.getItem(`codenames:playerId:${sessionName}`);
+  } catch {
+    return null;
+  }
+};
+
+const storePlayerId = (sessionName: string, playerId: string) => {
+  try {
+    sessionStorage.setItem(`codenames:playerId:${sessionName}`, playerId);
+  } catch {
+    // sessionStorage unavailable
+  }
+};
+
 const useGameSession = (websocketEndpointUrl: string) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -17,11 +33,30 @@ const useGameSession = (websocketEndpointUrl: string) => {
   const sessionSearchParam = searchParams?.get("session") ?? undefined;
 
   const [sessionName, setSessionName] = useState<string>();
+
+  // Build WebSocket URL with playerId for reconnection
+  const wsUrl = (() => {
+    if (!sessionName) return "";
+    const base = `${websocketEndpointUrl}/${sessionName}`;
+    const storedPlayerId = getStoredPlayerId(sessionName);
+    if (storedPlayerId) {
+      return `${base}?playerId=${encodeURIComponent(storedPlayerId)}`;
+    }
+    return base;
+  })();
+
   const { isConnected, incomingMessage, sendMessage, closeConnection } =
-    useWebSocket(
-      `${websocketEndpointUrl}/${sessionName}`,
-      sessionName === undefined
-    );
+    useWebSocket(wsUrl, sessionName === undefined);
+
+  // Persist playerId when we receive it from the server
+  const onPlayerIdReceived = useCallback(
+    (playerId: string) => {
+      if (sessionName) {
+        storePlayerId(sessionName, playerId);
+      }
+    },
+    [sessionName]
+  );
 
   useEffect(() => {
     const setSessionNameFromRedirectLocation = async () => {
@@ -47,6 +82,7 @@ const useGameSession = (websocketEndpointUrl: string) => {
     incomingMessage,
     sendMessage,
     closeConnection,
+    onPlayerIdReceived,
   };
 };
 

@@ -28,6 +28,7 @@ const useCodenames = () => {
     incomingMessage,
     sendMessage,
     closeConnection,
+    onPlayerIdReceived,
   } = useGameSession(
     isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es",
   );
@@ -52,8 +53,8 @@ const useCodenames = () => {
     }
 
     const gameState = parseResult.data.gameState;
-    // console.log(newGameState);
     setGameState(gameState);
+    onPlayerIdReceived(gameState.playerId);
     const {
       players,
       board,
@@ -77,7 +78,7 @@ const useCodenames = () => {
         gameResult,
       });
     }
-  }, [incomingMessage]);
+  }, [incomingMessage, onPlayerIdReceived]);
 
   const sendCommand = (command: Command) =>
     sendMessage(JSON.stringify(command));
