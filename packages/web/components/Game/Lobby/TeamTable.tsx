@@ -42,7 +42,7 @@ export default function TeamTable({
                   onClick={() => !isSpymaster && onNewSpymaster(player.id)}
                 >
                   <div className="flex flex-col">
-                    <span className="text-base font-bold md:text-lg">
+                    <span className="text-base font-bold !text-white md:text-lg">
                       {player.name}
                       {isYou && " (you!)"}
                     </span>
