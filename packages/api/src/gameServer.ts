@@ -53,14 +53,18 @@ export class CodenamesGame extends DurableObject {
       this.ctx.storage.setAlarm(date.getTime());
     };
 
+    const state = await this.ctx.storage.get<string>(GAME_STATE);
+    if (!state) {
+      return new Codenames(
+        initialGameState,
+        classic,
+        onScheduleCallAdvanceTurn,
+        defaultParameters
+      );
+    }
+
     try {
-      let gameState: GameState;
-      const state = await this.ctx.storage.get<string>(GAME_STATE);
-      if (state) {
-        gameState = gameStateSchema.parse(JSON.parse(state));
-      } else {
-        gameState = initialGameState;
-      }
+      const gameState = gameStateSchema.parse(JSON.parse(state));
       return new Codenames(
         gameState,
         classic,
@@ -68,14 +72,21 @@ export class CodenamesGame extends DurableObject {
         defaultParameters
       );
     } catch (error) {
-      console.error("Error initializing game state:", error);
+      console.error(
+        "Corrupted game state, resetting. Parse error:",
+        error,
+        "Raw state (first 500 chars):",
+        state.slice(0, 500)
+      );
+      // Clear the corrupted state so it doesn't persist
+      await this.ctx.storage.delete(GAME_STATE);
+      return new Codenames(
+        initialGameState,
+        classic,
+        onScheduleCallAdvanceTurn,
+        defaultParameters
+      );
     }
-    return new Codenames(
-      initialGameState,
-      classic,
-      onScheduleCallAdvanceTurn,
-      defaultParameters
-    );
   }
 
   async fetch(request: Request): Promise<Response> {
