@@ -5,8 +5,11 @@ import useWebSocket from "./useWebsocket";
 const getSessionNameFromUrl = (url: string) =>
   new URL(url).pathname.split("/").pop();
 
-const retrieveRedirectLocation = async (url: string): Promise<string> =>
-  fetch(url, { method: "GET", redirect: "follow" }).then(
+const retrieveRedirectLocation = async (
+  url: string,
+  signal?: AbortSignal
+): Promise<string> =>
+  fetch(url, { method: "GET", redirect: "follow", signal }).then(
     (response) => response.url
   );
 
@@ -59,14 +62,23 @@ const useGameSession = (websocketEndpointUrl: string) => {
   );
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     const setSessionNameFromRedirectLocation = async () => {
       if (!sessionSearchParam) {
-        const redirectUrl = await retrieveRedirectLocation(
-          new URL(websocketEndpointUrl.replace("ws", "http")).toString()
-        );
-        const sessionName = getSessionNameFromUrl(redirectUrl);
-        if (sessionName) {
-          router.replace(`${pathname}?session=${sessionName}`);
+        try {
+          const redirectUrl = await retrieveRedirectLocation(
+            new URL(websocketEndpointUrl.replace("ws", "http")).toString(),
+            abortController.signal
+          );
+          if (abortController.signal.aborted) return;
+          const sessionName = getSessionNameFromUrl(redirectUrl);
+          if (sessionName) {
+            router.replace(`${pathname}?session=${sessionName}`);
+          }
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          console.error("Failed to get session redirect:", e);
         }
       }
     };
@@ -74,6 +86,8 @@ const useGameSession = (websocketEndpointUrl: string) => {
     if (sessionSearchParam) {
       setSessionName(sessionSearchParam);
     }
+
+    return () => abortController.abort();
   }, [sessionSearchParam, pathname, router, websocketEndpointUrl]);
 
   return {
