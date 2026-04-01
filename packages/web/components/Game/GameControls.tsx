@@ -26,32 +26,26 @@ export default function GameControls({
         <Button title="End turn" onClick={endTurn} />
       )}
       {!gameResult && (
-        <div className="">
-          <Button title="End game" type="destructive" onClick={endGame} />
-        </div>
+        <Button title="End game" type="destructive" onClick={endGame} />
       )}
       {!gameCanBeStarted && (
-        <>
-          <div role="alert" className="alert flex flex-col items-start">
-            <h2 className="text-xl font-bold">Waiting for more players</h2>
-            <p className="text-left text-lg font-medium">
-              Each team needs at least one spymaster (giving hints) and one
-              operative (guessing).
-            </p>
-          </div>
-        </>
+        <div className="flex flex-col items-start rounded-2xl bg-surface p-4">
+          <h2 className="text-xl font-bold">Waiting for more players</h2>
+          <p className="text-left text-lg font-medium text-purple-300/70">
+            Each team needs at least one spymaster (giving hints) and one
+            operative (guessing).
+          </p>
+        </div>
       )}
       {gameResult && gameCanBeStarted && (
         <Button title="Start new game" onClick={startGame} />
       )}
       {gameIsRunning && gameResult && gameCanBeStarted && (
-        <>
-          <Button
-            title="Return to lobby"
-            type="destructive"
-            onClick={endGame}
-          />
-        </>
+        <Button
+          title="Return to lobby"
+          type="destructive"
+          onClick={endGame}
+        />
       )}
     </div>
   );

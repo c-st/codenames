@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Player } from "schema";
 import PlayerCard from "../PlayerCard";
 import { getTeamColor } from "../Board/getTeamColor";
+import { Button } from "@/components/ui/Button";
 
 export default function TeamTable({
   players,
@@ -39,13 +40,15 @@ export default function TeamTable({
     }
   }, [sortedTeam]);
 
+  const color = getTeamColor(teamId);
+
   return (
     <AnimatePresence>
       <div className="flex flex-col items-center gap-4">
         <div
-          className={`flex min-w-32 flex-col gap-3 rounded-lg p-4 shadow-md bg-${getTeamColor(teamId)}-500 select-none`}
+          className={`flex min-w-32 flex-col gap-3 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} select-none p-4 shadow-md`}
         >
-          <h2 className={`text-lg font-bold opacity-90 md:text-xl`}>
+          <h2 className="text-lg font-bold opacity-90 md:text-xl">
             Team {teamId}
           </h2>
           <Reorder.Group
@@ -74,12 +77,11 @@ export default function TeamTable({
           </Reorder.Group>
         </div>
         {spymasterToPromote && (
-          <button
-            className="btn btn-secondary btn-md select-none text-white"
+          <Button
+            title={`Make ${spymasterToPromote.name} Spymaster`}
+            type="secondary"
             onClick={() => onNewSpymaster(spymasterToPromote.id)}
-          >
-            Make {spymasterToPromote.name} Spymaster
-          </button>
+          />
         )}
       </div>
     </AnimatePresence>
