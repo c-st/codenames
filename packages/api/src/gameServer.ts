@@ -27,8 +27,9 @@ export class CodenamesGame extends DurableObject {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
 
-    // Clean up players that are no longer connected (e.g. after DO restart)
-    this.getGameInstance().then((game) => {
+    // Block incoming requests until stale player cleanup completes
+    this.ctx.blockConcurrencyWhile(async () => {
+      const game = await this.getGameInstance();
       const websockets = this.ctx.getWebSockets();
       const connectedPlayerIds = new Set(
         websockets.map((ws) => ws.deserializeAttachment()?.playerId)
@@ -42,7 +43,7 @@ export class CodenamesGame extends DurableObject {
         }
       }
       if (changed) {
-        this.persistAndBroadcastGameState(game);
+        await this.persistAndBroadcastGameState(game);
       }
     });
   }
