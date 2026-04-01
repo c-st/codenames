@@ -2,10 +2,15 @@ import adjectives from "../resources/adjectives.json";
 import animals from "../resources/animals.json";
 import animalEmojis from "../resources/animal-emojis.json";
 
-export const getRandomWords = (words: string[], count: number): string[] =>
-  Array.from(new Set(words))
-    .sort(() => Math.random() - 0.5)
-    .slice(0, count);
+export const getRandomWords = (words: string[], count: number): string[] => {
+  const arr = Array.from(new Set(words));
+  // Fisher-Yates shuffle
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, count);
+};
 
 export const getRandomWord = (words: string[]): string =>
   getRandomWords(words, 1)[0];
