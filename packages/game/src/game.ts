@@ -96,7 +96,10 @@ export class Codenames {
 
     this.gameState.players = this.gameState.players.filter((p) => p.id !== id);
 
-    // TODO: end game when all players have left
+    // End game when all players have left
+    if (this.gameState.players.length === 0 && this.gameState.turn) {
+      this.endGame();
+    }
     return this.gameState;
   }
 

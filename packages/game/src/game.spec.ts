@@ -135,6 +135,23 @@ describe("game state updates", () => {
       expect(hasRedSpymaster).toBeTruthy();
     });
 
+    it("ends the game when all players have left", () => {
+      const game = new Codenames(
+        buildExampleGameState(),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      game.removePlayer("player-1");
+      game.removePlayer("player-2");
+      game.removePlayer("player-3");
+      const finalState = game.removePlayer("player-4");
+
+      expect(finalState.players).toHaveLength(0);
+      expect(finalState.turn).toBeUndefined();
+      expect(finalState.board).toHaveLength(0);
+    });
+
     it("makes sure there is only one spymaster", () => {
       const game = new Codenames(
         buildExampleGameState(),
