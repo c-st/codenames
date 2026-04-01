@@ -38,7 +38,14 @@ const useCodenames = () => {
       return;
     }
     // check for gameState or commandStatus
-    const parseResult = gameEventSchema.safeParse(JSON.parse(incomingMessage));
+    let parsed;
+    try {
+      parsed = JSON.parse(incomingMessage);
+    } catch {
+      console.error("Failed to parse incoming message as JSON:", incomingMessage);
+      return;
+    }
+    const parseResult = gameEventSchema.safeParse(parsed);
     if (!parseResult.success) {
       console.error("Failed to parse incoming message:", parseResult.error);
       return;
