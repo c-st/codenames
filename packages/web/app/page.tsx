@@ -62,14 +62,12 @@ export default function Home() {
   const gameIsRunning = turn !== undefined;
 
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] justify-items-center p-2 font-[family-name:var(--font-geist-sans)] md:p-8 lg:p-20 lg:pt-8">
-      <header className="row-start-1 flex w-full items-center justify-between">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 font-[family-name:var(--font-geist-sans)]">
+      <header className="flex w-full max-w-4xl items-center justify-between">
         <Logo />
-        <div className="">
-          <SessionStatus isConnected={isConnected} sessionName={sessionName} />
-        </div>
+        <SessionStatus isConnected={isConnected} sessionName={sessionName} />
       </header>
-      <main className="row-start-2 mb-2 flex flex-col gap-8 pt-8 sm:items-start">
+      <main className="flex w-full max-w-4xl flex-col items-center gap-6">
         {turn === undefined ? (
           <Lobby
             players={players}
@@ -98,7 +96,7 @@ export default function Home() {
           />
         )}
       </main>
-      <footer className="row-start-3 mb-2">
+      <footer>
         <GameControls
           gameResult={gameResult}
           gameIsRunning={gameIsRunning}
