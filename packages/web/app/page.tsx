@@ -138,6 +138,9 @@ export default function Home() {
             setName={setName}
             gameCanBeStarted={gameCanBeStarted}
             startGame={startGame}
+            onBackToHome={() => {
+              window.location.href = window.location.pathname;
+            }}
           />
         ) : (
           <Board
