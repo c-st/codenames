@@ -7,7 +7,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("setName"),
-    name: z.string(),
+    name: z.string().min(1).max(50),
   }),
   z.object({
     type: z.literal("promoteToSpymaster"),
@@ -18,8 +18,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("giveHint"),
-    hint: z.string(),
-    count: z.number(),
+    hint: z.string().min(1).max(100),
+    count: z.number().int().min(0).max(25),
   }),
   z.object({
     type: z.literal("revealWord"),
