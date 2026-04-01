@@ -37,6 +37,18 @@
 .card-shadow-blue {
   box-shadow: 0 6px 0 #305090, 0 8px 16px rgba(0, 0, 0, 0.3);
 }
+.card-shadow-amber {
+  box-shadow: 0 6px 0 #906020, 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+.card-shadow-cyan {
+  box-shadow: 0 6px 0 #207080, 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+.card-shadow-rose {
+  box-shadow: 0 6px 0 #903050, 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+.card-shadow-teal {
+  box-shadow: 0 6px 0 #206050, 0 8px 16px rgba(0, 0, 0, 0.3);
+}
 .card-shadow-neutral {
   box-shadow: 0 6px 0 #2a2540, 0 8px 16px rgba(0, 0, 0, 0.3);
 }

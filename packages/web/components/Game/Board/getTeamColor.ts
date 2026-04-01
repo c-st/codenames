@@ -45,6 +45,42 @@ const teamColors: TeamColor[] = [
     badgeFrom: "from-blue-800",
     badgeTo: "to-blue-600",
   },
+  {
+    name: "amber",
+    from: "from-amber-500",
+    to: "to-amber-300",
+    border: "border-amber-400/40",
+    shadow: "card-shadow-amber",
+    badgeFrom: "from-amber-800",
+    badgeTo: "to-amber-600",
+  },
+  {
+    name: "cyan",
+    from: "from-cyan-500",
+    to: "to-cyan-300",
+    border: "border-cyan-400/40",
+    shadow: "card-shadow-cyan",
+    badgeFrom: "from-cyan-800",
+    badgeTo: "to-cyan-600",
+  },
+  {
+    name: "rose",
+    from: "from-rose-500",
+    to: "to-rose-300",
+    border: "border-rose-400/40",
+    shadow: "card-shadow-rose",
+    badgeFrom: "from-rose-800",
+    badgeTo: "to-rose-600",
+  },
+  {
+    name: "teal",
+    from: "from-teal-500",
+    to: "to-teal-300",
+    border: "border-teal-400/40",
+    shadow: "card-shadow-teal",
+    badgeFrom: "from-teal-800",
+    badgeTo: "to-teal-600",
+  },
 ];
 
 export const getTeamColor = (team: number): TeamColor => {
