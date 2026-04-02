@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Logo from "./ui/Logo";
 
@@ -27,6 +27,7 @@ export default function SplashScreen({
   onPractice: () => void;
 }) {
   const emojis = useMemo(() => pickRandom(allAnimals, 5), []);
+  const [showImprint, setShowImprint] = useState(false);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)]">
@@ -99,6 +100,20 @@ export default function SplashScreen({
             Learn to play
           </motion.button>
         </motion.div>
+        <button
+          className="mt-12 text-xs text-purple-500/40 transition-colors hover:text-purple-400"
+          onClick={() => setShowImprint((s) => !s)}
+        >
+          Impressum
+        </button>
+        {showImprint && (
+          <div className="mt-2 max-w-xs text-center text-xs leading-relaxed text-purple-400/60">
+            Christian Stangier · Ulzburger Str. 48d · 22850 Norderstedt, Germany ·{" "}
+            <a href="mailto:christian@stangier.email" className="underline hover:text-purple-300">
+              christian@stangier.email
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
