@@ -15,7 +15,7 @@ import {
   GameError,
   initialGameState,
 } from "game";
-import { classic, movies, food, geography, science, randomAnimalEmoji } from "words";
+import { classic, movies, food, geography, science, tech, agile, design, startup, internet, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
 const DISCONNECT_GRACE_MS = 15_000;
@@ -324,7 +324,7 @@ export class CodenamesGame extends DurableObject {
       case "startGame": {
         if (game.isReadyToStartGame()) {
           const wordPacks: Record<string, string[]> = {
-            classic, movies, food, geography, science,
+            classic, movies, food, geography, science, tech, agile, design, startup, internet,
           };
           const pack = wordPacks[this.selectedWordPack] ?? classic;
           game.setWords(pack);

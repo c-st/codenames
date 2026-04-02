@@ -15,7 +15,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("startGame"),
-    wordPack: z.enum(["classic", "movies", "food", "geography", "science"]).optional(),
+    wordPack: z.enum(["classic", "movies", "food", "geography", "science", "tech", "agile", "design", "startup", "internet"]).optional(),
     teamCount: z.number().int().min(2).max(4).optional(),
   }),
   z.object({
@@ -35,7 +35,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("setWordPack"),
-    wordPack: z.enum(["classic", "movies", "food", "geography", "science"]),
+    wordPack: z.enum(["classic", "movies", "food", "geography", "science", "tech", "agile", "design", "startup", "internet"]),
   }),
   z.object({
     type: z.literal("setTeamCount"),

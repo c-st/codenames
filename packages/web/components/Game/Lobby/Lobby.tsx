@@ -4,7 +4,7 @@ import NameInput from "./NameInput";
 import { getTeamColor } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
 
-type WordPackId = "classic" | "movies" | "food" | "geography" | "science";
+type WordPackId = "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet";
 
 const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
   { id: "classic", label: "Classic", emoji: "📝" },
@@ -12,6 +12,11 @@ const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
   { id: "food", label: "Food", emoji: "🍕" },
   { id: "geography", label: "Geography", emoji: "🌍" },
   { id: "science", label: "Science", emoji: "🔬" },
+  { id: "tech", label: "Tech", emoji: "💻" },
+  { id: "agile", label: "Agile", emoji: "📋" },
+  { id: "design", label: "Design", emoji: "🎨" },
+  { id: "startup", label: "Startup", emoji: "🚀" },
+  { id: "internet", label: "Internet", emoji: "🌐" },
 ];
 
 const TEAM_COUNTS = [2, 3, 4];

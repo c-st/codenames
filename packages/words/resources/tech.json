@@ -1,0 +1,11 @@
+[
+  "sprint", "deploy", "refactor", "docker", "merge", "pipeline", "hotfix",
+  "standup", "backlog", "webhook", "kubernetes", "cache", "endpoint",
+  "monolith", "microservice", "lint", "debug", "schema", "migration",
+  "rollback", "commit", "branch", "terraform", "lambda", "serverless",
+  "postgres", "redis", "graphql", "typescript", "compiler", "runtime",
+  "sandbox", "snippet", "daemon", "thread", "mutex", "socket", "proxy",
+  "token", "payload", "middleware", "plugin", "module", "package",
+  "registry", "container", "cluster", "node", "stack", "queue",
+  "binary", "boolean", "regex", "config", "patch", "release"
+]

@@ -1,0 +1,11 @@
+[
+  "wireframe", "prototype", "persona", "journey", "affordance", "heuristic",
+  "contrast", "whitespace", "breadcrumb", "modal", "tooltip", "carousel",
+  "skeleton", "responsive", "viewport", "gradient", "palette", "typeface",
+  "spacing", "hierarchy", "alignment", "grid", "component", "token",
+  "accessibility", "animation", "transition", "hover", "focus", "shadow",
+  "border", "radius", "opacity", "layer", "frame", "canvas", "artboard",
+  "icon", "illustration", "typography", "serif", "weight", "tracking",
+  "leading", "baseline", "mockup", "fidelity", "audit", "pattern",
+  "navigation", "dropdown", "toggle", "checkbox", "slider", "tab"
+]
