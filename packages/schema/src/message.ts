@@ -15,6 +15,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("startGame"),
+    wordPack: z.enum(["classic", "movies", "food", "geography", "science"]).optional(),
+    teamCount: z.number().int().min(2).max(4).optional(),
   }),
   z.object({
     type: z.literal("giveHint"),

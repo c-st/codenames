@@ -32,6 +32,14 @@ export class Codenames {
     private parameters: GameParameters = defaultParameters
   ) {}
 
+  public setWords(words: string[]): void {
+    this.words = words;
+  }
+
+  public setTeamCount(teamCount: number): void {
+    this.parameters = { ...this.parameters, teamCount };
+  }
+
   public joinGame(player: Pick<Player, "id" | "name">): GameState {
     // player gets randomly assigned to a team and a spymaster role
     const { teamCount } = this.parameters;

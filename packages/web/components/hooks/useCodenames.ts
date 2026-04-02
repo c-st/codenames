@@ -111,7 +111,8 @@ const useCodenames = (skip: boolean = false) => {
     setName: (name: string) => sendCommand({ type: "setName", name }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
-    startGame: () => sendCommand({ type: "startGame" }),
+    startGame: (options?: { wordPack?: "classic" | "movies" | "food" | "geography" | "science"; teamCount?: number }) =>
+      sendCommand({ type: "startGame", ...options }),
     giveHint: (hint: string, count: number) =>
       sendCommand({ type: "giveHint", hint, count }),
     revealWord: (word: string) => sendCommand({ type: "revealWord", word }),

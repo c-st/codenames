@@ -15,7 +15,7 @@ import {
   GameError,
   initialGameState,
 } from "game";
-import { classic, randomAnimalEmoji } from "words";
+import { classic, movies, food, geography, science, randomAnimalEmoji } from "words";
 
 const GAME_STATE = "gameState";
 const DISCONNECT_GRACE_MS = 15_000;
@@ -319,6 +319,20 @@ export class CodenamesGame extends DurableObject {
 
       case "startGame": {
         if (game.isReadyToStartGame()) {
+          // Apply word pack and team count if provided
+          const wordPacks: Record<string, string[]> = {
+            classic,
+            movies,
+            food,
+            geography,
+            science,
+          };
+          if (command.wordPack && wordPacks[command.wordPack]) {
+            game.setWords(wordPacks[command.wordPack]);
+          }
+          if (command.teamCount) {
+            game.setTeamCount(command.teamCount);
+          }
           game.startGame();
           await this.persistAndBroadcastGameState(game);
         }

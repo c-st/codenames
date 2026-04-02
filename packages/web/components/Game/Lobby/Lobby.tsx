@@ -1,14 +1,27 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { Player } from "schema";
 import NameInput from "./NameInput";
 import { getTeamColor } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
 
+const WORD_PACKS = [
+  { id: "classic", label: "Classic", emoji: "📝" },
+  { id: "movies", label: "Movies", emoji: "🎬" },
+  { id: "food", label: "Food", emoji: "🍕" },
+  { id: "geography", label: "Geography", emoji: "🌍" },
+  { id: "science", label: "Science", emoji: "🔬" },
+];
+
+const TEAM_COUNTS = [2, 3, 4];
+
 export default function Lobby({
   players,
   currentPlayerId,
   promoteToSpymaster,
   setName,
+  startGame,
+  gameCanBeStarted,
   onBackToHome,
 }: {
   players: Player[];
@@ -16,9 +29,12 @@ export default function Lobby({
   promoteToSpymaster: (playerId: string) => void;
   setName: (name: string) => void;
   gameCanBeStarted: boolean;
-  startGame: () => void;
+  startGame: (options?: { wordPack?: "classic" | "movies" | "food" | "geography" | "science"; teamCount?: number }) => void;
   onBackToHome?: () => void;
 }) {
+  const [wordPack, setWordPack] = useState<"classic" | "movies" | "food" | "geography" | "science">("classic");
+  const [teamCount, setTeamCount] = useState(2);
+
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
   if (!currentPlayer) {
     return null;
@@ -70,19 +86,9 @@ export default function Lobby({
         </div>
       </motion.div>
 
-      {/* Section header */}
-      <motion.div
-        className="flex w-full items-center gap-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
-      >
-        <div className="h-px flex-1 bg-purple-700/30"></div>
-        <span className="text-sm font-bold text-purple-400">TEAMS</span>
-        <div className="h-px flex-1 bg-purple-700/30"></div>
-      </motion.div>
+      {/* Section: Teams */}
+      <SectionHeader label="TEAMS" delay={0.15} />
 
-      {/* Teams side by side */}
       <div className="flex w-full justify-center gap-6">
         {Object.entries(teams).map(([teamId, teamPlayers], i) => {
           const color = getTeamColor(parseInt(teamId));
@@ -137,6 +143,78 @@ export default function Lobby({
         })}
       </div>
 
+      {/* Section: Game Settings */}
+      <SectionHeader label="GAME SETTINGS" delay={0.3} />
+
+      <motion.div
+        className="flex w-full flex-col gap-5"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.35 }}
+      >
+        {/* Word Pack */}
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-bold text-purple-400/70">Word Pack</span>
+          <div className="flex flex-wrap gap-2">
+            {WORD_PACKS.map((pack) => (
+              <motion.button
+                key={pack.id}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                  wordPack === pack.id
+                    ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
+                    : "bg-elevated !text-white hover:bg-purple-800/50"
+                }`}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setWordPack(pack.id as typeof wordPack)}
+              >
+                {pack.emoji} {pack.label}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Team Count */}
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-bold text-purple-400/70">Number of Teams</span>
+          <div className="flex gap-2">
+            {TEAM_COUNTS.map((count) => (
+              <motion.button
+                key={count}
+                className={`rounded-xl px-5 py-2 text-sm font-bold transition-colors ${
+                  teamCount === count
+                    ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
+                    : "bg-elevated !text-white hover:bg-purple-800/50"
+                }`}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setTeamCount(count)}
+              >
+                {count} teams
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Start button */}
+      {gameCanBeStarted && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <motion.button
+            className="rounded-2xl bg-gradient-to-br from-primary to-accent px-10 py-4 text-xl font-bold !text-white shadow-lg shadow-primary/40"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => startGame({ wordPack, teamCount })}
+          >
+            Start Game
+          </motion.button>
+        </motion.div>
+      )}
+
       {/* Back to home */}
       {onBackToHome && (
         <motion.button
@@ -150,6 +228,21 @@ export default function Lobby({
           ← Back to home
         </motion.button>
       )}
+    </motion.div>
+  );
+}
+
+function SectionHeader({ label, delay }: { label: string; delay: number }) {
+  return (
+    <motion.div
+      className="flex w-full items-center gap-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay }}
+    >
+      <div className="h-px flex-1 bg-purple-700/30"></div>
+      <span className="text-sm font-bold text-purple-400">{label}</span>
+      <div className="h-px flex-1 bg-purple-700/30"></div>
     </motion.div>
   );
 }
