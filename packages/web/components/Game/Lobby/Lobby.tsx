@@ -201,7 +201,7 @@ export default function Lobby({
                       ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
                       : hasEnough
                         ? "bg-elevated !text-white hover:bg-purple-800/50"
-                        : "cursor-not-allowed bg-elevated !text-purple-600 opacity-50"
+                        : "cursor-not-allowed bg-elevated/50 !text-purple-300/40"
                   }`}
                   whileHover={hasEnough ? { scale: 1.03 } : {}}
                   whileTap={hasEnough ? { scale: 0.97 } : {}}
@@ -209,8 +209,8 @@ export default function Lobby({
                 >
                   {count} teams
                   {!hasEnough && (
-                    <span className="ml-1 text-[0.6rem] text-purple-500">
-                      ({needsPlayers}+ players)
+                    <span className="ml-1 text-[0.6rem] !text-purple-300/40">
+                      ({needsPlayers}+)
                     </span>
                   )}
                 </motion.button>
