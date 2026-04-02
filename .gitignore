@@ -2,3 +2,5 @@
 node_modules
 .wrangler
 packages/web/dist
+docs/superpowers/
+.superpowers/
