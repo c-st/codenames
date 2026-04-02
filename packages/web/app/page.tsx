@@ -21,6 +21,8 @@ export default function Home() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [wantsToPlay, setWantsToPlay] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const hasSeenResultRef = useRef(true); // true on mount so initial load doesn't trigger
 
   // Skip connection until user clicks Play (or has a session URL)
   const skipConnection = !hasSession && !wantsToPlay;
@@ -51,6 +53,19 @@ export default function Home() {
   } = useCodenames(skipConnection);
 
   const sound = useSoundEffects();
+
+  // Track confetti — only on fresh win, not on page reload
+  useEffect(() => {
+    if (gameResult === undefined) {
+      // Game reset / no result — arm the trigger for next win
+      hasSeenResultRef.current = false;
+      setShowConfetti(false);
+    } else if (!hasSeenResultRef.current && gameResult.winningTeam !== undefined) {
+      // Fresh win!
+      hasSeenResultRef.current = true;
+      setShowConfetti(true);
+    }
+  }, [gameResult]);
 
   // Sound effects based on game state changes
   const prevTurnTeamRef = useRef<number | undefined>(undefined);
@@ -192,7 +207,7 @@ export default function Home() {
           promoteToSpymaster={promoteToSpymaster}
         />
       </footer>
-      <Confetti active={gameResult?.winningTeam !== undefined} />
+      <Confetti active={showConfetti} />
     </div>
   );
 }
