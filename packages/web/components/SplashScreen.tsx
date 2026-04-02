@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Logo from "./ui/Logo";
 
 const allAnimals = [
@@ -100,20 +100,30 @@ export default function SplashScreen({
             Learn to play
           </motion.button>
         </motion.div>
-        <button
-          className="mt-12 text-xs text-purple-500/40 transition-colors hover:text-purple-400"
-          onClick={() => setShowImprint((s) => !s)}
-        >
-          Impressum
-        </button>
-        {showImprint && (
-          <div className="mt-2 max-w-xs text-center text-xs leading-relaxed text-purple-400/60">
-            Christian Stangier · Ulzburger Str. 48d · 22850 Norderstedt, Germany ·{" "}
-            <a href="mailto:christian@stangier.email" className="underline hover:text-purple-300">
-              christian@stangier.email
-            </a>
-          </div>
-        )}
+        <div className="mt-12 flex flex-col items-center">
+          <button
+            className="text-xs text-purple-500/40 transition-colors hover:text-purple-400"
+            onClick={() => setShowImprint((s) => !s)}
+          >
+            Impressum
+          </button>
+          <AnimatePresence>
+            {showImprint && (
+              <motion.div
+                className="mt-2 max-w-xs text-center text-xs leading-relaxed text-purple-400/60"
+                initial={{ opacity: 0, height: 0, y: -5 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -5 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                Christian Stangier · Ulzburger Str. 48d · 22850 Norderstedt, Germany ·{" "}
+                <a href="mailto:christian@stangier.email" className="underline hover:text-purple-300">
+                  christian@stangier.email
+                </a>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
