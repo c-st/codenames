@@ -99,7 +99,7 @@ export default function Board({
             }
           />
         )}
-        {gameResult && <Result gameResult={gameResult} />}
+        {gameResult && <Result gameResult={gameResult} players={players} />}
         {gameResult === undefined && <Timer until={until} />}
       </div>
       <WordMatrix
@@ -118,17 +118,92 @@ export default function Board({
   );
 }
 
-function Result({ gameResult }: { gameResult?: GameResult }) {
+function Result({
+  gameResult,
+  players,
+}: {
+  gameResult?: GameResult;
+  players: Player[];
+}) {
   const { winningTeam, losingTeam } = gameResult || {};
+  const isWin = winningTeam !== undefined;
+  const resultTeam = winningTeam ?? losingTeam;
+  const color = resultTeam !== undefined ? getTeamColor(resultTeam) : null;
+  const teamPlayers = resultTeam !== undefined
+    ? players.filter((p) => p.team === resultTeam)
+    : [];
+
   return (
     <motion.div
-      className="rounded-2xl bg-surface px-6 py-3 text-center text-2xl font-bold shadow-lg"
-      initial={{ opacity: 0, scale: 0.5, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.2 }}
+      className="flex w-full flex-col items-center gap-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.1 }}
     >
-      {winningTeam !== undefined && `Team ${winningTeam} wins! 🎉`}
-      {losingTeam !== undefined && `Team ${losingTeam} loses... 💀`}
+      {/* Trophy / skull */}
+      <motion.div
+        className="text-6xl"
+        initial={{ scale: 0, rotate: -20 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 12, delay: 0.2 }}
+      >
+        {isWin ? "🏆" : "💀"}
+      </motion.div>
+
+      {/* Headline */}
+      <motion.h2
+        className="select-none text-center text-3xl font-black md:text-4xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
+      >
+        {isWin ? `Team ${winningTeam} wins!` : `Team ${losingTeam} loses...`}
+      </motion.h2>
+
+      {/* Winning podium */}
+      {teamPlayers.length > 0 && color && (
+        <motion.div
+          className={`flex flex-col items-center gap-3 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-8 py-5 shadow-xl`}
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.4 }}
+        >
+          <div className="flex gap-3">
+            {teamPlayers.map((player, i) => (
+              <motion.div
+                key={player.id}
+                className="flex flex-col items-center gap-1"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 15,
+                  delay: 0.5 + i * 0.1,
+                }}
+              >
+                <motion.span
+                  className="select-none text-3xl md:text-4xl"
+                  animate={isWin ? { y: [0, -8, 0] } : {}}
+                  transition={{
+                    repeat: isWin ? 2 : 0,
+                    duration: 0.4,
+                    delay: 0.7 + i * 0.15,
+                  }}
+                >
+                  {player.name.split(" ")[0]}
+                </motion.span>
+                <span className="max-w-20 truncate text-center text-xs font-semibold !text-white/80">
+                  {player.name.split(" ").slice(1).join(" ") || player.name}
+                </span>
+                <span className={`text-[0.6rem] font-bold ${player.role === "spymaster" ? "text-amber-300" : "text-white/50"}`}>
+                  {player.role === "spymaster" ? getSpymasterTitle() : "Operative"}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
