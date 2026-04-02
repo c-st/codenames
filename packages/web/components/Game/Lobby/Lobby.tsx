@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Player } from "schema";
 import NameInput from "./NameInput";
 import { getTeamColor } from "../Board/getTeamColor";
@@ -101,59 +101,79 @@ export default function Lobby({
       {/* Section: Teams */}
       <SectionHeader label="TEAMS" delay={0.15} />
 
-      <div className="flex w-full justify-center gap-6">
-        {Object.entries(teams).map(([teamId, teamPlayers], i) => {
-          const color = getTeamColor(parseInt(teamId));
-          return (
-            <motion.div
-              key={teamId}
-              className="flex flex-1 flex-col items-center gap-3"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + i * 0.1 }}
-            >
-              <span className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}>
-                Team {teamId}
-              </span>
-              <div className="flex flex-col items-center gap-2">
-                {teamPlayers
-                  .sort((a) => (a.role === "spymaster" ? -1 : 1))
-                  .map((player) => {
-                    const isSpy = player.role === "spymaster";
-                    const isYou = player.id === currentPlayerId;
-                    return (
-                      <motion.button
-                        key={player.id}
-                        className={`flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold !text-white transition-colors ${
-                          isSpy
-                            ? `bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo}`
-                            : "bg-elevated hover:bg-purple-800/50"
-                        } ${isYou ? "ring-1 ring-accent/60" : ""}`}
-                        whileHover={!isSpy ? { scale: 1.03 } : {}}
-                        whileTap={!isSpy ? { scale: 0.97 } : {}}
-                        onClick={() => !isSpy && promoteToSpymaster(player.id)}
-                      >
-                        <span
-                          className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${isSpy ? "bg-amber-400" : "bg-white/30"}`}
-                        />
-                        <span className="flex-1 truncate text-left">
-                          {player.name}
-                          {isYou && " (you)"}
-                        </span>
-                        {isSpy && (
-                          <span className="flex-shrink-0 text-[0.65rem] text-amber-300">{getSpymasterTitle()}</span>
-                        )}
-                        {!isSpy && (
-                          <span className="flex-shrink-0 text-[0.65rem] text-purple-400/50">promote</span>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+      <LayoutGroup>
+        <div className="flex w-full justify-center gap-6">
+          {Object.entries(teams).map(([teamId, teamPlayers], i) => {
+            const color = getTeamColor(parseInt(teamId));
+            return (
+              <motion.div
+                key={teamId}
+                layout
+                className="flex flex-1 flex-col items-center gap-3"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + i * 0.1 }}
+              >
+                <span className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}>
+                  Team {teamId}
+                </span>
+                <div className="flex w-full flex-col items-center gap-2">
+                  <AnimatePresence mode="popLayout">
+                    {teamPlayers
+                      .sort((a) => (a.role === "spymaster" ? -1 : 1))
+                      .map((player) => {
+                        const isSpy = player.role === "spymaster";
+                        const isYou = player.id === currentPlayerId;
+                        return (
+                          <motion.button
+                            key={player.id}
+                            layout
+                            className={`flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold !text-white transition-colors ${
+                              isSpy
+                                ? `bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} shadow-md`
+                                : "bg-elevated hover:bg-purple-800/50"
+                            } ${isYou ? "ring-1 ring-accent/60" : ""}`}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            whileHover={!isSpy ? { scale: 1.03 } : {}}
+                            whileTap={!isSpy ? { scale: 0.97 } : {}}
+                            onClick={() => !isSpy && promoteToSpymaster(player.id)}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                          >
+                            <motion.span
+                              layout
+                              className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${isSpy ? "bg-amber-400" : "bg-white/30"}`}
+                              animate={{ scale: isSpy ? [1, 1.5, 1] : 1 }}
+                              transition={{ duration: 0.3 }}
+                            />
+                            <span className="flex-1 truncate text-left">
+                              {player.name}
+                              {isYou && " (you)"}
+                            </span>
+                            {isSpy && (
+                              <motion.span
+                                className="flex-shrink-0 text-[0.65rem] text-amber-300"
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.1 }}
+                              >
+                                {getSpymasterTitle()}
+                              </motion.span>
+                            )}
+                            {!isSpy && (
+                              <span className="flex-shrink-0 text-[0.65rem] text-purple-400/50">promote</span>
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </LayoutGroup>
 
       {/* Section: Game Settings */}
       <SectionHeader label="GAME SETTINGS" delay={0.3} />
