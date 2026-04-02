@@ -132,7 +132,10 @@ const useCodenames = (skip: boolean = false) => {
       sendCommand({ type: "giveHint", hint, count }),
     revealWord: (word: string) => sendCommand({ type: "revealWord", word }),
     endTurn: () => sendCommand({ type: "endTurn" }),
-    endGame: () => sendCommand({ type: "endGame" }),
+    endGame: () => {
+      setGameWon(false);
+      sendCommand({ type: "endGame" });
+    },
   };
 };
 
