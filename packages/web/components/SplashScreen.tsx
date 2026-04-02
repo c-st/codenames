@@ -30,8 +30,8 @@ export default function SplashScreen({
   const [showImprint, setShowImprint] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)]">
-      <div className="text-center">
+    <div className="flex min-h-screen flex-col items-center bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)]">
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
         <div className="mb-4 flex justify-center gap-3">
           {emojis.map((emoji, i) => (
             <motion.span
@@ -100,30 +100,30 @@ export default function SplashScreen({
             Learn to play
           </motion.button>
         </motion.div>
-        <div className="mt-12 flex flex-col items-center">
-          <button
-            className="text-xs text-purple-500/40 transition-colors hover:text-purple-400"
-            onClick={() => setShowImprint((s) => !s)}
-          >
-            Impressum
-          </button>
-          <AnimatePresence>
-            {showImprint && (
-              <motion.div
-                className="mt-2 max-w-xs text-center text-xs leading-relaxed text-purple-400/60"
-                initial={{ opacity: 0, height: 0, y: -5 }}
-                animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -5 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                Christian Stangier · Ulzburger Str. 48d · 22850 Norderstedt, Germany ·{" "}
-                <a href="mailto:christian@stangier.email" className="underline hover:text-purple-300">
-                  christian@stangier.email
-                </a>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      </div>
+      <div className="flex flex-col items-center pb-6">
+        <button
+          className="text-xs text-purple-500/40 transition-colors hover:text-purple-400"
+          onClick={() => setShowImprint((s) => !s)}
+        >
+          Impressum
+        </button>
+        <AnimatePresence>
+          {showImprint && (
+            <motion.div
+              className="mt-2 max-w-xs text-center text-xs leading-relaxed text-purple-400/60"
+              initial={{ opacity: 0, height: 0, y: -5 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -5 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            >
+              Christian Stangier · Ulzburger Str. 48d · 22850 Norderstedt, Germany ·{" "}
+              <a href="mailto:christian@stangier.email" className="underline hover:text-purple-300">
+                christian@stangier.email
+              </a>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
