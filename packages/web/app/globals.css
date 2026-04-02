@@ -56,23 +56,20 @@
 
 @keyframes confetti {
   0% {
-    transform: translateY(-10vh) translateX(0) rotate(0deg) scale(0);
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
     opacity: 0;
   }
-  10% {
-    opacity: 1;
-    transform: translateY(0) translateX(0) rotate(30deg) scale(1);
-  }
-  50% {
-    transform: translateY(50vh) translateX(var(--wobble, 0px)) rotate(360deg) scale(1);
+  8% {
     opacity: 1;
   }
   100% {
-    transform: translateY(110vh) translateX(calc(var(--wobble, 0px) * -0.5)) rotate(720deg) scale(0.5);
+    transform: translate3d(var(--wobble, 0px), 110vh, 0) rotate(720deg);
     opacity: 0;
   }
 }
 
 .animate-confetti {
-  animation: confetti ease-out forwards;
+  animation: confetti linear forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
