@@ -26,6 +26,7 @@ export default function Lobby({
   currentPlayerId,
   promoteToSpymaster,
   setName,
+  randomizeName,
   startGame,
   gameCanBeStarted,
   wordPack,
@@ -38,6 +39,7 @@ export default function Lobby({
   currentPlayerId: string;
   promoteToSpymaster: (playerId: string) => void;
   setName: (name: string) => void;
+  randomizeName: () => void;
   gameCanBeStarted: boolean;
   startGame: () => void;
   wordPack: WordPackId;
@@ -94,7 +96,7 @@ export default function Lobby({
         </div>
         <div className="flex flex-col items-center gap-2">
           <p className="text-sm font-semibold text-purple-400">Your name</p>
-          <NameInput name={currentPlayer.name} setName={setName} />
+          <NameInput name={currentPlayer.name} setName={setName} onRandomize={randomizeName} />
         </div>
       </motion.div>
 

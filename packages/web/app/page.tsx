@@ -47,6 +47,7 @@ export default function Home() {
     teamCount,
     setWordPack,
     setTeamCount,
+    randomizeName,
   } = useCodenames(skipConnection);
 
   const sound = useSoundEffects();
@@ -147,6 +148,7 @@ export default function Home() {
             currentPlayerId={currentPlayerId}
             promoteToSpymaster={promoteToSpymaster}
             setName={setName}
+            randomizeName={randomizeName}
             gameCanBeStarted={gameCanBeStarted}
             startGame={startGame}
             wordPack={wordPack}

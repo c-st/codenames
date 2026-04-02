@@ -34,6 +34,9 @@ export const commandSchema = z.discriminatedUnion("type", [
     type: z.literal("endGame"),
   }),
   z.object({
+    type: z.literal("randomizeName"),
+  }),
+  z.object({
     type: z.literal("setWordPack"),
     wordPack: z.enum(["classic", "movies", "food", "geography", "science", "tech", "agile", "design", "startup", "internet"]),
   }),

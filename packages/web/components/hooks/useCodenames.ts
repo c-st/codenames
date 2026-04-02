@@ -111,6 +111,7 @@ const useCodenames = (skip: boolean = false) => {
     teamCount: gameState?.teamCount ?? 2,
     // Commands
     setName: (name: string) => sendCommand({ type: "setName", name }),
+    randomizeName: () => sendCommand({ type: "randomizeName" }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
     startGame: () => sendCommand({ type: "startGame" }),

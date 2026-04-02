@@ -309,6 +309,16 @@ export class CodenamesGame extends DurableObject {
         break;
       }
 
+      case "randomizeName": {
+        game.addOrUpdatePlayer({
+          ...player,
+          id: playerId,
+          name: randomAnimalEmoji(),
+        });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
       case "promoteToSpymaster": {
         const newSpymaster = game
           .getGameState()
