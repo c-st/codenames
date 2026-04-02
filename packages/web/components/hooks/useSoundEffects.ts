@@ -1,9 +1,22 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type OscillatorType = "sine" | "square" | "triangle" | "sawtooth";
 
 const useSoundEffects = () => {
   const ctxRef = useRef<AudioContext | null>(null);
+
+  const [muted, setMuted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("codenames:muted") === "true";
+  });
+
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      localStorage.setItem("codenames:muted", String(next));
+      return next;
+    });
+  }, []);
 
   const getCtx = useCallback(() => {
     if (!ctxRef.current) {
@@ -20,6 +33,7 @@ const useSoundEffects = () => {
       volume: number = 0.3,
       delay: number = 0
     ) => {
+      if (muted) return;
       const ctx = getCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -35,7 +49,7 @@ const useSoundEffects = () => {
       osc.start(ctx.currentTime + delay);
       osc.stop(ctx.currentTime + delay + duration);
     },
-    [getCtx]
+    [getCtx, muted]
   );
 
   const cardTap = useCallback(() => {
@@ -83,6 +97,8 @@ const useSoundEffects = () => {
     gameWin,
     turnChange,
     buttonClick,
+    muted,
+    toggleMute,
   };
 };
 

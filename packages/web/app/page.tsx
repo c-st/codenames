@@ -127,6 +127,13 @@ export default function Home() {
     <div className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]">
       <header className="flex w-full max-w-4xl items-center justify-between">
         <Logo />
+        <button
+          className="rounded-xl bg-surface px-2 py-1 text-lg"
+          onClick={sound.toggleMute}
+          title={sound.muted ? "Unmute" : "Mute"}
+        >
+          {sound.muted ? "🔇" : "🔊"}
+        </button>
         <SessionStatus isConnected={isConnected} sessionName={sessionName} />
       </header>
       <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">

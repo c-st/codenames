@@ -281,7 +281,7 @@ function Word({
   return (
     <motion.div
       key={wordCard.word}
-      className={`flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-[14px] p-4 lg:p-8 ${bgColor}`}
+      className={`flex h-14 cursor-pointer flex-col items-center justify-center rounded-[14px] p-2 md:h-24 md:p-4 lg:p-8 ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.08, y: -3 }}
       whileTap={{ scale: 0.9 }}
@@ -296,7 +296,7 @@ function Word({
       }}
     >
       <p
-        className={`text-m font-extrabold ${textColor} select-none text-center md:text-xl`}
+        className={`text-xs font-extrabold ${textColor} select-none text-center md:text-base lg:text-xl`}
       >
         {wordCard.word}
       </p>
