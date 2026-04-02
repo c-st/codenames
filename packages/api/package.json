@@ -7,14 +7,14 @@
   },
   "dependencies": {
     "game": "workspace:*",
-    "nanoid": "^5.0.9",
+    "nanoid": "^5.1.7",
     "schema": "workspace:*",
     "words": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241205.0",
-    "vitest": "^2.1.8",
+    "vitest": "^2.1.9",
     "wrangler": "^3.93.0"
   }
 }

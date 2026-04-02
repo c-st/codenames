@@ -6,10 +6,10 @@
     "test": "vitest --run"
   },
   "dependencies": {
-    "zod": "^3.23.8",
-    "words": "workspace:*"
+    "words": "workspace:*",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.9"
   }
 }
