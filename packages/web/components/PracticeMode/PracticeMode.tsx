@@ -319,19 +319,19 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
           const isRevealed = !!card.revealed;
 
           let bg = "bg-[#f5f0ff] card-shadow-default";
-          let text = "text-[#1a1530]";
+          let text = "!text-[#1a1530]";
 
           if (isRevealed || showColors) {
             if (card.isAssassin) {
               bg = "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin";
-              text = "text-white";
+              text = "!text-white";
             } else if (card.team !== undefined) {
               const c = getTeamColor(card.team);
               bg = `bg-gradient-to-br ${c.from} ${c.to} ${c.shadow}`;
-              text = "text-white";
+              text = "!text-white";
             } else {
               bg = "bg-[#3a3550] card-shadow-neutral";
-              text = "text-[#8078a0]";
+              text = "!text-[#8078a0]";
             }
           }
 

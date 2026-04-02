@@ -259,19 +259,19 @@ function Word({
   const showWord = !!wordCard.revealed || isSpymaster || isGameOver;
 
   let bgColor = "bg-[#f5f0ff] card-shadow-default";
-  let textColor = "text-[#1a1530]";
+  let textColor = "!text-[#1a1530]";
 
   if (showWord) {
     if (wordCard.isAssassin) {
       bgColor = "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin";
-      textColor = "text-white";
+      textColor = "!text-white";
     } else if (wordCard.team !== undefined) {
       const color = getTeamColor(wordCard.team);
       bgColor = `bg-gradient-to-br ${color.from} ${color.to} ${color.shadow}`;
-      textColor = "text-white";
+      textColor = "!text-white";
     } else {
       bgColor = "bg-[#3a3550] card-shadow-neutral";
-      textColor = "text-[#8078a0]";
+      textColor = "!text-[#8078a0]";
     }
   }
 

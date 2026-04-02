@@ -17,21 +17,21 @@ export default function TutorialBoard({
         const isRevealed = card.revealed;
 
         let bg = "bg-[#f5f0ff] card-shadow-default";
-        let text = "text-[#1a1530]";
+        let text = "!text-[#1a1530]";
 
         if (isRevealed) {
           if (card.isAssassin) {
             bg = "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin";
-            text = "text-white";
+            text = "!text-white";
           } else if (card.team === "player") {
             bg = "bg-gradient-to-br from-purple-500 to-purple-300 card-shadow-purple";
-            text = "text-white";
+            text = "!text-white";
           } else if (card.team === "opponent") {
             bg = "bg-gradient-to-br from-emerald-500 to-emerald-300 card-shadow-emerald";
-            text = "text-white";
+            text = "!text-white";
           } else {
             bg = "bg-[#3a3550] card-shadow-neutral";
-            text = "text-[#8078a0]";
+            text = "!text-[#8078a0]";
           }
         }
 
