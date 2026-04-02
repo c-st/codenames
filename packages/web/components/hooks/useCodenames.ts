@@ -9,10 +9,12 @@ import {
   WordCard,
 } from "schema";
 import useGameSession from "./useGameSession";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const useCodenames = (skip: boolean = false) => {
   const [gameState, setGameState] = useState<GameStateForClient>();
+  const [gameWon, setGameWon] = useState(false);
+  const prevResultRef = useRef<GameResult | undefined>(undefined);
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
@@ -77,15 +79,17 @@ const useCodenames = (skip: boolean = false) => {
     setHintHistory(hintHistory);
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
-    if (gameResult && turn) {
-      console.info("Game has ended", {
-        players,
-        board,
-        turn,
-        hintHistory,
-        gameResult,
-      });
+
+    // Detect fresh win from server update
+    if (
+      gameResult?.winningTeam !== undefined &&
+      prevResultRef.current?.winningTeam === undefined
+    ) {
+      setGameWon(true);
+    } else if (!gameResult) {
+      setGameWon(false);
     }
+    prevResultRef.current = gameResult;
   }, [incomingMessage, onPlayerIdReceived]);
 
   const sendCommand = (command: Command) =>
@@ -107,6 +111,7 @@ const useCodenames = (skip: boolean = false) => {
     gameResult,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
+    gameWon,
     wordPack: (gameState?.wordPack ?? "classic") as "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet",
     teamCount: gameState?.teamCount ?? 2,
     // Commands
