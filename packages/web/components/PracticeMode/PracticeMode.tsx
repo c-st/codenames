@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { WordCard } from "schema";
 import classicWords from "./words.json";
-import { getTeamColor } from "../Game/Board/getTeamColor";
+import { getTeamColor, getTeamName } from "../Game/Board/getTeamColor";
 import { getSpymasterTitle } from "../Game/spymasterTitle";
 import Logo from "../ui/Logo";
 
@@ -113,7 +113,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
           (c) => c.team === prev.currentTeam && !c.revealed
         ).length;
         if (remaining === 0) {
-          setGameOver(`Team ${prev.currentTeam} found all their words! 🎉`);
+          setGameOver(`Team ${getTeamName(prev.currentTeam)} found all their words! 🎉`);
           return { ...prev, board: newBoard, message: "You found them all!" };
         }
 
@@ -125,7 +125,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             (c) => c.team === nextTeam && !c.revealed
           ).length;
           if (otherRemaining === 0) {
-            setGameOver(`Team ${nextTeam} wins — you revealed their last word!`);
+            setGameOver(`Team ${getTeamName(nextTeam)} wins — you revealed their last word!`);
             return { ...prev, board: newBoard, message: "Wrong team wins!" };
           }
           return {
@@ -135,7 +135,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             phase: "spymaster",
             hint: "",
             guessesLeft: 0,
-            message: `Wrong! That was ${card.team !== undefined ? `Team ${card.team}'s` : "a neutral"} card. Switching to Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
+            message: `Wrong! That was ${card.team !== undefined ? `Team ${getTeamName(card.team)}'s` : "a neutral"} card. Switching to Team ${getTeamName(nextTeam)}'s ${getSpymasterTitle()} turn.`,
           };
         }
 
@@ -150,7 +150,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
             phase: "spymaster",
             hint: "",
             guessesLeft: 0,
-            message: `No guesses left. Switching to Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
+            message: `No guesses left. Switching to Team ${getTeamName(nextTeam)}'s ${getSpymasterTitle()} turn.`,
           };
         }
 
@@ -174,7 +174,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
         phase: "spymaster",
         hint: "",
         guessesLeft: 0,
-        message: `Turn ended. Team ${nextTeam}'s ${getSpymasterTitle()} turn.`,
+        message: `Turn ended. Team ${getTeamName(nextTeam)}'s ${getSpymasterTitle()} turn.`,
       };
     });
   }, []);
@@ -208,7 +208,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
       {/* Score bar */}
       <div className="flex w-full max-w-4xl items-center justify-between gap-4">
         <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${teamColor.badgeFrom} ${teamColor.badgeTo} px-4 py-2 ${state.currentTeam === 0 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
-          <span className="text-sm font-bold">Team 0</span>
+          <span className="text-sm font-bold">Team {getTeamName(0)}</span>
           <span className="text-xl font-black">{remainingByTeam(0)}</span>
         </div>
         <motion.div
@@ -220,7 +220,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
           {state.message}
         </motion.div>
         <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${otherTeamColor.badgeFrom} ${otherTeamColor.badgeTo} px-4 py-2 ${state.currentTeam === 1 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
-          <span className="text-sm font-bold">Team 1</span>
+          <span className="text-sm font-bold">Team {getTeamName(1)}</span>
           <span className="text-xl font-black">{remainingByTeam(1)}</span>
         </div>
       </div>

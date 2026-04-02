@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/Button";
+import { motion } from "motion/react";
 import { TextInput } from "@/components/ui/TextInput";
 import { useState } from "react";
 
@@ -29,14 +29,21 @@ export default function HintInput({
       />
       <input
         type="number"
-        className="w-14 rounded-2xl border-2 border-purple-700 bg-surface px-2 py-3 text-center font-mono font-bold text-white focus:border-accent focus:outline-none md:py-4"
+        className="w-14 rounded-xl border-2 border-purple-700 bg-surface px-2 py-3 text-center font-mono font-bold text-white focus:border-accent focus:outline-none md:py-4"
         min={0}
         max={9}
         value={count}
         onChange={(e) => setCount(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submitHint()}
       />
-      <Button title="Give hint" onClick={submitHint} />
+      <motion.button
+        className="rounded-xl bg-gradient-to-br from-primary to-accent px-4 py-3 text-sm font-bold text-white shadow-md shadow-primary/30 md:py-4"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={submitHint}
+      >
+        Give hint
+      </motion.button>
     </div>
   );
 }

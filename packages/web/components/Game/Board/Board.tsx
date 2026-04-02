@@ -3,7 +3,7 @@ import { GameResult, HintHistory, Player, Turn, WordCard } from "schema";
 import { AnimatePresence, motion } from "motion/react";
 import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloading";
 import HintInput from "./HintInput";
-import { getTeamColor } from "./getTeamColor";
+import { getTeamColor, getTeamName } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
 import { getSpymasterTitle } from "../spymasterTitle";
 
@@ -157,7 +157,7 @@ function Result({
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
       >
-        {isWin ? `Team ${winningTeam} wins!` : `Team ${losingTeam} loses...`}
+        {isWin ? `Team ${getTeamName(winningTeam!)} wins!` : `Team ${getTeamName(losingTeam!)} loses...`}
       </motion.h2>
 
       {/* Winning podium */}

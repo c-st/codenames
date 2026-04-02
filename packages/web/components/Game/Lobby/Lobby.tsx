@@ -1,7 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Player } from "schema";
 import NameInput from "./NameInput";
-import { getTeamColor } from "../Board/getTeamColor";
+import { getTeamColor, getTeamName } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
 
 type WordPackId = "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet";
@@ -117,7 +117,7 @@ export default function Lobby({
                 transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + i * 0.1 }}
               >
                 <span className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}>
-                  Team {teamId}
+                  Team {getTeamName(parseInt(teamId))}
                 </span>
                 <div className="flex w-full flex-col items-center gap-2">
                   <AnimatePresence mode="popLayout">

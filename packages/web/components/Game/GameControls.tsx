@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { GameResult, Player, Turn } from "schema";
 import { Button } from "../ui/Button";
-import { getTeamColor } from "./Board/getTeamColor";
+import { getTeamColor, getTeamName } from "./Board/getTeamColor";
 import { getSpymasterTitle } from "./spymasterTitle";
 
 const MotionWrap = ({ children, key: k }: { children: React.ReactNode; key: string }) => (
@@ -130,7 +130,7 @@ function RoleSwapper({
         const color = getTeamColor(parseInt(teamId));
         return (
           <div key={teamId} className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-purple-400/70">Team {teamId}</span>
+            <span className="text-xs font-bold text-purple-400/70">Team {getTeamName(parseInt(teamId))}</span>
             {teamPlayers
               .sort((a) => (a.role === "spymaster" ? -1 : 1))
               .map((player) => {

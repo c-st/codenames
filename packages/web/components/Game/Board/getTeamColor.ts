@@ -50,3 +50,8 @@ const teamColors: TeamColor[] = [
 export const getTeamColor = (team: number): TeamColor => {
   return teamColors[team] ?? teamColors[3];
 };
+
+export const getTeamName = (team: number): string => {
+  const color = getTeamColor(team);
+  return color.name.charAt(0).toUpperCase() + color.name.slice(1);
+};

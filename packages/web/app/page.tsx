@@ -192,7 +192,7 @@ export default function Home() {
           promoteToSpymaster={promoteToSpymaster}
         />
       </footer>
-      <Confetti active={!!gameResult?.winningTeam} />
+      <Confetti active={gameResult?.winningTeam !== undefined} />
     </div>
   );
 }
