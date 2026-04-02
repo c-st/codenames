@@ -707,5 +707,54 @@ describe("game state updates", () => {
       game.revealWord("cherry");
       expect(game.getGameState().turn?.team).toBe(1); // switched to team 1
     });
+
+    it("setWords changes the word list used by startGame", () => {
+      const customWords = Array.from({ length: 25 }, (_, i) => `custom-${i}`);
+      const game = new Codenames(
+        buildExampleGameState({ turn: undefined, board: [], hintHistory: [] }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      game.setWords(customWords);
+      const state = game.startGame();
+
+      expect(state.board).toHaveLength(25);
+      state.board.forEach((card) => {
+        expect(card.word).toMatch(/^custom-/);
+      });
+    });
+
+    it("setTeamCount changes how many teams get words", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          players: [
+            { id: "p1", name: "A", team: 0, role: "spymaster" },
+            { id: "p2", name: "B", team: 0, role: "operative" },
+            { id: "p3", name: "C", team: 1, role: "spymaster" },
+            { id: "p4", name: "D", team: 1, role: "operative" },
+            { id: "p5", name: "E", team: 2, role: "spymaster" },
+            { id: "p6", name: "F", team: 2, role: "operative" },
+          ],
+          turn: undefined,
+          board: [],
+          hintHistory: [],
+        }),
+        classicWordList,
+        onScheduleTurnCallback,
+        { ...defaultParameters, teamCount: 2 }
+      );
+
+      game.setTeamCount(3);
+      const state = game.startGame();
+
+      const team0 = state.board.filter((c) => c.team === 0);
+      const team1 = state.board.filter((c) => c.team === 1);
+      const team2 = state.board.filter((c) => c.team === 2);
+
+      expect(team0.length).toBeGreaterThan(0);
+      expect(team1.length).toBeGreaterThan(0);
+      expect(team2.length).toBeGreaterThan(0);
+    });
   });
 });
