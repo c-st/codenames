@@ -15,6 +15,7 @@ const useCodenames = (skip: boolean = false) => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [gameWon, setGameWon] = useState(false);
   const prevResultRef = useRef<GameResult | undefined>(undefined);
+  const isFirstMessageRef = useRef(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
@@ -80,13 +81,16 @@ const useCodenames = (skip: boolean = false) => {
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
 
-    // Detect fresh win from server update
-    if (
+    // Detect fresh win from server update (skip the first message — that's reconnect state)
+    if (isFirstMessageRef.current) {
+      isFirstMessageRef.current = false;
+    } else if (
       gameResult?.winningTeam !== undefined &&
       prevResultRef.current?.winningTeam === undefined
     ) {
       setGameWon(true);
-    } else if (!gameResult) {
+    }
+    if (!gameResult) {
       setGameWon(false);
     }
     prevResultRef.current = gameResult;
