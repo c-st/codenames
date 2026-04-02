@@ -23,6 +23,8 @@ const DISCONNECT_GRACE_MS = 15_000;
 export class CodenamesGame extends DurableObject {
   /** Tracks pending removal timers for disconnected players */
   private disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private selectedWordPack: string = "classic";
+  private selectedTeamCount: number = 2;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -265,6 +267,8 @@ export class CodenamesGame extends DurableObject {
             game.getRemainingWordsByTeam().values()
           ),
           gameResult: game.getGameResult(),
+          wordPack: this.selectedWordPack,
+          teamCount: this.selectedTeamCount,
         };
 
         const gameStateUpdatedEvent = {
@@ -319,20 +323,12 @@ export class CodenamesGame extends DurableObject {
 
       case "startGame": {
         if (game.isReadyToStartGame()) {
-          // Apply word pack and team count if provided
           const wordPacks: Record<string, string[]> = {
-            classic,
-            movies,
-            food,
-            geography,
-            science,
+            classic, movies, food, geography, science,
           };
-          if (command.wordPack && wordPacks[command.wordPack]) {
-            game.setWords(wordPacks[command.wordPack]);
-          }
-          if (command.teamCount) {
-            game.setTeamCount(command.teamCount);
-          }
+          const pack = wordPacks[this.selectedWordPack] ?? classic;
+          game.setWords(pack);
+          game.setTeamCount(this.selectedTeamCount);
           game.startGame();
           await this.persistAndBroadcastGameState(game);
         }
@@ -375,6 +371,18 @@ export class CodenamesGame extends DurableObject {
       case "endGame": {
         game.endGame();
         await this.ctx.storage.deleteAlarm();
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "setWordPack": {
+        this.selectedWordPack = command.wordPack;
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "setTeamCount": {
+        this.selectedTeamCount = command.teamCount;
         await this.persistAndBroadcastGameState(game);
         break;
       }

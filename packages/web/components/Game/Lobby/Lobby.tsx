@@ -1,11 +1,12 @@
-import { useState } from "react";
 import { motion } from "motion/react";
 import { Player } from "schema";
 import NameInput from "./NameInput";
 import { getTeamColor } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
 
-const WORD_PACKS = [
+type WordPackId = "classic" | "movies" | "food" | "geography" | "science";
+
+const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
   { id: "classic", label: "Classic", emoji: "📝" },
   { id: "movies", label: "Movies", emoji: "🎬" },
   { id: "food", label: "Food", emoji: "🍕" },
@@ -22,6 +23,10 @@ export default function Lobby({
   setName,
   startGame,
   gameCanBeStarted,
+  wordPack,
+  teamCount,
+  setWordPack,
+  setTeamCount,
   onBackToHome,
 }: {
   players: Player[];
@@ -29,11 +34,13 @@ export default function Lobby({
   promoteToSpymaster: (playerId: string) => void;
   setName: (name: string) => void;
   gameCanBeStarted: boolean;
-  startGame: (options?: { wordPack?: "classic" | "movies" | "food" | "geography" | "science"; teamCount?: number }) => void;
+  startGame: () => void;
+  wordPack: WordPackId;
+  teamCount: number;
+  setWordPack: (pack: WordPackId) => void;
+  setTeamCount: (count: number) => void;
   onBackToHome?: () => void;
 }) {
-  const [wordPack, setWordPack] = useState<"classic" | "movies" | "food" | "geography" | "science">("classic");
-  const [teamCount, setTeamCount] = useState(2);
 
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
   if (!currentPlayer) {
@@ -166,7 +173,7 @@ export default function Lobby({
                 }`}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setWordPack(pack.id as typeof wordPack)}
+                onClick={() => setWordPack(pack.id)}
               >
                 {pack.emoji} {pack.label}
               </motion.button>
@@ -208,7 +215,7 @@ export default function Lobby({
             className="rounded-2xl bg-gradient-to-br from-primary to-accent px-10 py-4 text-xl font-bold !text-white shadow-lg shadow-primary/40"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => startGame({ wordPack, teamCount })}
+            onClick={() => startGame()}
           >
             Start Game
           </motion.button>

@@ -43,6 +43,10 @@ export default function Home() {
     endTurn,
     endGame,
     giveHint,
+    wordPack,
+    teamCount,
+    setWordPack,
+    setTeamCount,
   } = useCodenames(skipConnection);
 
   const sound = useSoundEffects();
@@ -145,6 +149,10 @@ export default function Home() {
             setName={setName}
             gameCanBeStarted={gameCanBeStarted}
             startGame={startGame}
+            wordPack={wordPack}
+            teamCount={teamCount}
+            setWordPack={setWordPack}
+            setTeamCount={setTeamCount}
             onBackToHome={() => {
               window.location.href = window.location.pathname;
             }}

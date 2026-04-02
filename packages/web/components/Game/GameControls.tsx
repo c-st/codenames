@@ -87,7 +87,7 @@ export default function GameControls({
             />
           </motion.div>
         )}
-        {gameResult && gameCanBeStarted && (
+        {gameIsRunning && gameResult && gameCanBeStarted && (
           <MotionWrap key="new-game">
             <Button title="Start new game" onClick={startGame} />
           </MotionWrap>

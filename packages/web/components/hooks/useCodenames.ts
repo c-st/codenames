@@ -107,12 +107,17 @@ const useCodenames = (skip: boolean = false) => {
     gameResult,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
+    wordPack: (gameState?.wordPack ?? "classic") as "classic" | "movies" | "food" | "geography" | "science",
+    teamCount: gameState?.teamCount ?? 2,
     // Commands
     setName: (name: string) => sendCommand({ type: "setName", name }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
-    startGame: (options?: { wordPack?: "classic" | "movies" | "food" | "geography" | "science"; teamCount?: number }) =>
-      sendCommand({ type: "startGame", ...options }),
+    startGame: () => sendCommand({ type: "startGame" }),
+    setWordPack: (wordPack: "classic" | "movies" | "food" | "geography" | "science") =>
+      sendCommand({ type: "setWordPack", wordPack }),
+    setTeamCount: (teamCount: number) =>
+      sendCommand({ type: "setTeamCount", teamCount }),
     giveHint: (hint: string, count: number) =>
       sendCommand({ type: "giveHint", hint, count }),
     revealWord: (word: string) => sendCommand({ type: "revealWord", word }),

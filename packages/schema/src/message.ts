@@ -33,6 +33,14 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("endGame"),
   }),
+  z.object({
+    type: z.literal("setWordPack"),
+    wordPack: z.enum(["classic", "movies", "food", "geography", "science"]),
+  }),
+  z.object({
+    type: z.literal("setTeamCount"),
+    teamCount: z.number().int().min(2).max(4),
+  }),
 ]);
 
 export const gameEventSchema = z.discriminatedUnion("type", [

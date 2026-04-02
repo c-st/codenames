@@ -55,6 +55,8 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   gameCanStart: z.boolean(),
   gameResult: gameResult.optional(),
   remainingWordsByTeam: z.array(z.number()),
+  wordPack: z.string().optional(),
+  teamCount: z.number().optional(),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;
