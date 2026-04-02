@@ -124,12 +124,12 @@ export default function Home() {
   const gameIsRunning = turn !== undefined;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 font-[family-name:var(--font-geist-sans)]">
+    <div className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]">
       <header className="flex w-full max-w-4xl items-center justify-between">
         <Logo />
         <SessionStatus isConnected={isConnected} sessionName={sessionName} />
       </header>
-      <main className="flex w-full max-w-4xl flex-col items-center gap-6">
+      <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">
         {turn === undefined ? (
           <Lobby
             players={players}
