@@ -69,8 +69,8 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
   const [countInput, setCountInput] = useState("2");
   const [gameOver, setGameOver] = useState<string | null>(null);
 
-  const teamColor = getTeamColor(state.currentTeam);
-  const otherTeamColor = getTeamColor(state.currentTeam === 0 ? 1 : 0);
+  const team0Color = getTeamColor(0);
+  const team1Color = getTeamColor(1);
 
   const remainingByTeam = (team: number) =>
     state.board.filter((c) => c.team === team && !c.revealed).length;
@@ -207,7 +207,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
 
       {/* Score bar */}
       <div className="flex w-full max-w-4xl items-center justify-between gap-4">
-        <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${teamColor.badgeFrom} ${teamColor.badgeTo} px-4 py-2 ${state.currentTeam === 0 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
+        <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${team0Color.badgeFrom} ${team0Color.badgeTo} px-4 py-2 ${state.currentTeam === 0 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
           <span className="text-sm font-bold">Team {getTeamName(0)}</span>
           <span className="text-xl font-black">{remainingByTeam(0)}</span>
         </div>
@@ -219,7 +219,7 @@ export default function PracticeMode({ onExit }: { onExit: () => void }) {
         >
           {state.message}
         </motion.div>
-        <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${otherTeamColor.badgeFrom} ${otherTeamColor.badgeTo} px-4 py-2 ${state.currentTeam === 1 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
+        <div className={`flex cursor-default select-none items-center gap-2 rounded-2xl bg-gradient-to-br ${team1Color.badgeFrom} ${team1Color.badgeTo} px-4 py-2 ${state.currentTeam === 1 ? "ring-2 ring-amber-400/60" : "opacity-60"}`}>
           <span className="text-sm font-bold">Team {getTeamName(1)}</span>
           <span className="text-xl font-black">{remainingByTeam(1)}</span>
         </div>
