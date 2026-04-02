@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-const EMOJI_LIST = ["✨", "⭐", "🌟", "🎉"];
+const EMOJI_LIST = [
+  "🎉", "🎊", "✨", "⭐", "🌟", "💫", "🥳", "🏆", "👏", "🙌",
+  "🦊", "🦉", "🐱", "🐶", "🐼", "🐰", "🦝", "🐻",
+  "💜", "💚", "🎯", "🎪", "🎭", "🎨",
+];
 
 type Particle = {
   id: number;
@@ -11,6 +15,7 @@ type Particle = {
   delay: number;
   duration: number;
   size: number;
+  wobble: number;
 };
 
 export default function Confetti({ active }: { active: boolean }) {
@@ -21,18 +26,31 @@ export default function Confetti({ active }: { active: boolean }) {
       setParticles([]);
       return;
     }
-    const newParticles: Particle[] = Array.from({ length: 15 }, (_, i) => ({
+
+    // Two bursts — one immediate, one delayed
+    const burst1: Particle[] = Array.from({ length: 30 }, (_, i) => ({
       id: i,
       emoji: EMOJI_LIST[Math.floor(Math.random() * EMOJI_LIST.length)],
-      left: 10 + Math.random() * 80,
-      delay: Math.random() * 1.5,
-      duration: 2.5 + Math.random() * 2,
-      size: 0.8 + Math.random() * 1,
+      left: Math.random() * 100,
+      delay: Math.random() * 1,
+      duration: 2 + Math.random() * 3,
+      size: 1 + Math.random() * 1.5,
+      wobble: -30 + Math.random() * 60,
     }));
-    setParticles(newParticles);
 
-    // Clear after animation completes
-    const timer = setTimeout(() => setParticles([]), 5000);
+    const burst2: Particle[] = Array.from({ length: 20 }, (_, i) => ({
+      id: i + 30,
+      emoji: EMOJI_LIST[Math.floor(Math.random() * EMOJI_LIST.length)],
+      left: Math.random() * 100,
+      delay: 1.5 + Math.random() * 1,
+      duration: 2.5 + Math.random() * 2.5,
+      size: 0.8 + Math.random() * 1.2,
+      wobble: -40 + Math.random() * 80,
+    }));
+
+    setParticles([...burst1, ...burst2]);
+
+    const timer = setTimeout(() => setParticles([]), 7000);
     return () => clearTimeout(timer);
   }, [active]);
 
@@ -49,6 +67,7 @@ export default function Confetti({ active }: { active: boolean }) {
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
             fontSize: `${p.size}rem`,
+            ["--wobble" as string]: `${p.wobble}px`,
           }}
         >
           {p.emoji}
