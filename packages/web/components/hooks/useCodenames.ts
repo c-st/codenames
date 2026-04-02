@@ -14,8 +14,8 @@ import { useEffect, useRef, useState } from "react";
 const useCodenames = (skip: boolean = false) => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [gameWon, setGameWon] = useState(false);
-  const prevResultRef = useRef<GameResult | undefined>(undefined);
-  const isFirstMessageRef = useRef(true);
+  // "unset" = no message received yet, null = message received with no result, GameResult = message received with result
+  const prevResultRef = useRef<GameResult | null | "unset">("unset");
   const [players, setPlayers] = useState<Player[]>([]);
   const [board, setBoard] = useState<WordCard[]>();
   const [turn, setTurn] = useState<Turn>();
@@ -81,19 +81,20 @@ const useCodenames = (skip: boolean = false) => {
     setRemainingWordsByTeam(remainingWordsByTeam);
     setGameResult(gameResult);
 
-    // Detect fresh win from server update (skip the first message — that's reconnect state)
-    if (isFirstMessageRef.current) {
-      isFirstMessageRef.current = false;
-    } else if (
+    // Confetti: only when transitioning from "no winner" to "winner"
+    // "unset" means we haven't received any message yet (page load) — never triggers
+    // null means last message had no gameResult (game in progress) — can trigger
+    const prev = prevResultRef.current;
+    if (
       gameResult?.winningTeam !== undefined &&
-      prevResultRef.current?.winningTeam === undefined
+      prev !== "unset" &&
+      (prev === null || prev?.winningTeam === undefined)
     ) {
       setGameWon(true);
-    }
-    if (!gameResult) {
+    } else if (!gameResult) {
       setGameWon(false);
     }
-    prevResultRef.current = gameResult;
+    prevResultRef.current = gameResult ?? null;
   }, [incomingMessage, onPlayerIdReceived]);
 
   const sendCommand = (command: Command) =>

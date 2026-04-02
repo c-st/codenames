@@ -241,6 +241,11 @@ export class Codenames {
   public getGameResult():
     | { winningTeam?: number; losingTeam?: number }
     | undefined {
+    // No result if the game hasn't started or board is empty
+    if (this.gameState.board.length === 0) {
+      return undefined;
+    }
+
     const isAssassinRevealed = this.gameState.board.some(
       (card) => card.isAssassin && card.revealed !== undefined
     );
