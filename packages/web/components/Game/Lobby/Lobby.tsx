@@ -185,21 +185,32 @@ export default function Lobby({
         <div className="flex flex-col gap-2">
           <span className="text-xs font-bold text-purple-400/70">Number of Teams</span>
           <div className="flex gap-2">
-            {TEAM_COUNTS.map((count) => (
-              <motion.button
-                key={count}
-                className={`rounded-xl px-5 py-2 text-sm font-bold transition-colors ${
-                  teamCount === count
-                    ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
-                    : "bg-elevated !text-white hover:bg-purple-800/50"
-                }`}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setTeamCount(count)}
-              >
-                {count} teams
-              </motion.button>
-            ))}
+            {TEAM_COUNTS.map((count) => {
+              const needsPlayers = count * 2;
+              const hasEnough = players.length >= needsPlayers;
+              return (
+                <motion.button
+                  key={count}
+                  className={`rounded-xl px-5 py-2 text-sm font-bold transition-colors ${
+                    teamCount === count
+                      ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
+                      : hasEnough
+                        ? "bg-elevated !text-white hover:bg-purple-800/50"
+                        : "cursor-not-allowed bg-elevated !text-purple-600 opacity-50"
+                  }`}
+                  whileHover={hasEnough ? { scale: 1.03 } : {}}
+                  whileTap={hasEnough ? { scale: 0.97 } : {}}
+                  onClick={() => hasEnough && setTeamCount(count)}
+                >
+                  {count} teams
+                  {!hasEnough && (
+                    <span className="ml-1 text-[0.6rem] text-purple-500">
+                      ({needsPlayers}+ players)
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       </motion.div>
