@@ -168,9 +168,11 @@ export default function Home() {
           gameCanBeStarted={gameCanBeStarted}
           currentPlayer={currentPlayer}
           turn={turn}
+          players={players}
           endGame={endGame}
           startGame={startGame}
           endTurn={endTurn}
+          promoteToSpymaster={promoteToSpymaster}
         />
       </footer>
       <Confetti active={!!gameResult?.winningTeam} />
