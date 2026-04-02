@@ -35,16 +35,20 @@ export default function NameInput({
         }}
       />
       {onRandomize && (
-        <motion.button
-          className="rounded-xl bg-elevated px-3 py-3 text-lg md:py-4"
-          whileHover={{ scale: 1.1, rotate: 180 }}
-          whileTap={{ scale: 0.9, rotate: 360 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+        <button
+          className="rounded-xl bg-elevated px-3 py-3 text-lg hover:bg-purple-800/50 md:py-4"
           onClick={onRandomize}
           title="Random name"
         >
-          🎲
-        </motion.button>
+          <motion.span
+            className="inline-block"
+            whileHover={{ rotate: 180, scale: 1.2 }}
+            whileTap={{ rotate: 360, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+          >
+            🎲
+          </motion.span>
+        </button>
       )}
     </div>
   );
