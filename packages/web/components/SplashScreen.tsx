@@ -67,13 +67,13 @@ export default function SplashScreen({
           A word guessing game for clever animals
         </motion.p>
         <motion.div
-          className="flex justify-center gap-4"
+          className="flex flex-wrap justify-center gap-3 px-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.9 }}
         >
           <motion.button
-            className="rounded-2xl bg-gradient-to-br from-primary to-accent px-12 py-4 text-xl font-bold text-white shadow-lg shadow-primary/40"
+            className="rounded-2xl bg-gradient-to-br from-primary to-accent px-8 py-3 text-lg font-bold text-white shadow-lg shadow-primary/40 md:px-12 md:py-4 md:text-xl"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onPlay}
@@ -82,7 +82,7 @@ export default function SplashScreen({
             Play
           </motion.button>
           <motion.button
-            className="rounded-2xl border-2 border-purple-700 bg-elevated px-8 py-4 text-xl font-bold text-accent"
+            className="rounded-2xl border-2 border-purple-700 bg-elevated px-6 py-3 text-lg font-bold text-accent md:px-8 md:py-4 md:text-xl"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onPractice}
@@ -91,7 +91,7 @@ export default function SplashScreen({
             Practice solo
           </motion.button>
           <motion.button
-            className="rounded-2xl border-2 border-purple-700 bg-elevated px-8 py-4 text-xl font-bold text-accent"
+            className="rounded-2xl border-2 border-purple-700 bg-elevated px-6 py-3 text-lg font-bold text-accent md:px-8 md:py-4 md:text-xl"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onLearnToPlay}
