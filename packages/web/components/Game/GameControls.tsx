@@ -47,12 +47,12 @@ export default function GameControls({
             <Button title="End turn" onClick={endTurn} />
           </MotionWrap>
         )}
-        {!gameResult && (
+        {!gameResult && gameIsRunning && (
           <MotionWrap key="end-game">
             <Button title="End game" type="destructive" onClick={endGame} />
           </MotionWrap>
         )}
-        {!gameCanBeStarted && (
+        {!gameCanBeStarted && gameIsRunning && (
           <motion.div
             key="waiting"
             className="flex flex-col items-start rounded-2xl border border-purple-700/30 bg-surface p-5 shadow-md"
