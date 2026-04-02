@@ -63,7 +63,7 @@ export default function Tutorial({ onComplete }: { onComplete: () => void }) {
               onTapCard={handleTapCard}
             />
 
-            <div className="flex items-center gap-3">
+            <div className="flex cursor-default select-none items-center gap-3">
               <div className="text-3xl">{tutorialCharacters.player.emoji}</div>
               <span className="text-xs font-semibold text-purple-400">You</span>
               <div className="text-3xl">{tutorialCharacters.teammate.emoji}</div>

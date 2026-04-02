@@ -36,7 +36,7 @@ export default function SplashScreen({
           {emojis.map((emoji, i) => (
             <motion.span
               key={emoji}
-              className="text-5xl"
+              className="cursor-default select-none text-5xl"
               initial={{ opacity: 0, y: -30, scale: 0 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{

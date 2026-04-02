@@ -43,7 +43,7 @@ export default function Confetti({ active }: { active: boolean }) {
       {particles.map((p) => (
         <div
           key={p.id}
-          className="absolute animate-confetti"
+          className="absolute animate-confetti select-none"
           style={{
             left: `${p.left}%`,
             animationDelay: `${p.delay}s`,

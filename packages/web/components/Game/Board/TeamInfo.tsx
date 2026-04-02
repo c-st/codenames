@@ -45,7 +45,7 @@ export default function TeamInfo({
           >
             <motion.span
               key={remaining}
-              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} text-xl font-black !text-white`}
+              className={`flex h-10 w-10 cursor-default select-none items-center justify-center rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} text-xl font-black !text-white`}
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
@@ -55,7 +55,7 @@ export default function TeamInfo({
             <AnimatePresence>
               {isActive && !isGameOver && (
                 <motion.span
-                  className="text-[0.6rem] font-bold text-amber-400"
+                  className="select-none text-[0.6rem] font-bold text-amber-400"
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}

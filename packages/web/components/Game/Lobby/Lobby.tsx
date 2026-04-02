@@ -83,7 +83,7 @@ export default function Lobby({
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         <motion.span
-          className="text-4xl"
+          className="cursor-default select-none text-4xl"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.1 }}

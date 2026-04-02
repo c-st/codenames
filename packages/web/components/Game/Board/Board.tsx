@@ -281,7 +281,7 @@ function Word({
   return (
     <motion.div
       key={wordCard.word}
-      className={`flex h-14 cursor-pointer flex-col items-center justify-center rounded-[14px] p-2 md:h-24 md:p-4 lg:p-8 ${bgColor}`}
+      className={`flex h-14 flex-col items-center justify-center rounded-[14px] p-2 md:h-24 md:p-4 lg:p-8 ${wordCard.revealed || isGameOver ? "cursor-default" : "cursor-pointer"} ${bgColor}`}
       onClick={() => onRevealWord(wordCard.word)}
       whileHover={{ scale: 1.08, y: -3 }}
       whileTap={{ scale: 0.9 }}

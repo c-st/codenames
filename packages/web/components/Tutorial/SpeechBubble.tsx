@@ -10,7 +10,7 @@ export default function SpeechBubble({
   return (
     <div className="flex flex-col items-center gap-2">
       <motion.div
-        className="text-5xl"
+        className="cursor-default select-none text-5xl"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 15 }}

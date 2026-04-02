@@ -38,7 +38,7 @@ export default function TutorialBoard({
         return (
           <motion.div
             key={card.word}
-            className={`flex cursor-pointer items-center justify-center rounded-[14px] p-5 font-bold ${bg} ${text} ${isHighlighted && !isRevealed ? "ring-2 ring-accent ring-offset-2 ring-offset-base" : ""}`}
+            className={`flex items-center justify-center rounded-[14px] p-5 font-bold select-none ${isRevealed ? "cursor-default" : "cursor-pointer"} ${bg} ${text} ${isHighlighted && !isRevealed ? "ring-2 ring-accent ring-offset-2 ring-offset-base" : ""}`}
             whileHover={!isRevealed ? { scale: 1.08, y: -3 } : {}}
             whileTap={!isRevealed ? { scale: 0.9 } : {}}
             onClick={() => !isRevealed && onTapCard(card.word)}
