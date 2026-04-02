@@ -104,7 +104,7 @@ export default function Lobby({
       <SectionHeader label="TEAMS" delay={0.15} />
 
       <LayoutGroup>
-        <div className="flex w-full justify-center gap-6">
+        <div className="flex min-h-48 w-full justify-center gap-6">
           {Object.entries(teams).map(([teamId, teamPlayers], i) => {
             const color = getTeamColor(parseInt(teamId));
             return (
