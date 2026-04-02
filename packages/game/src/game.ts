@@ -155,6 +155,7 @@ export class Codenames {
     this.gameState.turn = {
       ...this.gameState.turn,
       hint,
+      guessesRemaining: hint.count > 0 ? hint.count + 1 : undefined,
     };
     this.gameState.hintHistory.push({
       ...hint,
@@ -198,6 +199,15 @@ export class Codenames {
     const isWrongGuess = wordCard.team !== this.gameState.turn?.team;
     if (isWrongGuess) {
       this.advanceTurn();
+      return this.gameState;
+    }
+
+    // Decrement guesses remaining on correct guess
+    if (this.gameState.turn?.guessesRemaining !== undefined) {
+      this.gameState.turn.guessesRemaining--;
+      if (this.gameState.turn.guessesRemaining <= 0) {
+        this.advanceTurn();
+      }
     }
 
     return this.gameState;

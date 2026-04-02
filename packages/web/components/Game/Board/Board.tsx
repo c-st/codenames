@@ -146,15 +146,22 @@ function Hint({
     <div>
       <AnimatePresence mode="wait">
         {turn.hint ? (
-          <motion.p
+          <motion.div
             key={turn.hint.hint}
-            className="font-mono text-2xl font-bold"
+            className="flex items-baseline gap-2"
             initial={{ opacity: 0, scale: 0.8, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            {turn.hint.hint} ({turn.hint.count})
-          </motion.p>
+            <span className="font-mono text-2xl font-bold">
+              {turn.hint.hint} ({turn.hint.count})
+            </span>
+            {turn.guessesRemaining !== undefined && (
+              <span className="text-sm text-purple-400">
+                {turn.guessesRemaining} guess{turn.guessesRemaining !== 1 ? "es" : ""} left
+              </span>
+            )}
+          </motion.div>
         ) : (
           isCurrentlySpymaster && (
             <motion.div

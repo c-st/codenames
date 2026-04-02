@@ -646,5 +646,66 @@ describe("game state updates", () => {
       // Players should still be present
       expect(state.players).toHaveLength(4);
     });
+
+    it("sets guessesRemaining when hint count > 0", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          turn: { team: 0, until: new Date(), hint: undefined },
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const state = game.giveHint({ hint: "fruit", count: 2 });
+
+      expect(state.turn?.guessesRemaining).toBe(3); // count + 1
+    });
+
+    it("does not set guessesRemaining when hint count is 0", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          turn: { team: 0, until: new Date(), hint: undefined },
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      const state = game.giveHint({ hint: "fruit", count: 0 });
+
+      expect(state.turn?.guessesRemaining).toBeUndefined();
+    });
+
+    it("auto-advances turn when guesses run out on correct guesses", () => {
+      const game = new Codenames(
+        buildExampleGameState({
+          board: [
+            { word: "apple", team: 0 },
+            { word: "cherry", team: 0 },
+            { word: "melon", team: 0 },
+            { word: "banana", team: 1 },
+            { word: "grape", team: 1 },
+            { word: "car" },
+            { word: "bomb", isAssassin: true },
+          ],
+          turn: {
+            team: 0,
+            until: new Date(),
+            hint: { hint: "fruit", count: 1 },
+            guessesRemaining: 2,
+          },
+          hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
+        }),
+        classicWordList,
+        onScheduleTurnCallback
+      );
+
+      // First correct guess: guessesRemaining 2 -> 1
+      game.revealWord("apple");
+      expect(game.getGameState().turn?.team).toBe(0); // still team 0
+
+      // Second correct guess: guessesRemaining 1 -> 0, auto-advance
+      game.revealWord("cherry");
+      expect(game.getGameState().turn?.team).toBe(1); // switched to team 1
+    });
   });
 });

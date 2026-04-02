@@ -28,6 +28,7 @@ const turnSchema = z.object({
   team: z.number(),
   until: z.coerce.date(),
   hint: hintSchema.optional(),
+  guessesRemaining: z.number().optional(),
 });
 
 const hintHistorySchema = z.array(
