@@ -82,20 +82,22 @@ export default function Lobby({
         <div className="h-px flex-1 bg-purple-700/30"></div>
       </motion.div>
 
-      {/* Compact team pills */}
-      <div className="flex w-full flex-col gap-4">
+      {/* Teams side by side */}
+      <div className="flex w-full justify-center gap-6">
         {Object.entries(teams).map(([teamId, teamPlayers], i) => {
           const color = getTeamColor(parseInt(teamId));
           return (
             <motion.div
               key={teamId}
-              className="flex flex-col gap-2"
+              className="flex flex-1 flex-col items-center gap-3"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + i * 0.1 }}
             >
-              <span className="text-xs font-bold text-purple-400/70">Team {teamId}</span>
-              <div className="flex flex-wrap gap-2">
+              <span className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}>
+                Team {teamId}
+              </span>
+              <div className="flex flex-col items-center gap-2">
                 {teamPlayers
                   .sort((a) => (a.role === "spymaster" ? -1 : 1))
                   .map((player) => {
@@ -104,7 +106,7 @@ export default function Lobby({
                     return (
                       <motion.button
                         key={player.id}
-                        className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold !text-white transition-colors ${
+                        className={`flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold !text-white transition-colors ${
                           isSpy
                             ? `bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo}`
                             : "bg-elevated hover:bg-purple-800/50"
@@ -114,17 +116,17 @@ export default function Lobby({
                         onClick={() => !isSpy && promoteToSpymaster(player.id)}
                       >
                         <span
-                          className={`inline-block h-2 w-2 rounded-full ${isSpy ? "bg-amber-400" : "bg-white/30"}`}
+                          className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${isSpy ? "bg-amber-400" : "bg-white/30"}`}
                         />
-                        <span>
+                        <span className="flex-1 truncate text-left">
                           {player.name}
                           {isYou && " (you)"}
                         </span>
                         {isSpy && (
-                          <span className="text-[0.65rem] text-amber-300">{getSpymasterTitle()}</span>
+                          <span className="flex-shrink-0 text-[0.65rem] text-amber-300">{getSpymasterTitle()}</span>
                         )}
                         {!isSpy && (
-                          <span className="text-[0.65rem] text-purple-400/50">tap to promote</span>
+                          <span className="flex-shrink-0 text-[0.65rem] text-purple-400/50">promote</span>
                         )}
                       </motion.button>
                     );

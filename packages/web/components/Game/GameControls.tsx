@@ -68,7 +68,7 @@ export default function GameControls({
             </p>
           </motion.div>
         )}
-        {gameResult && (
+        {gameResult && gameIsRunning && (
           <motion.div
             key="role-swap"
             className="flex flex-col items-center gap-3 rounded-2xl border border-purple-700/30 bg-surface p-4 shadow-md"
