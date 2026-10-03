@@ -1,4 +1,5 @@
 import { CodenamesGame } from "./gameServer";
+import { publicPlayerId } from "./identity";
 import type { GameState, GameStateForClient } from "schema";
 
 vi.mock("cloudflare:workers", () => ({
@@ -80,7 +81,14 @@ class FakeContext {
   }
 }
 
+// id(n) is the private reconnect token a client holds; pid(n) is the public id everyone sees.
 const id = (number: number) => `player_${String(number).padStart(16, "0")}`;
+const publicIds = new Map<string, string>();
+const pid = (number: number) => publicIds.get(id(number))!;
+beforeAll(async () => {
+  for (let number = 1; number <= 8; number++)
+    publicIds.set(id(number), await publicPlayerId(id(number)));
+});
 const command = (game: CodenamesGame, socket: FakeSocket, value: object) =>
   game.webSocketMessage(socket as unknown as WebSocket, JSON.stringify(value));
 const create = async (context = new FakeContext()) => {
@@ -98,7 +106,7 @@ const connect = async (
   extra = "",
 ) => {
   await game.fetch(
-    new Request(`https://game.test/room?playerId=${playerId}${extra}`),
+    new Request(`https://game.test/room?token=${playerId}${extra}`),
   );
   return context.sockets.at(-1)!;
 };
@@ -106,10 +114,10 @@ const storedState = (context: FakeContext): GameState =>
   JSON.parse(context.storage.values.get("gameState") as string);
 const playingState = (): GameState => ({
   players: [
-    { id: id(1), name: "Spy A", team: 0, role: "spymaster" },
-    { id: id(2), name: "Agent A", team: 0, role: "operative" },
-    { id: id(3), name: "Spy B", team: 1, role: "spymaster" },
-    { id: id(4), name: "Agent B", team: 1, role: "operative" },
+    { id: pid(1), name: "Spy A", team: 0, role: "spymaster" },
+    { id: pid(2), name: "Agent A", team: 0, role: "operative" },
+    { id: pid(3), name: "Spy B", team: 1, role: "spymaster" },
+    { id: pid(4), name: "Agent B", team: 1, role: "operative" },
   ],
   board: [
     { word: "apple", team: 0 },
@@ -189,7 +197,7 @@ describe("Durable Object room protocol", () => {
     for (let index = 0; index < 8; index++) {
       expect(
         storedState(context).players.find(
-          (player) => player.id === id(index + 1),
+          (player) => player.id === pid(index + 1),
         ),
       ).toMatchObject({ name: `Updated ${index + 1}`, animal: "🦊" });
     }
@@ -255,7 +263,7 @@ describe("Durable Object room protocol", () => {
     );
     expect(second.latest().players).toHaveLength(1);
     expect(second.latest().players[0]).toMatchObject({
-      id: id(1),
+      id: pid(1),
       name: "Captain Alice",
       animal: "🐼",
     });
@@ -293,7 +301,7 @@ describe("Durable Object room protocol", () => {
     await game.alarm();
     expect(again.latest().players).toHaveLength(1);
     expect(again.latest().players[0]).toMatchObject({
-      id: id(1),
+      id: pid(1),
       team: 0,
       role: "spymaster",
     });
@@ -350,6 +358,32 @@ describe("Durable Object room protocol", () => {
     expect(
       storedState(context).board.every((card) => words.includes(card.word)),
     ).toBe(true);
+  });
+
+  it("does not let a client take over a player by presenting the public id broadcast to everyone", async () => {
+    const context = new FakeContext();
+    await context.storage.put({ gameState: JSON.stringify(playingState()) });
+    const { game } = await create(context);
+    const spy = await connect(game, context, id(1));
+    const leakedPublicId = spy
+      .latest()
+      .players.find((player) => player.role === "spymaster")!.id;
+    const intruder = await connect(game, context, leakedPublicId);
+    expect(intruder.latest().playerId).not.toBe(pid(1));
+    expect(
+      intruder
+        .latest()
+        .players.find((player) => player.id === intruder.latest().playerId)
+        ?.role,
+    ).toBe("operative");
+    expect(
+      intruder
+        .latest()
+        .board.some((card) => !card.revealed && card.team !== undefined),
+    ).toBe(false);
+    expect(spy.latest().board.some((card) => card.team !== undefined)).toBe(
+      true,
+    );
   });
 
   it("rejects malformed commands without changing storage", async () => {
@@ -480,7 +514,7 @@ describe("Durable Object room protocol", () => {
     const spy = await connect(game, context, id(1));
     const agent = await connect(game, context, id(2));
     const before = context.storage.values.get("gameState");
-    await command(game, agent, { type: "promoteToSpymaster", playerId: id(2) });
+    await command(game, agent, { type: "promoteToSpymaster", playerId: pid(2) });
     expect(context.storage.values.get("gameState")).toBe(before);
     expect(JSON.parse(agent.messages.at(-1)!)).toMatchObject({
       type: "commandRejected",
@@ -494,12 +528,12 @@ describe("Durable Object room protocol", () => {
         ),
     ).toBe(true);
     await command(game, agent, { type: "revealWord", word: "bomb" });
-    await command(game, agent, { type: "promoteToSpymaster", playerId: id(2) });
+    await command(game, agent, { type: "promoteToSpymaster", playerId: pid(2) });
     expect(
-      storedState(context).players.find((player) => player.id === id(2))?.role,
+      storedState(context).players.find((player) => player.id === pid(2))?.role,
     ).toBe("spymaster");
     expect(
-      storedState(context).players.find((player) => player.id === id(1))?.role,
+      storedState(context).players.find((player) => player.id === pid(1))?.role,
     ).toBe("operative");
     expect(spy.latest().players).toEqual(agent.latest().players);
     expect(agent.latest().gameResult).toMatchObject({ losingTeam: 0 });

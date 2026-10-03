@@ -10,6 +10,7 @@ import {
   animalSchema,
 } from "schema";
 import { Env } from "./worker";
+import { isReconnectToken, publicPlayerId } from "./identity";
 import {
   Codenames,
   defaultParameters,
@@ -123,11 +124,11 @@ export class CodenamesGame extends DurableObject {
 
   private async handleFetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const candidateId = url.searchParams.get("playerId");
-    const requestedPlayerId =
-      candidateId && /^[a-zA-Z0-9_-]{21,64}$/.test(candidateId)
-        ? candidateId
-        : null;
+    // "playerId" is the parameter name used by clients from before reconnect tokens.
+    const candidateToken =
+      url.searchParams.get("token") ?? url.searchParams.get("playerId");
+    const token = isReconnectToken(candidateToken) ? candidateToken : nanoid();
+    const playerId = await publicPlayerId(token);
 
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
@@ -139,16 +140,8 @@ export class CodenamesGame extends DurableObject {
     // Accept WebSocket connection
     this.ctx.acceptWebSocket(server);
 
-    // Determine playerId: reconnect as existing player or create new one
-    let playerId: string;
-    const canReconnect =
-      requestedPlayerId &&
-      existingPlayers.some((p) => p.id === requestedPlayerId);
-
-    if (canReconnect) {
-      playerId = requestedPlayerId;
-    } else {
-      playerId = requestedPlayerId ?? nanoid();
+    // Reconnect as the existing player or join as a new one
+    if (!existingPlayers.some((p) => p.id === playerId)) {
       const name =
         url.searchParams.get("name")?.trim().slice(0, 50) ||
         randomAnimalEmoji().split(" ").slice(1).join(" ");

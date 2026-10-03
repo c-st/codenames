@@ -1,7 +1,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useWebSocket from "./useWebsocket";
-import { readProfile, roomPlayerId } from "./playerProfile";
+import { readProfile, roomReconnectToken } from "./playerProfile";
 
 const useGameSession = (websocketEndpointUrl: string, skip: boolean) => {
   const router = useRouter();
@@ -17,7 +17,7 @@ const useGameSession = (websocketEndpointUrl: string, skip: boolean) => {
     const url = new URL(
       `${websocketEndpointUrl}/${encodeURIComponent(sessionName)}`,
     );
-    url.searchParams.set("playerId", roomPlayerId(sessionName));
+    url.searchParams.set("token", roomReconnectToken(sessionName));
     return url.toString();
   }, [sessionName, websocketEndpointUrl, skip]);
 
