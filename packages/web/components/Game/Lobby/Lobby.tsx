@@ -38,6 +38,7 @@ export default function Lobby({
   shuffling = false,
   roomId,
   onBackToHome,
+  openProfileOnJoin = false,
 }: {
   players: Player[];
   currentPlayerId: string;
@@ -65,8 +66,10 @@ export default function Lobby({
   shuffling?: boolean;
   roomId?: string;
   onBackToHome?: () => void;
+  /** First visit on this browser: greet the player with the profile editor. */
+  openProfileOnJoin?: boolean;
 }) {
-  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(openProfileOnJoin);
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
   if (!currentPlayer) {
     return null;

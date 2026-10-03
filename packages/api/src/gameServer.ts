@@ -8,6 +8,8 @@ import {
   WordCard,
   SharedEffect,
   animalSchema,
+  animalNames,
+  Animal,
   CardMark,
   sessionHistorySchema,
   SessionHistory,
@@ -30,7 +32,7 @@ import {
 } from "game";
 import {
   classic,
-  randomAnimalEmoji,
+  randomNameFor,
   wordPacks as builtInWordPacks,
 } from "words";
 
@@ -40,6 +42,8 @@ const ROOM_SETTINGS = "roomSettings";
 const DISCONNECTED = "disconnected";
 const MARKS = "marks";
 const REACTION_COOLDOWN_MS = 400;
+const randomAnimal = (): Animal =>
+  animalSchema.options[Math.floor(Math.random() * animalSchema.options.length)];
 const SHUFFLE_AT = "shuffleAt";
 /** The shuffle ceremony: everyone watches the same countdown, then teams change at once. */
 export const SHUFFLE_COUNTDOWN_MS = 3_000;
@@ -268,17 +272,17 @@ export class CodenamesGame extends DurableObject {
 
     // Reconnect as the existing player or join as a new one
     if (!existingPlayers.some((p) => p.id === playerId)) {
+      // A browser without a saved profile gets a random animal and a name to match.
+      const saved = animalSchema.safeParse(url.searchParams.get("animal"));
+      const animal = saved.success ? saved.data : randomAnimal();
       const name =
         url.searchParams.get("name")?.trim().slice(0, 50) ||
-        randomAnimalEmoji().split(" ").slice(1).join(" ");
+        randomNameFor(animalNames[animal]);
       game.joinGame({ id: playerId, name });
-      const animal = animalSchema.safeParse(url.searchParams.get("animal"));
-      if (animal.success) {
-        const player = game
-          .getGameState()
-          .players.find((p) => p.id === playerId)!;
-        game.addOrUpdatePlayer({ ...player, animal: animal.data });
-      }
+      const player = game
+        .getGameState()
+        .players.find((p) => p.id === playerId)!;
+      game.addOrUpdatePlayer({ ...player, animal });
     }
     delete this.disconnected[playerId];
 
@@ -947,10 +951,11 @@ export class CodenamesGame extends DurableObject {
         break;
       }
       case "randomizeName": {
+        // A fresh name for the animal the player already chose.
         game.addOrUpdatePlayer({
           ...player,
           id: playerId,
-          name: randomAnimalEmoji().split(" ").slice(1).join(" "),
+          name: randomNameFor(animalNames[player.animal ?? "🦊"]),
         });
         await this.persistAndBroadcastGameState(game);
         break;

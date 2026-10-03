@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { motion } from "motion/react";
-import { Animal, animalSchema, Player } from "schema";
-import { animalNames } from "@/components/ui/animals";
+import { Animal, animalNames, animalSchema, Player } from "schema";
 
 /**
  * The animals as a grid of glowing tiles. Choosing one applies it straight away.

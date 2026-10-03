@@ -1,4 +1,9 @@
-import { randomAnimal, randomAnimalAlliteration, randomAnimalEmoji } from "./random-words";
+import {
+  randomAnimal,
+  randomAnimalAlliteration,
+  randomAnimalEmoji,
+  randomNameFor,
+} from "./random-words";
 import { getRandomWords, getRandomIndices } from "./random-words";
 
 import adjectives from "../resources/adjectives.json";
@@ -97,5 +102,16 @@ describe("randomAnimalEmoji", () => {
     expect(result.length).toBeGreaterThan(0);
     // Format is "emoji name"
     expect(result).toContain(" ");
+  });
+});
+
+describe("randomNameFor", () => {
+  it("names the given animal with a capitalised, preferably alliterative adjective", () => {
+    for (const animal of ["Fox", "Bee", "Owl", "Penguin", "Xenops"]) {
+      const name = randomNameFor(animal);
+      expect(name).toMatch(new RegExp(`^[A-Z][a-z-]+ ${animal}$`));
+    }
+    // Every adjective starting with "b" is fair game for a bee.
+    expect(randomNameFor("Bee").charAt(0)).toBe("B");
   });
 });

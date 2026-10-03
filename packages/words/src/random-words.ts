@@ -29,6 +29,17 @@ export const randomAnimalAlliteration = (): string => {
   return `${randomMatchingAdjective}-${randomAnimal}`;
 };
 
+/**
+ * A playful name for the given animal, alliterative when an adjective allows
+ * ("Bouncy Bee"), so a player's name matches their avatar.
+ */
+export const randomNameFor = (animalName: string): string => {
+  const initial = animalName.charAt(0).toLowerCase();
+  const matching = adjectives.filter((word) => word.charAt(0) === initial);
+  const adjective = getRandomWord(matching.length ? matching : adjectives);
+  return `${adjective.charAt(0).toUpperCase()}${adjective.slice(1)} ${animalName}`;
+};
+
 export const randomAnimalEmoji = (): string => {
   const randomAnimal = getRandomWord(
     animalEmojis.map((entry) => `${entry.emoji} ${entry.name}`)

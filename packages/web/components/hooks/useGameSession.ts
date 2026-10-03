@@ -23,9 +23,10 @@ const useGameSession = (websocketEndpointUrl: string, skip: boolean) => {
 
   const resolveUrl = useCallback(() => {
     const url = new URL(wsUrl);
+    // Without a saved profile the server picks a random animal and a matching name.
     const profile = readProfile();
-    if (profile.name) url.searchParams.set("name", profile.name);
-    url.searchParams.set("animal", profile.animal);
+    if (profile?.name) url.searchParams.set("name", profile.name);
+    if (profile) url.searchParams.set("animal", profile.animal);
     return url.toString();
   }, [wsUrl]);
   const connection = useWebSocket(wsUrl, skip || !sessionName, resolveUrl);

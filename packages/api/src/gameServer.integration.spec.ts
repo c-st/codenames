@@ -1,6 +1,11 @@
 import { CodenamesGame, SHUFFLE_COUNTDOWN_MS } from "./gameServer";
 import { publicPlayerId } from "./identity";
-import { roomWordPacksSchema, sessionHistorySchema } from "schema";
+import {
+  animalNames,
+  animalSchema,
+  roomWordPacksSchema,
+  sessionHistorySchema,
+} from "schema";
 import type { GameState, GameStateForClient, SessionHistory } from "schema";
 
 vi.mock("cloudflare:workers", () => ({
@@ -367,6 +372,35 @@ describe("Durable Object room protocol", () => {
     expect(
       storedState(context).board.every((card) => words.includes(card.word)),
     ).toBe(true);
+  });
+
+  it("gives newcomers without a saved profile a random animal and a name that matches it", async () => {
+    const { game, context } = await create();
+    const seen = new Set<string>();
+    for (let i = 1; i <= 24; i++) {
+      const socket = await connect(game, context, id(i));
+      const me = socket
+        .latest()
+        .players.find((p) => p.id === socket.latest().playerId)!;
+      expect(animalSchema.options).toContain(me.animal);
+      expect(me.name).toMatch(new RegExp(` ${animalNames[me.animal!]}$`));
+      seen.add(me.animal!);
+    }
+    // Not everyone is a fox any more.
+    expect(seen.size).toBeGreaterThan(1);
+
+    // A saved animal is kept, and an unnamed player is named after it.
+    const owl = await connect(game, context, id(30), `&animal=${encodeURIComponent("🦉")}`);
+    const owlId = owl.latest().playerId;
+    const owlPlayer = owl.latest().players.find((p) => p.id === owlId)!;
+    expect(owlPlayer).toMatchObject({ animal: "🦉" });
+    expect(owlPlayer.name).toMatch(/ Owl$/);
+
+    // The dice re-rolls the name for the animal the player chose.
+    await command(game, owl, { type: "randomizeName" });
+    const rerolled = owl.latest().players.find((p) => p.id === owlId)!;
+    expect(rerolled.animal).toBe("🦉");
+    expect(rerolled.name).toMatch(/ Owl$/);
   });
 
   it("runs one shared shuffle countdown, ignores repeat presses, and reshuffles everyone at once", async () => {
@@ -1633,7 +1667,11 @@ describe("persistent session history", () => {
       const clueGiver = state.players.find(
         (player) => player.team === team && player.role === "spymaster",
       )!;
-      const spymaster = { id: clueGiver.id, name: clueGiver.name };
+      const spymaster = {
+        id: clueGiver.id,
+        name: clueGiver.name,
+        animal: clueGiver.animal,
+      };
       const card = state.board.find((card) =>
         outcome === "assassin"
           ? card.isAssassin

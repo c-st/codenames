@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import type { GameStateForClient } from "schema";
+import { animalNames, type GameStateForClient } from "schema";
 import { getTeamName } from "../components/Game/Board/getTeamColor";
 import {
   closeProfile,
@@ -28,6 +28,8 @@ const rosterNames = (state: GameStateForClient | undefined) =>
 
 async function openEditor(page: Page) {
   await page.bringToFront();
+  // Fresh browsers are greeted with the profile sheet first.
+  await closeProfile(page);
   await page.getByText("Edit room word packs", { exact: false }).click();
   await expect(
     page.getByLabel("Your words (up to 50 characters each)"),
@@ -65,6 +67,31 @@ test("profile survives reload, reconnect and a fresh browser session without dup
     const state = watchRoom(page);
     const url = roomUrl();
     await page.goto(url);
+    // A first visit greets the player with the profile editor and a matching identity.
+    await expect(
+      page.getByRole("dialog", { name: "Edit your profile" }),
+    ).toBeVisible();
+    await expect.poll(() => state()?.players[0]?.animal).toBeTruthy();
+    const assigned = state()!.players[0];
+    expect(assigned.name).toMatch(
+      new RegExp(` ${animalNames[assigned.animal!]}$`),
+    );
+    await expect(page.getByLabel("Your name", { exact: true })).toHaveValue(
+      assigned.name,
+    );
+    // A generated name follows the animal.
+    const other = assigned.animal === "🦉" ? "🐧" : "🦉";
+    await page
+      .getByRole("radio", { name: new RegExp(`^${animalNames[other]}`) })
+      .click();
+    await expect
+      .poll(() => state()?.players[0]?.name)
+      .toBe(
+        assigned.name.replace(
+          new RegExp(`${animalNames[assigned.animal!]}$`),
+          animalNames[other],
+        ),
+      );
     // The animal grid applies a pick instantly; arrow keys move like native radios.
     await openProfile(page);
     const animals = page.getByRole("radiogroup", { name: "Your animal" });
@@ -697,6 +724,7 @@ test("an empty room expires through real durable alarms and reopens with fresh s
     await observer.waitForTimeout(62_000);
     const state = watchRoom(observer);
     await observer.goto(url);
+    await closeProfile(observer);
     await expect.poll(() => state()?.wordPack).toBe("classic");
     await expect.poll(() => state()?.wordPacks?.length).toBe(10);
     await expect

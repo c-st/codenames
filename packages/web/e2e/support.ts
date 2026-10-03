@@ -86,6 +86,10 @@ export async function openProfile(page: Page) {
 }
 
 export async function closeProfile(page: Page) {
+  // The lobby and a first visit's profile sheet render together.
+  await expect(
+    page.getByRole("button", { name: /Change your name or animal/ }),
+  ).toBeVisible();
   const sheet = page.getByRole("dialog", { name: "Edit your profile" });
   if (await sheet.isVisible()) await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);

@@ -23,6 +23,7 @@ import ShuffleCeremony, {
   useShuffleCountdown,
 } from "@/components/Fun/ShuffleCeremony";
 import { getTeamColor } from "@/components/Game/Board/getTeamColor";
+import { isFirstVisit } from "@/components/hooks/playerProfile";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -30,6 +31,8 @@ export default function Home() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [wantsToPlay, setWantsToPlay] = useState(false);
+  // Read before joining a room, which saves the assigned profile.
+  const [firstVisit] = useState(isFirstVisit);
 
   // Skip connection until user clicks Play (or has a session URL)
   const skipConnection = !hasSession && !wantsToPlay;
@@ -180,6 +183,7 @@ export default function Home() {
             {turn === undefined ? (
               <fieldset disabled={!isConnected} className="w-full">
                 <Lobby
+                  openProfileOnJoin={firstVisit}
                   players={players}
                   currentPlayerId={currentPlayerId}
                   promoteToSpymaster={promoteToSpymaster}

@@ -2,9 +2,9 @@ import { animalSchema, Animal } from "schema";
 
 export type PlayerProfile = { name: string; animal: Animal };
 const PROFILE_KEY = "codenames:profile";
-export const DEFAULT_PROFILE: PlayerProfile = { name: "", animal: "🦊" };
 
-export function readProfile(): PlayerProfile {
+/** The saved profile, or undefined on a browser that never saved one. */
+export function readProfile(): PlayerProfile | undefined {
   try {
     const value = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? "null");
     if (
@@ -17,7 +17,18 @@ export function readProfile(): PlayerProfile {
   } catch {
     /* Browser storage may be unavailable. */
   }
-  return DEFAULT_PROFILE;
+  return undefined;
+}
+
+let firstVisit: boolean | undefined;
+/**
+ * Whether this browser had no saved profile when the page loaded. Remembered for the
+ * page's lifetime, because joining a room saves the server-assigned profile right away.
+ */
+export function isFirstVisit(): boolean {
+  if (typeof window === "undefined") return false;
+  firstVisit ??= readProfile() === undefined;
+  return firstVisit;
 }
 
 export function saveProfile(profile: PlayerProfile) {

@@ -21,6 +21,26 @@ export const animalSchema = z.enum([
 ]);
 export type Animal = z.infer<typeof animalSchema>;
 
+/** Spoken names for the avatar animals: labels, screen readers and generated player names. */
+export const animalNames: Record<Animal, string> = {
+  "🦊": "Fox",
+  "🐱": "Cat",
+  "🐶": "Dog",
+  "🐼": "Panda",
+  "🐰": "Bunny",
+  "🐻": "Bear",
+  "🦉": "Owl",
+  "🐧": "Penguin",
+  "🐨": "Koala",
+  "🐸": "Frog",
+  "🦁": "Lion",
+  "🐢": "Turtle",
+  "🐬": "Dolphin",
+  "🦝": "Raccoon",
+  "🐝": "Bee",
+  "🦋": "Butterfly",
+};
+
 export const reactionEmojiSchema = z.enum([
   "😂",
   "😱",

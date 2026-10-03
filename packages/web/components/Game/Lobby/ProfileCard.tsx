@@ -1,12 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Animal, Player } from "schema";
+import { Animal, animalNames, Player } from "schema";
 import AnimalAvatar from "@/components/ui/AnimalAvatar";
-import { animalNames } from "@/components/ui/animals";
+
 import Sparkles from "@/components/Fun/Sparkles";
 import { getTeamColor } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
 import AnimalPicker from "./AnimalPicker";
+
+/** A name built around the old animal ("Fluffy Fox") follows a new pick ("Fluffy Owl"). */
+export function renameForAnimal(name: string, from: Animal, to: Animal) {
+  const suffix = ` ${animalNames[from]}`;
+  return name.endsWith(suffix)
+    ? `${name.slice(0, -suffix.length)} ${animalNames[to]}`
+    : name;
+}
 
 /** The player's own identity: a big glowing avatar, their name and the animal picker. */
 export default function ProfileCard({
@@ -40,7 +48,7 @@ export default function ProfileCard({
     if (next === shownAnimal) return;
     picks.current += 1;
     setShownAnimal(next);
-    setProfile(player.name, next);
+    setProfile(renameForAnimal(player.name, shownAnimal, next), next);
   };
 
   const isSpy = player.role === "spymaster";
@@ -62,7 +70,12 @@ export default function ProfileCard({
               exit={{ scale: 0.6, opacity: 0 }}
               transition={{ type: "spring", stiffness: 420, damping: 14 }}
             >
-              <AnimalAvatar animal={shownAnimal} size="xl" glow crowned={isSpy} />
+              <AnimalAvatar
+                animal={shownAnimal}
+                size="xl"
+                glow
+                crowned={isSpy}
+              />
             </motion.span>
           </AnimatePresence>
           {picks.current > 0 && (
@@ -76,12 +89,13 @@ export default function ProfileCard({
           <span className="text-lg font-black !text-white">
             {isSpy ? `🕵️ ${getSpymasterTitle()}` : "🔍 Operative"}
           </span>
-          <span
-            className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-purple-300"
-          >
+          <span className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-purple-300">
             <span
               className="inline-block h-2 w-2 rounded-full"
-              style={{ background: teamColor.hex, boxShadow: `0 0 8px ${teamColor.hex}` }}
+              style={{
+                background: teamColor.hex,
+                boxShadow: `0 0 8px ${teamColor.hex}`,
+              }}
             />
             Your role
           </span>
@@ -156,7 +170,11 @@ export default function ProfileCard({
           >
             Your animal
           </span>
-          <AnimalPicker value={shownAnimal} onChange={chooseAnimal} others={others} />
+          <AnimalPicker
+            value={shownAnimal}
+            onChange={chooseAnimal}
+            others={others}
+          />
         </div>
         <p className="text-xs text-purple-400/80">
           Your name and animal are remembered on this browser.
