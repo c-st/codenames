@@ -8,6 +8,7 @@ import {
   WordCard,
   SharedEffect,
   animalSchema,
+  CardMark,
 } from "schema";
 import { Env } from "./worker";
 import { isReconnectToken, publicPlayerId } from "./identity";
@@ -28,6 +29,11 @@ const GAME_STATE = "gameState";
 const DISCONNECT_GRACE_MS = 60_000;
 const ROOM_SETTINGS = "roomSettings";
 const DISCONNECTED = "disconnected";
+const MARKS = "marks";
+const REACTION_COOLDOWN_MS = 400;
+
+type Cue = SharedEffect["type"] | Omit<SharedEffect, "id" | "playAt">;
+type StoredMark = CardMark & { turnUntil: number };
 
 export class CodenamesGame extends DurableObject {
   private disconnected: Record<string, number> = {};
@@ -36,6 +42,8 @@ export class CodenamesGame extends DurableObject {
   private customWords: string[] = [];
   // Cached between events; dropped after any failed command so storage stays the source of truth.
   private game: Codenames | undefined;
+  private marks: StoredMark[] = [];
+  private lastReactionAt = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -53,6 +61,7 @@ export class CodenamesGame extends DurableObject {
       this.disconnected =
         (await this.ctx.storage.get<Record<string, number>>(DISCONNECTED)) ??
         {};
+      this.marks = (await this.ctx.storage.get<StoredMark[]>(MARKS)) ?? [];
       const game = await this.getGameInstance();
       const connectedIds = new Set(
         this.ctx
@@ -186,6 +195,11 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
+    if (parsedCommand.type === "react") {
+      this.broadcastReaction(ws, parsedCommand.emoji);
+      return;
+    }
+
     // Catch expected rejections inside the concurrency block: an escaping error resets the object.
     await this.ctx.blockConcurrencyWhile(async () => {
       try {
@@ -231,7 +245,10 @@ export class CodenamesGame extends DurableObject {
       let effects: SharedEffect[] = [];
       if (turn && +turn.until <= now && !game.getGameResult()) {
         game.advanceTurn();
-        effects = this.effects("turnChange");
+        effects = this.effects({
+          type: "turnChange",
+          team: game.getGameState().turn!.team,
+        });
       }
       await this.persistAndBroadcastGameState(game, undefined, effects);
     });
@@ -269,13 +286,48 @@ export class CodenamesGame extends DurableObject {
     await this.webSocketClose(ws, 1011, "Connection error", false);
   }
 
-  private effects(...types: SharedEffect["type"][]): SharedEffect[] {
+  private effects(...cues: Cue[]): SharedEffect[] {
     const playAt = Date.now() + 300;
-    return types.map((type, index) => ({
+    return cues.map((cue, index) => ({
+      ...(typeof cue === "string" ? { type: cue } : cue),
       id: nanoid(),
-      type,
       playAt: playAt + index * 450,
     }));
+  }
+
+  /** Reactions are fire-and-forget: never stored, lightly rate-limited per player. */
+  private broadcastReaction(sender: WebSocket, emoji: string) {
+    const playerId = sender.deserializeAttachment()?.playerId;
+    if (!playerId) return;
+    const now = Date.now();
+    if (now - (this.lastReactionAt.get(playerId) ?? 0) < REACTION_COOLDOWN_MS)
+      return;
+    this.lastReactionAt.set(playerId, now);
+    this.sendToAll({ type: "reaction", id: nanoid(), playerId, emoji });
+  }
+
+  private sendToAll(event: object, exclude?: WebSocket) {
+    const message = JSON.stringify(event);
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === exclude || ws.readyState !== 1) continue;
+      try {
+        ws.send(message);
+      } catch {
+        /* Client already gone */
+      }
+    }
+  }
+
+  /** Marks only live for the turn they were made in and only on face-down cards. */
+  private currentMarks(game: Codenames): StoredMark[] {
+    const { turn, board, players } = game.getGameState();
+    if (!turn || game.getGameResult()) return [];
+    return this.marks.filter(
+      (mark) =>
+        mark.turnUntil === +turn.until &&
+        board.some((card) => card.word === mark.word && !card.revealed) &&
+        players.some((player) => player.id === mark.playerId),
+    );
   }
 
   private async scheduleAlarm(game: Codenames) {
@@ -295,7 +347,9 @@ export class CodenamesGame extends DurableObject {
     effects: SharedEffect[] = [],
   ): Promise<void> {
     const gameState = game.getGameState();
+    this.marks = this.currentMarks(game);
     await this.ctx.storage.put({
+      [MARKS]: this.marks,
       [GAME_STATE]: JSON.stringify(gameState),
       [ROOM_SETTINGS]: {
         wordPack: this.selectedWordPack,
@@ -345,6 +399,8 @@ export class CodenamesGame extends DurableObject {
           customWords: this.customWords,
           serverTime: Date.now(),
           effects,
+          marks: this.marks.map(({ word, playerId }) => ({ word, playerId })),
+          turnSeconds: defaultParameters.turnDurationSeconds,
         };
 
         const gameStateUpdatedEvent = {
@@ -432,7 +488,14 @@ export class CodenamesGame extends DurableObject {
             throw new GameError("Add at least 25 custom words");
           game.setWords(pack);
           game.startGame();
-          await this.persistAndBroadcastGameState(game);
+          await this.persistAndBroadcastGameState(
+            game,
+            undefined,
+            this.effects({
+              type: "gameStart",
+              team: game.getGameState().turn!.team,
+            }),
+          );
         }
         break;
       }
@@ -456,23 +519,29 @@ export class CodenamesGame extends DurableObject {
         if (player.role === "spymaster") {
           throw new GameError("Spymaster cannot reveal words");
         }
-        game.revealWord(command.word);
+        const guessingTeam = player.team;
+        game.revealWord(command.word, playerId);
         const card = game
           .getGameState()
           .board.find((c) => c.word === command.word)!;
         const result = game.getGameResult();
-        const cue = card.isAssassin
+        const type = card.isAssassin
           ? "assassinReveal"
-          : card.team === card.revealed?.byTeam
+          : card.team === guessingTeam
             ? "correctGuess"
             : "wrongGuess";
+        const cues: Cue[] = [{ type, team: guessingTeam, word: card.word }];
+        if (type === "correctGuess" && game.isCurrentClueComplete())
+          cues.push({ type: "perfectClue", team: guessingTeam });
+        if (result?.winningTeam !== undefined)
+          cues.push({ type: "gameWin", team: result.winningTeam });
+        const nextTeam = game.getGameState().turn?.team;
+        if (!result && nextTeam !== undefined && nextTeam !== guessingTeam)
+          cues.push({ type: "turnChange", team: nextTeam });
         await this.persistAndBroadcastGameState(
           game,
           undefined,
-          this.effects(
-            cue,
-            ...(result?.winningTeam !== undefined ? ["gameWin" as const] : []),
-          ),
+          this.effects(...cues),
         );
 
         break;
@@ -486,7 +555,10 @@ export class CodenamesGame extends DurableObject {
         await this.persistAndBroadcastGameState(
           game,
           undefined,
-          this.effects("turnChange"),
+          this.effects({
+            type: "turnChange",
+            team: game.getGameState().turn!.team,
+          }),
         );
         break;
       }
@@ -513,6 +585,44 @@ export class CodenamesGame extends DurableObject {
         await this.persistAndBroadcastGameState(game);
         break;
       }
+
+      case "markCard": {
+        const { turn, board } = game.getGameState();
+        if (!turn?.hint || game.getGameResult())
+          throw new GameError("Cards can only be marked while guessing");
+        if (player.team !== turn.team || player.role !== "operative")
+          throw new GameError("Only guessing operatives can mark cards");
+        if (!board.some((card) => card.word === command.word && !card.revealed))
+          throw new GameError("Card cannot be marked");
+        const marks = this.currentMarks(game);
+        const existing = marks.findIndex(
+          (mark) => mark.word === command.word && mark.playerId === playerId,
+        );
+        if (existing >= 0) marks.splice(existing, 1);
+        else
+          marks.push({ word: command.word, playerId, turnUntil: +turn.until });
+        this.marks = marks;
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+
+      case "typing": {
+        const { turn } = game.getGameState();
+        if (
+          player.role !== "spymaster" ||
+          player.team !== turn?.team ||
+          turn.hint
+        )
+          break;
+        this.sendToAll(
+          { type: "typing", playerId, typing: command.typing },
+          ws,
+        );
+        break;
+      }
+
+      case "react":
+        break;
 
       default:
         throw new GameError("Unknown command type. ¯\_(ツ)_/¯");

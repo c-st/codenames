@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { builtInWordPackIds } from "words";
-import { animalSchema, gameStateSchemaForClient } from "./game";
+import {
+  animalSchema,
+  gameStateSchemaForClient,
+  reactionEmojiSchema,
+} from "./game";
 
 export const wordPackSchema = z.enum([...builtInWordPackIds, "custom"]);
 export type WordPackId = z.infer<typeof wordPackSchema>;
@@ -72,6 +76,18 @@ export const commandSchema = z.discriminatedUnion("type", [
     type: z.literal("setTeamCount"),
     teamCount: z.number().int().min(2).max(4),
   }),
+  z.object({
+    type: z.literal("react"),
+    emoji: reactionEmojiSchema,
+  }),
+  z.object({
+    type: z.literal("markCard"),
+    word: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("typing"),
+    typing: z.boolean(),
+  }),
 ]);
 
 export const gameEventSchema = z.discriminatedUnion("type", [
@@ -82,6 +98,18 @@ export const gameEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("commandRejected"),
     reason: z.string(),
+  }),
+  // Ephemeral events: broadcast once and never stored.
+  z.object({
+    type: z.literal("reaction"),
+    id: z.string(),
+    playerId: z.string(),
+    emoji: reactionEmojiSchema,
+  }),
+  z.object({
+    type: z.literal("typing"),
+    playerId: z.string(),
+    typing: z.boolean(),
   }),
 ]);
 

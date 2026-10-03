@@ -246,7 +246,7 @@ export class Codenames {
     return this.gameState;
   }
 
-  public revealWord(word: string): GameState {
+  public revealWord(word: string, byPlayer?: string): GameState {
     const wordCard = this.gameState.board.find((card) => card.word === word);
     if (!wordCard) {
       throw new GameError("Word not found on board");
@@ -270,6 +270,7 @@ export class Codenames {
     wordCard.revealed = {
       byTeam: this.gameState.turn.team,
       inTurn: this.gameState.hintHistory.length,
+      ...(byPlayer ? { byPlayer } : {}),
     };
 
     this.updateCard(wordCard);
@@ -340,6 +341,19 @@ export class Codenames {
     }
 
     return { winningTeam, losingTeam };
+  }
+
+  /** True when the current clue's words were all found, with no wrong guess. */
+  public isCurrentClueComplete(): boolean {
+    const hint = this.gameState.hintHistory.at(-1);
+    if (!hint || hint.count === 0) return false;
+    const guesses = this.gameState.board.filter(
+      (card) => card.revealed?.inTurn === this.gameState.hintHistory.length,
+    );
+    return (
+      guesses.length === hint.count &&
+      guesses.every((card) => card.team === hint.team)
+    );
   }
 
   public getGameState(): GameState {

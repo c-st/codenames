@@ -20,6 +20,18 @@ export const animalSchema = z.enum([
 ]);
 export type Animal = z.infer<typeof animalSchema>;
 
+export const reactionEmojiSchema = z.enum([
+  "😂",
+  "😱",
+  "🤦",
+  "🔥",
+  "🤔",
+  "👏",
+  "😭",
+  "🎉",
+]);
+export type ReactionEmoji = z.infer<typeof reactionEmojiSchema>;
+
 export const sharedEffectSchema = z.object({
   id: z.string(),
   type: z.enum([
@@ -28,8 +40,14 @@ export const sharedEffectSchema = z.object({
     "assassinReveal",
     "gameWin",
     "turnChange",
+    "gameStart",
+    "perfectClue",
   ]),
   playAt: z.number(),
+  /** Team whose turn starts (turnChange/gameStart) or who earned the cue. */
+  team: z.number().optional(),
+  /** Card the cue belongs to, for reveal cues. */
+  word: z.string().optional(),
 });
 export type SharedEffect = z.infer<typeof sharedEffectSchema>;
 
@@ -49,6 +67,7 @@ const wordCardSchema = z.object({
     .object({
       byTeam: z.number(),
       inTurn: z.number(),
+      byPlayer: z.string().optional(),
     })
     .optional(),
 });
@@ -84,6 +103,12 @@ export const gameResult = z.object({
   losingTeam: z.number().optional(),
 });
 
+export const cardMarkSchema = z.object({
+  word: z.string(),
+  playerId: z.string(),
+});
+export type CardMark = z.infer<typeof cardMarkSchema>;
+
 export const gameStateSchemaForClient = gameStateSchema.extend({
   playerId: z.string(),
   gameCanStart: z.boolean(),
@@ -94,6 +119,9 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   customWords: z.array(z.string()).optional(),
   serverTime: z.number().optional(),
   effects: z.array(sharedEffectSchema).optional(),
+  /** Operatives' tentative picks for the current turn. */
+  marks: z.array(cardMarkSchema).optional(),
+  turnSeconds: z.number().optional(),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;

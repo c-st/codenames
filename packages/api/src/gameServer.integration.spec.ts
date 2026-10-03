@@ -439,8 +439,26 @@ describe("Durable Object room protocol", () => {
         sockets.push(await connect(game, context, id(i)));
       await command(game, sockets[1], { type: "revealWord", word });
       const effects = sockets[0].latest().effects;
+      const turnChange =
+        nextTeam === 0
+          ? []
+          : [
+              {
+                id: expect.any(String),
+                type: "turnChange",
+                team: nextTeam,
+                playAt: Date.now() + 750,
+              },
+            ];
       expect(effects).toEqual([
-        { id: expect.any(String), type, playAt: Date.now() + 300 },
+        {
+          id: expect.any(String),
+          type,
+          team: 0,
+          word,
+          playAt: Date.now() + 300,
+        },
+        ...turnChange,
       ]);
       for (const socket of sockets)
         expect(socket.latest().effects).toEqual(effects);
@@ -555,9 +573,16 @@ describe("Durable Object room protocol", () => {
       {
         id: expect.any(String),
         type: "correctGuess",
+        team: 0,
+        word: "apple",
         playAt: Date.now() + 300,
       },
-      { id: expect.any(String), type: "gameWin", playAt: Date.now() + 750 },
+      {
+        id: expect.any(String),
+        type: "gameWin",
+        team: 0,
+        playAt: Date.now() + 750,
+      },
     ]);
     expect(spy.latest().effects).toEqual(agent.latest().effects);
     expect(agent.latest().gameResult).toMatchObject({ winningTeam: 0 });
@@ -565,5 +590,100 @@ describe("Durable Object room protocol", () => {
       agent.latest().board.find((card) => card.word === "bomb")?.isAssassin,
     ).toBe(true);
     expect(context.storage.alarm).toBe(Date.now() + 60_000); // Unconnected players still receive reconnect grace.
+  });
+
+  it("celebrates a perfectly solved clue and starts the next game with a shared deal cue", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    state.turn!.hint = { hint: "fruit", count: 1 };
+    state.turn!.guessesRemaining = 2;
+    state.hintHistory = [{ team: 0, inTurn: 0, hint: "fruit", count: 1 }];
+    await context.storage.put({ gameState: JSON.stringify(state) });
+    const { game } = await create(context);
+    const sockets = [];
+    for (let i = 1; i <= 4; i++)
+      sockets.push(await connect(game, context, id(i)));
+    await command(game, sockets[1], { type: "revealWord", word: "apple" });
+    expect(sockets[0].latest().effects?.map((effect) => effect.type)).toEqual([
+      "correctGuess",
+      "perfectClue",
+    ]);
+    expect(
+      storedState(context).board.find((card) => card.word === "apple")?.revealed
+        ?.byPlayer,
+    ).toBe(pid(2));
+    await command(game, sockets[1], { type: "revealWord", word: "bomb" });
+    await command(game, sockets[0], { type: "startGame" });
+    const [deal] = sockets[2].latest().effects!;
+    expect(deal).toMatchObject({
+      type: "gameStart",
+      team: storedState(context).turn!.team,
+    });
+    expect(sockets[2].latest().turnSeconds).toBe(120);
+  });
+
+  it("shares tentative card marks for the current turn only and lets only guessing operatives mark", async () => {
+    const context = new FakeContext();
+    await context.storage.put({ gameState: JSON.stringify(playingState()) });
+    const { game } = await create(context);
+    const sockets = [];
+    for (let i = 1; i <= 4; i++)
+      sockets.push(await connect(game, context, id(i)));
+    await command(game, sockets[1], { type: "markCard", word: "pear" });
+    expect(sockets[3].latest().marks).toEqual([
+      { word: "pear", playerId: pid(2) },
+    ]);
+    for (const [socket, word] of [
+      [sockets[0], "pear"],
+      [sockets[3], "pear"],
+      [sockets[1], "nope"],
+    ] as const) {
+      await command(game, socket, { type: "markCard", word });
+      expect(JSON.parse(socket.messages.at(-1)!).type).toBe("commandRejected");
+    }
+    await command(game, sockets[1], { type: "markCard", word: "pear" });
+    expect(sockets[3].latest().marks).toEqual([]);
+    await command(game, sockets[1], { type: "markCard", word: "apple" });
+    await command(game, sockets[1], { type: "markCard", word: "pear" });
+    await command(game, sockets[1], { type: "revealWord", word: "apple" });
+    expect(sockets[0].latest().marks).toEqual([
+      { word: "pear", playerId: pid(2) },
+    ]);
+    vi.advanceTimersByTime(1_000);
+    await command(game, sockets[1], { type: "endTurn" });
+    expect(sockets[0].latest().marks).toEqual([]);
+  });
+
+  it("relays reactions and spymaster typing as ephemeral events without touching storage", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    state.turn!.hint = undefined;
+    await context.storage.put({ gameState: JSON.stringify(state) });
+    const { game } = await create(context);
+    const sockets = [];
+    for (let i = 1; i <= 4; i++)
+      sockets.push(await connect(game, context, id(i)));
+    const before = structuredClone(context.storage.values);
+    const events = (socket: FakeSocket, type: string) =>
+      socket.messages
+        .map((message) => JSON.parse(message))
+        .filter((event) => event.type === type);
+    await command(game, sockets[3], { type: "react", emoji: "😱" });
+    await command(game, sockets[3], { type: "react", emoji: "😂" }); // rate-limited
+    expect(events(sockets[0], "reaction")).toEqual([
+      {
+        type: "reaction",
+        id: expect.any(String),
+        playerId: pid(4),
+        emoji: "😱",
+      },
+    ]);
+    await command(game, sockets[0], { type: "typing", typing: true });
+    await command(game, sockets[2], { type: "typing", typing: true }); // not this team's turn
+    expect(events(sockets[1], "typing")).toEqual([
+      { type: "typing", playerId: pid(1), typing: true },
+    ]);
+    expect(events(sockets[0], "typing")).toEqual([]);
+    expect(context.storage.values).toEqual(before);
   });
 });

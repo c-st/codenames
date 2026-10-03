@@ -822,6 +822,38 @@ describe("gameplay regression safeguards", () => {
     ).toBeUndefined();
   });
 
+  it("records who revealed a card and detects a perfectly solved clue", () => {
+    const game = createGame({
+      board: [
+        { word: "apple", team: 0 },
+        { word: "pear", team: 0 },
+        { word: "plum", team: 0 },
+        { word: "banana", team: 1 },
+        { word: "car" },
+        { word: "bomb", isAssassin: true },
+      ],
+    });
+    game.giveHint({ hint: "fruit", count: 2 });
+    game.revealWord("apple", "player-2");
+    expect(game.isCurrentClueComplete()).toBe(false);
+    game.revealWord("pear", "player-2");
+    expect(game.isCurrentClueComplete()).toBe(true);
+    expect(game.getGameState().board[0].revealed).toEqual({
+      byTeam: 0,
+      inTurn: 1,
+      byPlayer: "player-2",
+    });
+    game.revealWord("plum");
+    expect(game.isCurrentClueComplete()).toBe(false);
+  });
+
+  it("does not count a clue as perfect when a guess went wrong", () => {
+    const game = createGame();
+    game.giveHint({ hint: "fruit", count: 1 });
+    game.revealWord("banana");
+    expect(game.isCurrentClueComplete()).toBe(false);
+  });
+
   it("rejects empty or invalid clues", () => {
     const game = createGame();
     for (const hint of [
