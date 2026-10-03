@@ -1,20 +1,8 @@
-import { gameStateSchemaForClient } from "game";
 import { z } from "zod";
-import { animalSchema } from "./game";
+import { builtInWordPackIds } from "words";
+import { animalSchema, gameStateSchemaForClient } from "./game";
 
-export const wordPackSchema = z.enum([
-  "classic",
-  "movies",
-  "food",
-  "geography",
-  "science",
-  "tech",
-  "agile",
-  "design",
-  "startup",
-  "internet",
-  "custom",
-]);
+export const wordPackSchema = z.enum([...builtInWordPackIds, "custom"]);
 export type WordPackId = z.infer<typeof wordPackSchema>;
 
 export const customWordsSchema = z
@@ -40,10 +28,6 @@ export const commandSchema = z.discriminatedUnion("type", [
     type: z.literal("ping"),
   }),
   z.object({
-    type: z.literal("setName"),
-    name: z.string().min(1).max(50),
-  }),
-  z.object({
     type: z.literal("setProfile"),
     name: z.string().trim().min(1).max(50),
     animal: animalSchema,
@@ -57,8 +41,6 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("startGame"),
-    wordPack: wordPackSchema.optional(),
-    teamCount: z.number().int().min(2).max(4).optional(),
   }),
   z.object({
     type: z.literal("giveHint"),

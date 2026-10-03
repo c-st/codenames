@@ -8,5 +8,5 @@
     "lib": ["ESNext"],
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.ts", "../schema/src/game.ts"]
+  "include": ["src/**/*.ts"]
 }

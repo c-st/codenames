@@ -1,14 +1,19 @@
+import { wordPacks } from "./word-packs";
+
 export { default as adjectives } from "../resources/adjectives.json";
 export { default as animals } from "../resources/animals.json";
-export { default as classic } from "../resources/classic.json";
 export { default as animalEmojis } from "../resources/animal-emojis.json";
 export * from "./random-words";
-export { default as movies } from "../resources/movies.json";
-export { default as food } from "../resources/food.json";
-export { default as geography } from "../resources/geography.json";
-export { default as science } from "../resources/science.json";
-export { default as tech } from "../resources/tech.json";
-export { default as agile } from "../resources/agile.json";
-export { default as design } from "../resources/design.json";
-export { default as startup } from "../resources/startup.json";
-export { default as internet } from "../resources/internet.json";
+export * from "./word-packs";
+export const {
+  classic,
+  movies,
+  food,
+  geography,
+  science,
+  tech,
+  agile,
+  design,
+  startup,
+  internet,
+} = wordPacks;

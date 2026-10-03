@@ -105,7 +105,6 @@ const useCodenames = (skip = false) => {
     teamCount: gameState?.teamCount ?? 2,
     setProfile: (name: string, animal: Animal) =>
       sendCommand({ type: "setProfile", name, animal }),
-    setName: (name: string) => sendCommand({ type: "setName", name }),
     randomizeName: () => sendCommand({ type: "randomizeName" }),
     shuffleTeams: () => sendCommand({ type: "shuffleTeams" }),
     promoteToSpymaster: (playerId: string) =>

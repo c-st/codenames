@@ -18,16 +18,9 @@ import {
 } from "game";
 import {
   classic,
-  movies,
-  food,
-  geography,
-  science,
-  tech,
-  agile,
-  design,
-  startup,
-  internet,
   randomAnimalEmoji,
+  wordPacks,
+  BuiltInWordPackId,
 } from "words";
 
 const GAME_STATE = "gameState";
@@ -40,6 +33,8 @@ export class CodenamesGame extends DurableObject {
   private selectedWordPack = "classic";
   private selectedTeamCount = 2;
   private customWords: string[] = [];
+  // Cached between events; dropped after any failed command so storage stays the source of truth.
+  private game: Codenames | undefined;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -74,6 +69,11 @@ export class CodenamesGame extends DurableObject {
   }
 
   async getGameInstance(): Promise<Codenames> {
+    this.game ??= await this.loadGameInstance();
+    return this.game;
+  }
+
+  private async loadGameInstance(): Promise<Codenames> {
     // One durable alarm serves both turn deadlines and reconnect grace periods.
     const onScheduleCallAdvanceTurn = (_date: Date) => {};
     const parameters = {
@@ -198,6 +198,7 @@ export class CodenamesGame extends DurableObject {
       try {
         await this.handleCommand(parsedCommand, ws);
       } catch (error) {
+        this.game = undefined;
         if (error instanceof GameError) {
           console.info("Command was rejected. Reason:", error.message);
           const commandRejectedEvent = {
@@ -403,16 +404,6 @@ export class CodenamesGame extends DurableObject {
         await this.persistAndBroadcastGameState(game);
         break;
       }
-      case "setName": {
-        game.addOrUpdatePlayer({
-          ...player,
-          id: playerId,
-          name: command.name,
-        });
-        await this.persistAndBroadcastGameState(game);
-        break;
-      }
-
       case "randomizeName": {
         game.addOrUpdatePlayer({
           ...player,
@@ -439,22 +430,11 @@ export class CodenamesGame extends DurableObject {
 
       case "startGame": {
         if (game.isReadyToStartGame()) {
-          const wordPacks: Record<string, string[]> = {
-            classic,
-            movies,
-            food,
-            geography,
-            science,
-            tech,
-            agile,
-            design,
-            startup,
-            internet,
-          };
           const pack =
             this.selectedWordPack === "custom"
               ? this.customWords
-              : (wordPacks[this.selectedWordPack] ?? classic);
+              : (wordPacks[this.selectedWordPack as BuiltInWordPackId] ??
+                classic);
           if (pack.length < 25)
             throw new GameError("Add at least 25 custom words");
           game.setWords(pack);
@@ -520,7 +500,6 @@ export class CodenamesGame extends DurableObject {
 
       case "endGame": {
         game.endGame();
-        await this.ctx.storage.deleteAlarm();
         await this.persistAndBroadcastGameState(game);
         break;
       }

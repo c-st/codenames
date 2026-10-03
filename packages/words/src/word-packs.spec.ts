@@ -1,28 +1,6 @@
-import {
-  agile,
-  classic,
-  design,
-  food,
-  geography,
-  internet,
-  movies,
-  science,
-  startup,
-  tech,
-} from "./index";
+import { wordPacks } from "./index";
 
-const packs = {
-  classic,
-  movies,
-  food,
-  geography,
-  science,
-  tech,
-  agile,
-  design,
-  startup,
-  internet,
-};
+const packs = wordPacks;
 
 describe("built-in word packs", () => {
   for (const [name, words] of Object.entries(packs)) {

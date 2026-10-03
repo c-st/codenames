@@ -1,4 +1,4 @@
-import { GameState, Hint, Player, WordCard } from "../../schema/src/game";
+import { GameState, Hint, Player, WordCard } from "schema";
 import { shuffleBoard } from "./shuffle-board";
 import { advanceDateBySeconds } from "./date";
 import { GameError } from "./error";

@@ -6,8 +6,8 @@
     "test": "vitest --run"
   },
   "dependencies": {
-    "words": "workspace:*",
-    "zod": "^3.23.8"
+    "schema": "workspace:*",
+    "words": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.9"
