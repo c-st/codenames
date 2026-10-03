@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type OscillatorType = "sine" | "square" | "triangle" | "sawtooth";
 
 const TEAM_CHIMES: [number, number][] = [
-  [523, 659],
+  [494, 659],
   [440, 554],
   [587, 740],
   [392, 494],
@@ -125,7 +125,7 @@ const useSoundEffects = () => {
   const gameStart = useCallback(() => {
     for (let i = 0; i < 8; i++)
       playTone(900 - i * 40, 0.035, "triangle", 0.08, i * 0.04);
-    playTone(523, 0.12, "sine", 0.2, 0.38);
+    playTone(587, 0.12, "sine", 0.2, 0.38);
     playTone(784, 0.25, "sine", 0.22, 0.48);
   }, [playTone]);
 

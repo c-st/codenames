@@ -6,6 +6,11 @@ import type { Banner } from "./TurnBanner";
 const BANNER_MS = 1800;
 /** Matches the card flip, so the drama lands when the card face does. */
 const FLIP_LANDING_MS = 320;
+/**
+ * Unlike sounds, a slightly late banner still makes sense, so a busy client gets more slack.
+ * Reconnect broadcasts carry no cues, so this never replays old moments.
+ */
+const MAX_LATENESS_MS = 3000;
 
 /**
  * Turns the server's shared cues into screen-wide moments (banners, assassin flash and shake),
@@ -16,7 +21,10 @@ export default function useVisualCues(
   serverClockOffset: number,
 ) {
   const [banner, setBanner] = useState<Banner>();
+  // Kept after the ribbon leaves, so tests and assistive tech can tell what was announced.
+  const [lastBanner, setLastBanner] = useState<Banner>();
   const [flashId, setFlashId] = useState<string>();
+  const [lastFlashId, setLastFlashId] = useState<string>();
   const [shakeScope, animate] = useAnimate<HTMLDivElement>();
   const reduceMotion = useReducedMotion();
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -38,7 +46,10 @@ export default function useVisualCues(
       timers.current.add(timer);
     };
     const showBanner = (next: Banner, at: number) => {
-      later(at, () => setBanner(next));
+      later(at, () => {
+        setBanner(next);
+        setLastBanner(next);
+      });
       later(at + BANNER_MS, () =>
         setBanner((current) => (current?.id === next.id ? undefined : current)),
       );
@@ -46,8 +57,7 @@ export default function useVisualCues(
 
     for (const effect of effects) {
       const delay = effect.playAt - (Date.now() + serverClockOffset);
-      // Like sounds: a reconnecting client doesn't replay old moments.
-      if (delay < -1000) continue;
+      if (delay < -MAX_LATENESS_MS) continue;
       switch (effect.type) {
         case "gameStart":
           showBanner(
@@ -70,6 +80,7 @@ export default function useVisualCues(
         case "assassinReveal":
           later(delay + FLIP_LANDING_MS, () => {
             setFlashId(effect.id);
+            setLastFlashId(effect.id);
             if (!reduceMotion && shakeScope.current) {
               void animate(
                 shakeScope.current,
@@ -90,5 +101,5 @@ export default function useVisualCues(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effects]);
 
-  return { banner, flashId, shakeScope };
+  return { banner, lastBanner, flashId, lastFlashId, shakeScope };
 }

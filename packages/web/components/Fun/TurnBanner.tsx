@@ -10,14 +10,19 @@ export type Banner = {
 /** A full-width ribbon that swooshes across the screen for big moments. */
 export default function TurnBanner({
   banner,
+  lastBanner,
   myTeam,
 }: {
   banner?: Banner;
+  lastBanner?: Banner;
   myTeam?: number;
 }) {
   return (
     <div
       aria-live="polite"
+      data-last-banner={lastBanner?.kind}
+      data-last-banner-id={lastBanner?.id}
+      data-last-banner-team={lastBanner?.team}
       className="pointer-events-none fixed inset-x-0 top-1/3 z-40 flex justify-center overflow-hidden"
     >
       <AnimatePresence>

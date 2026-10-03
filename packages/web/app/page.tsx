@@ -84,10 +84,8 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effects]);
 
-  const { banner, flashId, shakeScope } = useVisualCues(
-    effects,
-    serverClockOffset,
-  );
+  const { banner, lastBanner, flashId, lastFlashId, shakeScope } =
+    useVisualCues(effects, serverClockOffset);
 
   // A little pop whenever someone's reaction floats in.
   const { pop } = sound;
@@ -233,8 +231,12 @@ export default function Home() {
           celebration={celebration}
           teamColor={getTeamColor(currentPlayer.team).hex}
         />
-        <TurnBanner banner={banner} myTeam={currentPlayer.team} />
-        <ScreenFlash flashId={flashId} />
+        <TurnBanner
+          banner={banner}
+          lastBanner={lastBanner}
+          myTeam={currentPlayer.team}
+        />
+        <ScreenFlash flashId={flashId} lastFlashId={lastFlashId} />
         <FloatingReactions reactions={reactions} players={players} />
       </div>
     </MotionConfig>

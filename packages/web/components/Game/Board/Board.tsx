@@ -402,6 +402,7 @@ function Timer({ until, totalSeconds, sound }: { until: Date; totalSeconds: numb
   return (
     <motion.div
       ref={scope}
+      data-urgency={critical ? "critical" : urgent ? "urgent" : "calm"}
       className="relative flex h-14 w-14 shrink-0 items-center justify-center"
       animate={critical && secondsLeft > 0 ? { scale: [1, 1.12, 1] } : { scale: 1 }}
       transition={critical ? { duration: 0.5, repeat: Infinity } : undefined}
@@ -576,6 +577,7 @@ function Word({
     // Outer layer: deal-in when the board appears.
     <motion.div
       className="relative min-w-0"
+      data-landing={landing}
       style={{ perspective: 800, zIndex: landing === "assassin" ? 20 : landing ? 10 : undefined }}
       initial={reduceMotion ? false : { opacity: 0, y: -60, rotate: (index % 5 - 2) * 9, scale: 0.6 }}
       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}

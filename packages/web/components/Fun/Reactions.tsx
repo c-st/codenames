@@ -59,6 +59,7 @@ export function FloatingReactions({
           return (
             <motion.div
               key={reaction.id}
+              data-testid="floating-reaction"
               className="absolute bottom-0 flex flex-col items-center"
               style={{ left: `${laneFor(reaction.id)}%` }}
               initial={{ y: 40, opacity: 0, scale: 0.4 }}

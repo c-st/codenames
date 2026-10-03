@@ -68,7 +68,7 @@ export default function Confetti({ celebration, teamColor }: { celebration?: Cel
   if (!celebration || reduceMotion || particles.length === 0) return null;
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div aria-hidden="true" data-celebration={celebration} className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
       {celebration === "lose" && (
         <motion.div
           className="absolute left-1/2 top-4 -translate-x-1/2 select-none text-8xl"
