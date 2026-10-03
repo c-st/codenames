@@ -133,9 +133,8 @@ export class CodenamesGame extends DurableObject {
 
   private async handleFetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    // "playerId" is the parameter name used by clients from before reconnect tokens.
-    const candidateToken =
-      url.searchParams.get("token") ?? url.searchParams.get("playerId");
+    // Old clients sent their (publicly broadcast) id as "playerId"; it must never act as a credential.
+    const candidateToken = url.searchParams.get("token");
     const token = isReconnectToken(candidateToken) ? candidateToken : nanoid();
     const playerId = await publicPlayerId(token);
 
@@ -195,8 +194,13 @@ export class CodenamesGame extends DurableObject {
       return;
     }
 
+    // Ephemeral signals skip the concurrency block and storage, and fail silently.
     if (parsedCommand.type === "react") {
       this.broadcastReaction(ws, parsedCommand.emoji);
+      return;
+    }
+    if (parsedCommand.type === "typing") {
+      this.relayTyping(ws, parsedCommand.typing);
       return;
     }
 
@@ -298,12 +302,25 @@ export class CodenamesGame extends DurableObject {
   /** Reactions are fire-and-forget: never stored, lightly rate-limited per player. */
   private broadcastReaction(sender: WebSocket, emoji: string) {
     const playerId = sender.deserializeAttachment()?.playerId;
-    if (!playerId) return;
+    if (!this.findCachedPlayer(playerId)) return;
     const now = Date.now();
     if (now - (this.lastReactionAt.get(playerId) ?? 0) < REACTION_COOLDOWN_MS)
       return;
     this.lastReactionAt.set(playerId, now);
     this.sendToAll({ type: "reaction", id: nanoid(), playerId, emoji });
+  }
+
+  /** Only the active spymaster drafting a clue shows as thinking. */
+  private relayTyping(sender: WebSocket, typing: boolean) {
+    const player = this.findCachedPlayer(sender.deserializeAttachment()?.playerId);
+    const turn = this.game?.getGameState().turn;
+    if (!player || player.role !== "spymaster" || player.team !== turn?.team || turn.hint) return;
+    this.sendToAll({ type: "typing", playerId: player.id, typing }, sender);
+  }
+
+  /** Signals use the cached game only; if it isn't loaded, dropping a signal is harmless. */
+  private findCachedPlayer(playerId: string | undefined) {
+    return this.game?.getGameState().players.find((p) => p.id === playerId);
   }
 
   private sendToAll(event: object, exclude?: WebSocket) {
@@ -606,21 +623,7 @@ export class CodenamesGame extends DurableObject {
         break;
       }
 
-      case "typing": {
-        const { turn } = game.getGameState();
-        if (
-          player.role !== "spymaster" ||
-          player.team !== turn?.team ||
-          turn.hint
-        )
-          break;
-        this.sendToAll(
-          { type: "typing", playerId, typing: command.typing },
-          ws,
-        );
-        break;
-      }
-
+      case "typing":
       case "react":
         break;
 

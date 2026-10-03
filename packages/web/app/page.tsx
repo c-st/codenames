@@ -85,7 +85,7 @@ export default function Home() {
   }, [effects]);
 
   const { banner, lastBanner, flashId, lastFlashId, shakeScope } =
-    useVisualCues(effects, serverClockOffset);
+    useVisualCues(effects, serverClockOffset, sessionName);
 
   // A little pop whenever someone's reaction floats in.
   const { pop } = sound;

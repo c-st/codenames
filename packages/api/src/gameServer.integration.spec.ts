@@ -176,7 +176,7 @@ describe("Durable Object room protocol", () => {
       Array.from({ length: 8 }, (_, index) =>
         game.fetch(
           new Request(
-            `https://game.test/room?playerId=${id(index + 1)}&name=Player${index + 1}`,
+            `https://game.test/room?token=${id(index + 1)}&name=Player${index + 1}`,
           ),
         ),
       ),
@@ -384,6 +384,20 @@ describe("Durable Object room protocol", () => {
     expect(spy.latest().board.some((card) => card.team !== undefined)).toBe(
       true,
     );
+  });
+
+  it("ignores the legacy playerId parameter, whose values were broadcast before reconnect tokens", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    // A pre-token room: the spymaster's id is the raw value its browser still holds and everyone saw.
+    state.players[0].id = id(1);
+    await context.storage.put({ gameState: JSON.stringify(state) });
+    const { game } = await create(context);
+    await game.fetch(new Request(`https://game.test/room?playerId=${id(1)}`));
+    const intruder = context.sockets.at(-1)!;
+    expect(intruder.latest().playerId).not.toBe(id(1));
+    expect(intruder.latest().playerId).not.toBe(pid(1));
+    expect(intruder.latest().board.some((card) => !card.revealed && card.team !== undefined)).toBe(false);
   });
 
   it("rejects malformed commands without changing storage", async () => {

@@ -28,15 +28,15 @@ export function saveProfile(profile: PlayerProfile) {
   }
 }
 
-/** Private per-room reconnect token. The server derives the public player id from it. */
+/**
+ * Private per-room reconnect token. The server derives the public player id from it.
+ * Values under the old `codenames:playerId:` key were broadcast to the room, so they are never reused.
+ */
 export function roomReconnectToken(room: string): string {
-  const key = `codenames:playerId:${room}`;
+  const key = `codenames:token:${room}`;
   try {
-    const existing = localStorage.getItem(key) ?? sessionStorage.getItem(key);
-    if (existing) {
-      localStorage.setItem(key, existing);
-      return existing;
-    }
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
     const id = crypto.randomUUID();
     localStorage.setItem(key, id);
     return id;

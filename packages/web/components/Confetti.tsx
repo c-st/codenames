@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import type { Celebration } from "./hooks/useCodenames";
 
@@ -55,17 +55,23 @@ export default function Confetti({ celebration, teamColor }: { celebration?: Cel
   const reduceMotion = useReducedMotion();
   const [particles, setParticles] = useState<Particle[]>([]);
 
+  // Freeze the colour when the celebration starts; post-game role swaps must not replay it.
+  const teamColorRef = useRef(teamColor);
+  teamColorRef.current = teamColor;
+
   useEffect(() => {
     if (!celebration || reduceMotion) {
       setParticles([]);
       return;
     }
-    setParticles(celebration === "win" ? partyParticles(teamColor) : rainParticles());
+    setParticles(celebration === "win" ? partyParticles(teamColorRef.current) : rainParticles());
     const timer = setTimeout(() => setParticles([]), 7000);
     return () => clearTimeout(timer);
-  }, [celebration, reduceMotion, teamColor]);
+  }, [celebration, reduceMotion]);
 
-  if (!celebration || reduceMotion || particles.length === 0) return null;
+  // The marker outlives the particles, so the outcome stays observable after the show.
+  if (!celebration || reduceMotion || particles.length === 0)
+    return <div hidden data-celebration={celebration} />;
 
   return (
     <div aria-hidden="true" data-celebration={celebration} className="pointer-events-none fixed inset-0 z-50 overflow-hidden">

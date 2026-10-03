@@ -534,6 +534,8 @@ function Word({
 
   // Play the landing only for reveals that happen while we watch, never on (re)connect.
   const [landing, setLanding] = useState<Landing>();
+  // Unlike the animation itself, remembers which landing this card played.
+  const [lastLanding, setLastLanding] = useState<Landing>();
   const wasRevealed = useRef(isRevealed);
   const { haptic } = sound;
   useEffect(() => {
@@ -547,6 +549,7 @@ function Word({
       ? "assassin"
       : wordCard.team === wordCard.revealed?.byTeam ? "correct" : "wrong";
     setLanding(kind);
+    setLastLanding(kind);
     haptic(kind === "assassin" ? [80, 40, 160] : kind === "wrong" ? [30, 30, 30] : 20);
     const timer = setTimeout(() => setLanding(undefined), 1600);
     return () => clearTimeout(timer);
@@ -578,6 +581,7 @@ function Word({
     <motion.div
       className="relative min-w-0"
       data-landing={landing}
+      data-last-landing={lastLanding}
       style={{ perspective: 800, zIndex: landing === "assassin" ? 20 : landing ? 10 : undefined }}
       initial={reduceMotion ? false : { opacity: 0, y: -60, rotate: (index % 5 - 2) * 9, scale: 0.6 }}
       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}

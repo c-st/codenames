@@ -19,6 +19,7 @@ const MAX_LATENESS_MS = 3000;
 export default function useVisualCues(
   effects: SharedEffect[],
   serverClockOffset: number,
+  room: string | undefined,
 ) {
   const [banner, setBanner] = useState<Banner>();
   // Kept after the ribbon leaves, so tests and assistive tech can tell what was announced.
@@ -29,10 +30,18 @@ export default function useVisualCues(
   const reduceMotion = useReducedMotion();
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
 
+  // Moments scheduled for one room must never fire in the next one.
   useEffect(() => {
     const pending = timers.current;
-    return () => pending.forEach(clearTimeout);
-  }, []);
+    return () => {
+      pending.forEach(clearTimeout);
+      pending.clear();
+      setBanner(undefined);
+      setLastBanner(undefined);
+      setFlashId(undefined);
+      setLastFlashId(undefined);
+    };
+  }, [room]);
 
   useEffect(() => {
     const later = (ms: number, run: () => void) => {
