@@ -12,13 +12,13 @@ Install dependencies with `pnpm install --frozen-lockfile`. Run `pnpm --filter a
 - `pnpm --filter web exec playwright install chromium`: one-time browser setup.
 - `pnpm test:integration`: server integration tests followed by real Chromium multiplayer tests. Playwright starts local Wrangler and Next automatically on ports 8787 and 3000 (override with `E2E_API_PORT` and `E2E_WEB_PORT` to run beside another checkout); browser traces are retained on failure. It uses a separate `.next-e2e` build directory and unique rooms. Its expiry check uses a test-only 60-second retention override and waits just over one minute.
 
-Server integration tests exercise the actual server, schema, storage flow and game engine with a mocked Cloudflare platform. Browser tests exercise the actual local Wrangler runtime and four independent browser clients, including profile persistence, repeated reloads without duplicates, offline recovery, custom lists, shuffled roles, guesses, coordinated audio scheduling, and every fun cue (card flips, marks, reactions, banners, celebrations, rematch, thinking indicator, timer heartbeat) plus reconnect-token privacy. These tests verify local behavior; production network latency and outages still need monitoring.
+Server integration tests exercise the actual server, schema, storage flow and game engine with a mocked Cloudflare platform. Browser tests exercise the actual local Wrangler runtime and four independent browser clients, including profile persistence, repeated reloads without duplicates, offline recovery, shared room libraries with concurrent-edit conflicts, shuffled roles, guesses, coordinated audio scheduling, and every fun cue (card flips, marks, reactions, banners, celebrations, rematch, thinking indicator, timer heartbeat) plus reconnect-token privacy. These tests verify local behavior; production network latency and outages still need monitoring.
 
 ## Room behavior
 
 Names and animal avatars are remembered in this browser across visits and rooms. Room identity is also remembered, so reloads, additional tabs and reopening the same room retain one player. The browser keeps a private reconnect token; other players only ever see a one-way hash of it as the public player id. Clearing browser storage creates a new identity; when storage is unavailable, persistence cannot be guaranteed. Disconnected players keep their team and role for 60 seconds. Returning after removal rejoins the room with the saved profile but may receive a different team or role. Room settings and disconnect deadlines survive server hibernation. Once the last connected player leaves, the room is retained for two weeks; then all backend room data is deleted automatically. A rejoin cancels expiry, and leaving again starts a fresh two-week window. Connected rooms do not expire. Opening an expired invitation creates a fresh room with the same name; browser-saved profiles remain available.
 
-The lobby supports shared custom packs of 25–500 unique words and browser-saved drafts. Shuffle teams & spymasters produces balanced random teams with one spymaster each. Classic two-team boards use a random starting team with nine words, eight for the other team, seven neutral cards and one assassin. Three- and four-team games use adapted card counts on the same 25-card board.
+Each room has a shared library of editable word packs, with Classic always available and a picker for the others. Players can add named packs of 25–500 unique words. Revision-checked saves prevent concurrent edits from overwriting one another, and browser-saved drafts retain unsaved changes per room and pack. Shuffle teams & spymasters produces balanced random teams with one spymaster each. Classic two-team boards use a random starting team with nine words, eight for the other team, seven neutral cards and one assassin. Three- and four-team games use adapted card counts on the same 25-card board.
 
 ### Session history and statistics
 
@@ -30,7 +30,7 @@ History is shared with everyone in the room and survives reloads and server hibe
 
 ### Sound and browser interaction
 
-Browsers generally prevent a newly opened page from playing audio until the player interacts with it. The game enables or resumes audio on a click/tap (`pointerdown`) or keyboard press (`keydown`); clicking Play or editing the profile normally does this automatically. A player who opens an invitation link and only watches should click/tap the page or press a key. Another player's interaction cannot enable sound on their device. See [MDN's Web Audio guidance](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
+Browsers generally prevent a newly opened page from playing audio until the player interacts with it. After joining a room, the game enables or resumes audio on a click/tap (`pointerdown`) or keyboard press (`keydown`) while unmuted. The landing page and muted rooms keep audio inactive. A player who opens an invitation link and only watches should click/tap the page or press a key. Another player's interaction cannot enable sound on their device. See [MDN's Web Audio guidance](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
 
 The speaker button controls mute, which is remembered per browser. An unmuted speaker icon does not guarantee that audio has been enabled by a gesture. There is currently no separate “Enable sound” prompt. After a reload, another interaction may be needed; if returning from a background tab leaves audio suspended, interact with the page again.
 
@@ -46,7 +46,7 @@ Reveals flip the card and land with team-coloured sparkles, a wobble for wrong g
 2. **Optional reveal confirmation:** reduce accidental mobile guesses, e.g. require a mark before a reveal.
 3. **Flexible timers and pause:** offer classic untimed play, configurable deadlines and host pause for breaks or connection trouble.
 4. **Better rematches:** rotate spymasters, keep or reshuffle teams, and exclude recently used words for fresher rounds.
-5. **Word-library tools:** clone built-in packs into the editor, import/export reusable packs, and offer language/difficulty tags.
+5. **Word-library tools:** import/export reusable packs and offer language/difficulty tags.
 6. **Audio activation feedback:** show an “Enable sound” prompt until audio is running, so players joining by invitation know when an interaction is needed.
 7. **Connection visibility:** show connected/reconnecting player badges and production reconnect/error metrics.
 

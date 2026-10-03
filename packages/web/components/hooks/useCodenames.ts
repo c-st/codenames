@@ -3,13 +3,18 @@ import {
   Command,
   gameEventSchema,
   GameStateForClient,
+  GameEvent,
   ReactionEmoji,
   SharedEffect,
-  WordPackId,
 } from "schema";
 import useGameSession from "./useGameSession";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveProfile } from "./playerProfile";
+
+export type WordPackSaveResult = Extract<
+  GameEvent,
+  { type: "wordPackSaved" | "wordPackSaveRejected" }
+>;
 
 export type Reaction = {
   id: string;
@@ -52,6 +57,8 @@ const useCodenames = (skip = false) => {
   const [effects, setEffects] = useState<SharedEffect[]>([]);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [typing, setTypingEntries] = useState<[string, number][]>([]);
+  const [wordPackSaveResult, setWordPackSaveResult] =
+    useState<WordPackSaveResult>();
   const [commandError, setCommandError] = useState<string>();
   const previousRef = useRef<GameStateForClient | undefined>(undefined);
   const seenEffectsRef = useRef(new Set<string>());
@@ -72,15 +79,17 @@ const useCodenames = (skip = false) => {
     setReactions([]);
     setTypingEntries([]);
     setCommandError(undefined);
+    setWordPackSaveResult(undefined);
   }, [connection.sessionName]);
 
   useExpiry(reactions, reactionExpiry, setReactions);
   useExpiry(typing, typingExpiry, setTypingEntries);
 
+  const { incomingMessages, consumeMessages } = connection;
   useEffect(() => {
     const newEffects: SharedEffect[] = [];
     const newReactions: Reaction[] = [];
-    for (const message of connection.incomingMessages) {
+    for (const message of incomingMessages) {
       let parsed;
       try {
         parsed = gameEventSchema.safeParse(JSON.parse(message));
@@ -89,6 +98,13 @@ const useCodenames = (skip = false) => {
       }
       if (!parsed.success) continue;
       const event = parsed.data;
+      if (
+        event.type === "wordPackSaved" ||
+        event.type === "wordPackSaveRejected"
+      ) {
+        setWordPackSaveResult(event);
+        continue;
+      }
       if (event.type === "commandRejected") {
         setCommandError(event.reason);
         continue;
@@ -149,10 +165,11 @@ const useCodenames = (skip = false) => {
       setGameState(state);
       setCommandError(undefined);
     }
+    if (incomingMessages.length) consumeMessages(incomingMessages.length);
     if (newEffects.length) setEffects(newEffects);
     if (newReactions.length)
       setReactions((current) => [...current, ...newReactions].slice(-30));
-  }, [connection.incomingMessages]);
+  }, [incomingMessages, consumeMessages]);
 
   const { sendMessage } = connection;
   const sendCommand = (command: Command) => {
@@ -196,7 +213,24 @@ const useCodenames = (skip = false) => {
     celebration,
     marks: gameState?.marks ?? [],
     turnSeconds: gameState?.turnSeconds ?? 120,
-    wordPack: (gameState?.wordPack ?? "classic") as WordPackId,
+    wordPack: gameState?.wordPack ?? "classic",
+    wordPacks: gameState?.wordPacks ?? [],
+    wordPackSaveResult,
+    saveWordPack: (
+      packId: string,
+      name: string,
+      words: string[],
+      expectedRevision: number,
+      requestId: string,
+    ) =>
+      sendCommand({
+        type: "saveWordPack",
+        packId,
+        name,
+        words,
+        expectedRevision,
+        requestId,
+      }),
     customWords: gameState?.customWords,
     teamCount: gameState?.teamCount ?? 2,
     setProfile: (name: string, animal: Animal) =>
@@ -206,7 +240,7 @@ const useCodenames = (skip = false) => {
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
     startGame: () => sendCommand({ type: "startGame" }),
-    setWordPack: (wordPack: WordPackId) =>
+    setWordPack: (wordPack: string) =>
       sendCommand({ type: "setWordPack", wordPack }),
     setCustomWords: (words: string[]) =>
       sendCommand({ type: "setCustomWords", words }),

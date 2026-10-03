@@ -1,25 +1,12 @@
 import { useState } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
-import { Animal, Player, WordPackId } from "schema";
+import { Animal, Player, RoomWordPack } from "schema";
 import AnimalAvatar from "@/components/ui/AnimalAvatar";
 import ProfileSheet from "./ProfileSheet";
 import WordPackEditor from "./WordPackEditor";
+import type { WordPackSaveResult } from "@/components/hooks/useCodenames";
 import { getTeamColor, getTeamName } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
-
-const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
-  { id: "classic", label: "Classic", emoji: "📝" },
-  { id: "movies", label: "Movies", emoji: "🎬" },
-  { id: "food", label: "Food", emoji: "🍕" },
-  { id: "geography", label: "Geography", emoji: "🌍" },
-  { id: "science", label: "Science", emoji: "🔬" },
-  { id: "tech", label: "Tech", emoji: "💻" },
-  { id: "agile", label: "Agile", emoji: "📋" },
-  { id: "design", label: "Design", emoji: "🎨" },
-  { id: "startup", label: "Startup", emoji: "🚀" },
-  { id: "internet", label: "Internet", emoji: "🌐" },
-  { id: "custom", label: "Custom", emoji: "✏️" },
-];
 
 const TEAM_COUNTS = [2, 3, 4];
 
@@ -43,8 +30,10 @@ export default function Lobby({
   teamCount,
   setWordPack,
   setTeamCount,
-  customWords,
-  setCustomWords,
+  wordPacks,
+  saveWordPack,
+  wordPackSaveResult,
+  isConnected,
   shuffleTeams,
   shuffling = false,
   roomId,
@@ -57,12 +46,20 @@ export default function Lobby({
   randomizeName: () => void;
   gameCanBeStarted: boolean;
   startGame: () => void;
-  wordPack: WordPackId;
+  wordPack: string;
   teamCount: number;
-  setWordPack: (pack: WordPackId) => void;
+  setWordPack: (pack: string) => void;
   setTeamCount: (count: number) => void;
-  customWords?: string[];
-  setCustomWords: (words: string[]) => void;
+  wordPacks: RoomWordPack[];
+  saveWordPack: (
+    packId: string,
+    name: string,
+    words: string[],
+    expectedRevision: number,
+    requestId: string,
+  ) => boolean;
+  wordPackSaveResult?: WordPackSaveResult;
+  isConnected: boolean;
   shuffleTeams: () => void;
   /** A shared shuffle countdown is running. */
   shuffling?: boolean;
@@ -148,7 +145,7 @@ export default function Lobby({
 
       <motion.section
         aria-label="Game settings"
-        className="glass-panel flex w-full flex-col gap-5 p-5 md:p-6"
+        className="glass-panel flex w-full min-w-0 flex-col gap-5 p-4 sm:p-5 md:p-6"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
@@ -157,30 +154,55 @@ export default function Lobby({
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-purple-400">
             Word pack
           </span>
-          <div className="flex flex-wrap gap-2">
-            {WORD_PACKS.map((pack) => (
-              <motion.button
-                key={pack.id}
-                disabled={pack.id === "custom" && !customWords?.length}
-                title={
-                  pack.id === "custom" && !customWords?.length
-                    ? "Save a custom word list below first"
-                    : undefined
+          <div className="flex flex-wrap items-center gap-3">
+            <motion.button
+              type="button"
+              aria-pressed={wordPack === "classic"}
+              disabled={!isConnected || shuffling}
+              className={chip(wordPack === "classic")}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setWordPack("classic")}
+            >
+              📝 Classic
+            </motion.button>
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-semibold text-purple-300">
+              Other room word packs
+              <select
+                aria-label="Other room word packs"
+                value={wordPack === "classic" ? "" : wordPack}
+                disabled={!isConnected || shuffling}
+                onChange={(event) =>
+                  event.target.value && setWordPack(event.target.value)
                 }
-                className={chip(wordPack === pack.id)}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setWordPack(pack.id)}
+                className="min-w-0 rounded-xl border border-purple-400/30 bg-base/50 px-3 py-2 text-sm font-semibold text-white outline-none transition focus:border-accent focus:shadow-[0_0_0_3px_rgba(160,112,224,0.16)] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {pack.emoji} {pack.label}
-              </motion.button>
-            ))}
+                <option value="" disabled>
+                  Choose a room pack
+                </option>
+                {wordPacks
+                  .filter((pack) => pack.id !== "classic")
+                  .map((pack) => (
+                    <option key={pack.id} value={pack.id}>
+                      {pack.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
           </div>
+          <p className="break-words text-xs text-purple-300">
+            Selected:{" "}
+            {wordPacks.find((pack) => pack.id === wordPack)?.name ?? wordPack}.
+            Everyone plays the same pack.
+          </p>
         </div>
         <WordPackEditor
-          words={customWords}
-          onSave={setCustomWords}
+          packs={wordPacks}
+          selectedPackId={wordPack}
+          onSave={saveWordPack}
+          saveResult={wordPackSaveResult}
           roomId={roomId}
+          isConnected={isConnected}
         />
 
         <div className="flex flex-col gap-2">

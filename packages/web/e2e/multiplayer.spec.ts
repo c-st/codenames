@@ -5,6 +5,7 @@ import {
   closeProfile,
   installSilentAudio,
   openProfile,
+  recordFrames,
   roomUrl,
   saveProfile,
   watchRoom,
@@ -27,9 +28,7 @@ const rosterNames = (state: GameStateForClient | undefined) =>
 
 async function openEditor(page: Page) {
   await page.bringToFront();
-  await page
-    .getByText("Create or edit a custom word pack", { exact: false })
-    .click();
+  await page.getByText("Edit room word packs", { exact: false }).click();
   await expect(
     page.getByLabel("Your words (up to 50 characters each)"),
   ).toBeVisible();
@@ -201,27 +200,49 @@ test("four independent players share custom words, shuffled roles and the same b
       i >= 24 ? `${"Z".repeat(48)}${i + 1}` : `Custom Word ${i + 1}`,
     );
     await openEditor(pages[0]);
+    await pages[0].getByRole("button", { name: "Add word pack" }).click();
+    await pages[0]
+      .getByLabel("Pack name", { exact: true })
+      .fill("Multiplayer mix");
     const input = pages[0].getByLabel("Your words (up to 50 characters each)");
     await input.fill("Too few\nwords");
     await expect(
-      pages[0].getByRole("button", { name: "Save & use custom pack" }),
+      pages[0].getByRole("button", { name: "Save word pack" }),
     ).toBeDisabled();
     await input.fill([...words, words[0].toLowerCase()].join("\n"));
     await expect(
       pages[0].getByText("30 unique words · 1 duplicate removed automatically"),
     ).toBeVisible();
-    await pages[0]
-      .getByRole("button", { name: "Save & use custom pack" })
-      .click();
+    await pages[0].getByRole("button", { name: "Save word pack" }).click();
+    await expect
+      .poll(
+        () =>
+          states[0]()?.wordPacks?.find(
+            (pack) => pack.name === "Multiplayer mix",
+          )?.words,
+      )
+      .toEqual(words);
+    const packId = states[0]()!.wordPacks!.find(
+      (pack) => pack.name === "Multiplayer mix",
+    )!.id;
     for (const state of states) {
-      await expect.poll(() => state()?.customWords).toEqual(words);
-      await expect.poll(() => state()?.wordPack).toBe("custom");
+      await expect
+        .poll(
+          () => state()?.wordPacks?.find((pack) => pack.id === packId)?.words,
+        )
+        .toEqual(words);
+      await expect.poll(() => state()?.wordPack).toBe("classic");
     }
+    await pages[0]
+      .getByLabel("Other room word packs", { exact: true })
+      .selectOption(packId);
+    for (const state of states)
+      await expect.poll(() => state()?.wordPack).toBe(packId);
     for (const page of pages.slice(1)) {
       await openEditor(page);
       await page
-        .getByRole("button", { name: "Load room’s saved list" })
-        .click();
+        .getByLabel("Pack to edit", { exact: true })
+        .selectOption(packId);
       await expect(
         page.getByLabel("Your words (up to 50 characters each)"),
       ).toHaveValue(words.join("\n"));
@@ -637,14 +658,20 @@ test("an empty room expires through real durable alarms and reopens with fresh s
     }
     await expect.poll(() => states[0]()?.players.length).toBe(4);
     await openEditor(pages[0]);
+    await pages[0].getByRole("button", { name: "Add word pack" }).click();
+    await pages[0].getByLabel("Pack name", { exact: true }).fill("Expiry mix");
     const words = Array.from({ length: 25 }, (_, i) => `Expiry Word ${i + 1}`);
     await pages[0]
       .getByLabel("Your words (up to 50 characters each)")
       .fill(words.join("\n"));
-    await pages[0]
-      .getByRole("button", { name: "Save & use custom pack" })
-      .click();
-    await expect.poll(() => states[0]()?.customWords).toEqual(words);
+    await pages[0].getByRole("button", { name: "Save word pack" }).click();
+    await expect
+      .poll(
+        () =>
+          states[0]()?.wordPacks?.find((pack) => pack.name === "Expiry mix")
+            ?.words,
+      )
+      .toEqual(words);
     await pages[0]
       .getByRole("button", { name: /Shuffle teams & spymasters/ })
       .click();
@@ -665,12 +692,18 @@ test("an empty room expires through real durable alarms and reopens with fresh s
     // The worker has a test-only 60-second idle TTL. No connection to this room
     // remains alive while the actual Wrangler alarm deletes its durable storage.
     reopened = await browser.newContext();
+    await installSilentAudio(reopened);
     const observer = await reopened.newPage();
     await observer.waitForTimeout(62_000);
     const state = watchRoom(observer);
     await observer.goto(url);
     await expect.poll(() => state()?.wordPack).toBe("classic");
-    await expect.poll(() => state()?.customWords ?? []).toEqual([]);
+    await expect.poll(() => state()?.wordPacks?.length).toBe(10);
+    await expect
+      .poll(() =>
+        state()?.wordPacks?.some((pack) => pack.name === "Expiry mix"),
+      )
+      .toBe(false);
     await expect.poll(() => state()?.sessionHistory?.rounds).toEqual([]);
     await expect.poll(() => state()?.players.length).toBe(1);
     await expect(
@@ -679,5 +712,175 @@ test("an empty room expires through real durable alarms and reopens with fresh s
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
     await reopened?.close();
+  }
+});
+
+test("room pack library preserves drafts, rejects stale edits and keeps Classic available", async ({
+  browser,
+}) => {
+  const contexts = await Promise.all([
+    browser.newContext(),
+    browser.newContext(),
+  ]);
+  try {
+    await Promise.all(contexts.map((context) => installSilentAudio(context)));
+    const pages = await Promise.all(
+      contexts.map((context) => context.newPage()),
+    );
+    const states = pages.map(watchRoom);
+    const secondFrames = recordFrames(pages[1]);
+    const url = roomUrl();
+    for (const page of pages) {
+      await page.goto(url);
+      await expect(page.getByText("Connected", { exact: true })).toBeVisible();
+      await openEditor(page);
+      await page
+        .getByLabel("Pack to edit", { exact: true })
+        .selectOption("classic");
+    }
+    const first = Array.from(
+      { length: 25 },
+      (_, i) => `First Classic ${i + 1}`,
+    );
+    const second = Array.from(
+      { length: 25 },
+      (_, i) => `Second Classic ${i + 1}`,
+    );
+    const input = (page: Page) =>
+      page.getByLabel("Your words (up to 50 characters each)");
+    // Both drafts start from revision zero before either player saves.
+    await input(pages[0]).fill(first.join("\n"));
+    await input(pages[1]).fill(second.join("\n"));
+    await pages[0].bringToFront();
+    await pages[0].getByRole("button", { name: "Save word pack" }).click();
+    for (const state of states)
+      await expect
+        .poll(
+          () =>
+            state()?.wordPacks?.find((pack) => pack.id === "classic")?.words,
+        )
+        .toEqual(first);
+    await expect(input(pages[1])).toHaveValue(second.join("\n"));
+    await pages[1].bringToFront();
+    await pages[1].getByRole("button", { name: "Save word pack" }).click();
+    await expect
+      .poll(() =>
+        secondFrames.some((frame) => {
+          try {
+            const event = JSON.parse(frame);
+            return (
+              event.type === "wordPackSaveRejected" &&
+              event.code === "conflict" &&
+              event.packId === "classic"
+            );
+          } catch {
+            return false;
+          }
+        }),
+      )
+      .toBe(true);
+    await expect(
+      pages[1].getByRole("button", { name: "Save word pack" }),
+    ).toBeDisabled();
+    await expect(input(pages[1])).toHaveValue(second.join("\n"));
+    expect(
+      states[1]()!.wordPacks!.find((pack) => pack.id === "classic")!.words,
+    ).toEqual(first);
+    await pages[1]
+      .getByText("Review latest room version", { exact: true })
+      .click();
+    await expect(pages[1].getByLabel("Latest room words")).toHaveValue(
+      first.join("\n"),
+    );
+    await pages[1]
+      .getByRole("button", { name: "Keep my edits on latest version" })
+      .click();
+    await pages[1].getByRole("button", { name: "Save word pack" }).click();
+    for (const state of states)
+      await expect
+        .poll(
+          () =>
+            state()?.wordPacks?.find((pack) => pack.id === "classic")?.words,
+        )
+        .toEqual(second);
+    await pages[0]
+      .getByRole("button", { name: "Load latest room version" })
+      .click();
+    await expect(input(pages[0])).toHaveValue(second.join("\n"));
+    await expect(pages[0].getByLabel("Pack name", { exact: true })).toHaveValue(
+      "Classic",
+    );
+    await expect(
+      pages[0].getByLabel("Pack name", { exact: true }),
+    ).toHaveAttribute("readonly", "");
+
+    await pages[0].bringToFront();
+    await pages[0].getByRole("button", { name: "Add word pack" }).click();
+    await pages[0]
+      .getByLabel("Pack name", { exact: true })
+      .fill("Shared favourites");
+    await input(pages[0]).fill(first.join("\n"));
+    // Reload restores a new pack draft, including its unique ID and base revision.
+    await pages[0].reload();
+    await expect(
+      pages[0].getByText("Connected", { exact: true }),
+    ).toBeVisible();
+    await openEditor(pages[0]);
+    await expect(pages[0].getByLabel("Pack name", { exact: true })).toHaveValue(
+      "Shared favourites",
+    );
+    await expect(input(pages[0])).toHaveValue(first.join("\n"));
+    await pages[0].getByRole("button", { name: "Save word pack" }).click();
+    await expect
+      .poll(
+        () =>
+          states[1]()?.wordPacks?.find(
+            (pack) => pack.name === "Shared favourites",
+          )?.words,
+      )
+      .toEqual(first);
+    const id = states[1]()!.wordPacks!.find(
+      (pack) => pack.name === "Shared favourites",
+    )!.id;
+    for (const state of states)
+      await expect.poll(() => state()?.wordPack).toBe("classic");
+    await pages[1]
+      .getByLabel("Other room word packs", { exact: true })
+      .selectOption(id);
+    for (const state of states)
+      await expect.poll(() => state()?.wordPack).toBe(id);
+    await pages[1].reload();
+    await expect.poll(() => states[1]()?.wordPack).toBe(id);
+    await expect(
+      pages[1].getByLabel("Other room word packs", { exact: true }),
+    ).toHaveValue(id);
+    await pages[1]
+      .getByRole("button", { name: "📝 Classic", exact: true })
+      .click();
+    for (const state of states)
+      await expect.poll(() => state()?.wordPack).toBe("classic");
+    for (const state of states)
+      expect(
+        state()!.wordPacks!.find((pack) => pack.id === "classic")!.words,
+      ).toEqual(second);
+    await pages[0].bringToFront();
+    await pages[0].screenshot({
+      path: test.info().outputPath("word-pack-library-desktop.png"),
+      fullPage: true,
+    });
+    await pages[0].setViewportSize({ width: 375, height: 812 });
+    await expect
+      .poll(() =>
+        pages[0].evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+    await pages[0].screenshot({
+      path: test.info().outputPath("word-pack-library-mobile.png"),
+      fullPage: true,
+    });
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
   }
 });

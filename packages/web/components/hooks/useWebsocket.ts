@@ -88,8 +88,9 @@ const useWebSocket = (
         // Batch without dropping intermediate events when React coalesces renders.
         clearTimeout(batchTimer);
         batchTimer = setTimeout(() => {
-          setIncomingMessages(pending);
+          const batch = pending;
           pending = [];
+          setIncomingMessages((current) => [...current, ...batch]);
         }, 0);
       };
       ws.onclose = (event) => {
@@ -148,8 +149,13 @@ const useWebSocket = (
     (code = 1000) => socketRef.current?.close(code),
     [],
   );
+  const consumeMessages = useCallback((count: number) => {
+    if (count <= 0) return;
+    setIncomingMessages((current) => current.slice(count));
+  }, []);
   return {
     incomingMessages,
+    consumeMessages,
     isConnected,
     sendMessage,
     closeConnection,

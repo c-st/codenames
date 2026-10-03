@@ -30,24 +30,27 @@ In the lobby, choose a name and an animal, then click **Save profile**. The serv
 
 Browser storage keys are:
 
-| Key                                | Contents                      |
-| ---------------------------------- | ----------------------------- |
-| `codenames:profile`                | Name and animal               |
-| `codenames:token:<room-name>`      | Private reconnect token for that room |
-| `codenames:muted`                  | Personal mute preference      |
-| `codenames:word-draft:<room-name>` | Unpublished custom-word draft |
+| Key                                  | Contents                                     |
+| ------------------------------------ | -------------------------------------------- |
+| `codenames:profile`                  | Name and animal                              |
+| `codenames:token:<room-name>`        | Private reconnect token for that room        |
+| `codenames:muted`                    | Personal mute preference                     |
+| `codenames:pack-draft:<room>:<pack>` | Unpublished pack draft and its base revision |
+| `codenames:pack-editor:<room>`       | Last pack opened in the editor               |
 
 Room tokens use localStorage. Values under the older `codenames:playerId:<room-name>` key were broadcast to other players, so they are never reused as tokens. Additional tabs in the same browser share a player identity. A different browser or cleared storage creates a separate identity. Browser storage is local to the site's origin; it is not an account or cross-device profile.
 
 Connections recover automatically after unexpected disconnection, with heartbeat checks and retry backoff. The server keeps a disconnected player's team and role for 60 seconds. The client disables game actions while disconnected; unsent actions must be tried again after reconnection.
 
-## Custom words and team shuffle
+## Room word packs and team shuffle
 
-Expand **Create or edit a custom word pack** in the lobby. Paste words separated by newlines or commas. The editor trims whitespace, removes duplicates ignoring capitalization, and requires 25–500 unique words of up to 50 characters each.
+Every room starts with ten editable word packs. **Classic** stays prominently available under its familiar name; its words can be edited. Choose another pack with **Other room word packs**. Everyone plays the selected room pack.
 
-Drafts are saved locally for the room. **Save & use custom pack** publishes the validated list to everyone and selects it for the next game. Editing a draft does not change the shared list until saved. **Load room’s saved list** replaces the current draft with the shared version. Packs can only change in the lobby.
+Expand **Edit room word packs**, choose **Pack to edit**, or use **Add word pack** to create a named list. Paste words separated by newlines or commas. The editor trims whitespace, removes duplicates ignoring capitalization, and requires 25–500 unique words of up to 50 characters each. Names must be unique in the room. Rooms retain up to 30 packs within a 96 KiB library budget.
 
-**Shuffle teams & spymasters** balances teams and randomly selects one spymaster per team. Changing the number of teams also reshuffles assignments. Roles cannot change during an active round; players can swap roles after the game finishes.
+**Save word pack** publishes the list to everyone and waits for server confirmation. It does not change the selected pack: choose it above when ready to play. Drafts and their base revisions are stored locally per room and pack. Clean editors follow room updates; unsaved edits stay untouched. When another player saves the same pack first, a stale save is rejected. **Load latest room version** replaces your draft, or review the latest words and explicitly **Keep my edits on latest version** before saving again. Pack changes are available only in the lobby.
+
+**Shuffle teams & spymasters** starts a shared countdown, then balances teams and randomly selects one spymaster per team. Everyone sees the same countdown and reveal; repeated clicks do not restart it. Changing the number of teams also reshuffles assignments. Roles cannot change during an active round; players can swap roles after the game finishes.
 
 ## Session history and KPIs
 
@@ -55,7 +58,7 @@ The session history panel is available in the lobby and during play. Expand a ro
 
 The panel summarizes the up to 50 retained rounds with completed-round counts, guess accuracy, average completed-round duration and per-team win bars. Accuracy includes recorded guesses in active, completed and stopped rounds. Average duration includes completed rounds only, measured from start to result. Team labels describe the teams in each round, not a permanent player leaderboard; shuffling can change membership. Assassin losses are displayed as losses when no winner is reported.
 
-Each round retains up to 200 public clue/guess events, with a 96 KiB total history budget that may remove older records. History survives reloads and is shared by all clients. The backend deletes the room, including history and custom packs, after two weeks without connected players. Rejoining before expiry cancels that deadline. Opening an expired link creates a fresh session with the same room name; saved browser profiles and unpublished word drafts remain local.
+Each round retains up to 200 public clue/guess events, with a 96 KiB total history budget that may remove older records. History survives reloads and is shared by all clients. The backend deletes the room, including history and its word-pack library, after two weeks without connected players. Rejoining before expiry cancels that deadline. Opening an expired link creates a fresh session with the same room name; saved browser profiles and unpublished word drafts remain local.
 
 ### Playful awards
 
@@ -67,7 +70,7 @@ Spymaster credit follows the identity recorded when a clue was given, even if ro
 
 ## Sound troubleshooting
 
-The game automatically creates or resumes its audio context when a player clicks/taps the page or presses a key. Browsers generally require this interaction before allowing sound. Someone who joins through an invitation and only watches should interact with the page once. Another player cannot enable audio for them. [MDN describes this browser policy](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
+After joining a room, the game creates or resumes its audio context when an unmuted player clicks/taps the page or presses a key. The landing page and muted rooms keep audio inactive; muting or leaving the room closes the context. Browsers generally require this interaction before allowing sound. Someone who joins through an invitation and only watches should interact with the page once. Another player cannot enable audio for them. [MDN describes this browser policy](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
 
 If sounds are missing:
 
@@ -90,7 +93,7 @@ pnpm test:integration
 
 Playwright starts Wrangler on port 8787 and Next on port 3000 (set `E2E_API_PORT`/`E2E_WEB_PORT` to run beside another checkout). The suite starts fresh servers; stop development servers using those ports before testing. It runs browser tests one at a time for stable timing, with four independent clients inside the multiplayer test. Test Next uses `.next-e2e` so its output does not conflict with the production `dist` directory. The test API endpoint is fixed to the local server; leave `NEXT_PUBLIC_API_URL` unset for this suite. The test worker overrides `ROOM_IDLE_TTL_SECONDS` to 60 seconds for a real expiry check; production and ordinary local development retain the two-week setting.
 
-The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing custom words, shuffled roles, a board, clues, reveals and persistent session history. They compare shared sound events and instrument actual Web Audio scheduling. Test contexts use a real AudioContext with a silent output sink, preserving oscillator timing and gesture activation while avoiding dependence on speaker hardware. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow. History checks cover an active round, a stopped round restored after reload, and a completed rematch with shared KPIs. The expiry test waits just over one minute, so the full suite takes longer than the gameplay checks. `e2e/fun.spec.ts` covers card flips and landings, tap feedback, shared marks, reactions, banners, the assassin flash, win/lose celebrations, rematch, the spymaster thinking indicator, the timer heartbeat and buzzer, and reconnect-token privacy.
+The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing named room packs, shuffled roles, a board, clues, reveals and persistent session history. The library checks cover concurrent stale edits, explicit conflict review, editable Classic words, named draft persistence, shared selection and pack reloads. Tests compare shared sound events and instrument Web Audio scheduling with a silent mock that records oscillator starts while preserving gesture activation and context suspension. This avoids host audio service stalls. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow. History checks cover an active round, a stopped round restored after reload, and a completed rematch with shared KPIs. The expiry test waits just over one minute, so the full suite takes longer than the gameplay checks. `e2e/fun.spec.ts` covers card flips and landings, tap feedback, shared marks, reactions, banners, the assassin flash, win/lose celebrations, rematch, the spymaster thinking indicator, the timer heartbeat and buzzer, and reconnect-token privacy.
 
 Failure traces are retained under `packages/web/test-results/`. To inspect one:
 

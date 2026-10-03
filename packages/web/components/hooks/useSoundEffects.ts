@@ -10,7 +10,7 @@ const TEAM_CHIMES: [number, number][] = [
   [392, 494],
 ];
 
-const useSoundEffects = () => {
+const useSoundEffects = (enabled = true) => {
   const ctxRef = useRef<AudioContext | null>(null);
 
   const scheduledAtRef = useRef<number | null>(null);
@@ -21,20 +21,34 @@ const useSoundEffects = () => {
     } catch {
       /* Storage unavailable */
     }
+  }, []);
+  useEffect(() => {
+    if (!enabled || muted) return;
     const unlock = () => {
-      if (!ctxRef.current) ctxRef.current = new AudioContext();
-      if (ctxRef.current.state === "suspended")
-        void ctxRef.current.resume().catch(() => {});
+      try {
+        if (!ctxRef.current) ctxRef.current = new AudioContext();
+        if (ctxRef.current.state === "suspended")
+          void ctxRef.current.resume().catch(() => {});
+      } catch {
+        // Missing or unavailable audio devices must not break game controls.
+      }
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
-      void ctxRef.current?.close();
+      const context = ctxRef.current;
       ctxRef.current = null;
+      scheduledAtRef.current = null;
+      try {
+        if (context && context.state !== "closed")
+          void context.close().catch(() => {});
+      } catch {
+        // Device teardown can fail synchronously; cleanup must still finish.
+      }
     };
-  }, []);
+  }, [enabled, muted]);
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       const next = !m;
@@ -47,13 +61,6 @@ const useSoundEffects = () => {
     });
   }, []);
 
-  const getCtx = useCallback(() => {
-    if (!ctxRef.current) {
-      ctxRef.current = new AudioContext();
-    }
-    return ctxRef.current;
-  }, []);
-
   const playTone = useCallback(
     (
       freq: number,
@@ -62,9 +69,9 @@ const useSoundEffects = () => {
       volume: number = 0.3,
       delay: number = 0,
     ) => {
-      if (muted) return;
-      const ctx = getCtx();
-      if (ctx.state !== "running") return;
+      if (!enabled || muted) return;
+      const ctx = ctxRef.current;
+      if (!ctx || ctx.state !== "running") return;
       const start =
         Math.max(ctx.currentTime, scheduledAtRef.current ?? ctx.currentTime) +
         delay;
@@ -80,7 +87,7 @@ const useSoundEffects = () => {
       osc.start(start);
       osc.stop(start + duration);
     },
-    [getCtx, muted],
+    [enabled, muted],
   );
 
   const cardTap = useCallback(() => {
@@ -171,14 +178,14 @@ const useSoundEffects = () => {
 
   const haptic = useCallback(
     (pattern: number | number[]) => {
-      if (muted) return;
+      if (!enabled || muted) return;
       try {
         navigator.vibrate?.(pattern);
       } catch {
         /* Not supported */
       }
     },
-    [muted],
+    [enabled, muted],
   );
 
   const buttonClick = useCallback(() => {
@@ -188,7 +195,7 @@ const useSoundEffects = () => {
   const playSharedEffect = useCallback(
     (effect: SharedEffect, delaySeconds: number) => {
       const ctx = ctxRef.current;
-      if (muted || !ctx || ctx.state !== "running") return;
+      if (!enabled || muted || !ctx || ctx.state !== "running") return;
       scheduledAtRef.current = ctx.currentTime + Math.max(0, delaySeconds);
       const cues: Record<SharedEffect["type"], () => void> = {
         correctGuess,
@@ -204,6 +211,7 @@ const useSoundEffects = () => {
     },
     [
       muted,
+      enabled,
       correctGuess,
       wrongGuess,
       assassinReveal,

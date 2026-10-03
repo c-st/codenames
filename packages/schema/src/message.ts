@@ -1,31 +1,54 @@
 import { z } from "zod";
-import { builtInWordPackIds } from "words";
+import {
+  customWordsSchema,
+  wordPackIdSchema,
+  wordPackNameSchema,
+} from "./word-packs";
 import {
   animalSchema,
   gameStateSchemaForClient,
   reactionEmojiSchema,
 } from "./game";
 
-export const wordPackSchema = z.enum([...builtInWordPackIds, "custom"]);
+export const wordPackSchema = wordPackIdSchema;
 export type WordPackId = z.infer<typeof wordPackSchema>;
+export { customWordsSchema } from "./word-packs";
 
-export const customWordsSchema = z
-  .array(
-    z
-      .string()
-      .trim()
-      .min(1, "Words cannot be blank.")
-      .max(50, "Shorten words longer than 50 characters."),
-  )
-  .min(25, "Add at least 25 unique words.")
-  .max(500, "Use no more than 500 words.")
-  .refine(
-    (words) =>
-      new Set(words.map((word) => word.toLowerCase())).size === words.length,
-    {
-      message: "Each word must be unique (ignoring capitalization).",
-    },
-  );
+export const saveWordPackCommandSchema = z.object({
+  type: z.literal("saveWordPack"),
+  packId: wordPackIdSchema,
+  name: wordPackNameSchema,
+  words: customWordsSchema,
+  expectedRevision: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(Number.MAX_SAFE_INTEGER - 1),
+  requestId: z.string().min(1).max(100),
+});
+
+// Enough routing information to acknowledge invalid saves without trusting their contents.
+export const saveWordPackEnvelopeSchema = z.object({
+  type: z.literal("saveWordPack"),
+  packId: z.string().min(1).max(64),
+  requestId: z.string().min(1).max(100),
+});
+
+export const wordPackSaveRejectedSchema = z.object({
+  type: z.literal("wordPackSaveRejected"),
+  requestId: z.string(),
+  packId: z.string(),
+  reason: z.string(),
+  code: z.enum([
+    "conflict",
+    "invalid",
+    "game_running",
+    "limit",
+    "storage_error",
+  ]),
+  currentRevision: z.number().optional(),
+});
+export type WordPackSaveRejected = z.infer<typeof wordPackSaveRejectedSchema>;
 
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({
@@ -71,7 +94,14 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setCustomWords"),
     words: customWordsSchema,
+    expectedRevision: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER - 1)
+      .optional(),
   }),
+  saveWordPackCommandSchema,
   z.object({
     type: z.literal("setTeamCount"),
     teamCount: z.number().int().min(2).max(4),
@@ -91,6 +121,13 @@ export const commandSchema = z.discriminatedUnion("type", [
 ]);
 
 export const gameEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("wordPackSaved"),
+    requestId: z.string(),
+    packId: z.string(),
+    revision: z.number(),
+  }),
+  wordPackSaveRejectedSchema,
   z.object({
     type: z.literal("gameStateUpdated"),
     gameState: gameStateSchemaForClient,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { roomWordPacksSchema } from "./word-packs";
 
 export const animalSchema = z.enum([
   "🦊",
@@ -140,6 +141,7 @@ export const sessionRoundSchema = z.object({
   endedAt: z.number().optional(),
   status: z.enum(["active", "completed", "aborted"]),
   wordPack: z.string(),
+  wordPackName: z.string().optional(),
   teamCount: z.number(),
   players: z.array(playerSchema),
   result: gameResult.optional(),
@@ -164,6 +166,7 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   wordPack: z.string().optional(),
   teamCount: z.number().optional(),
   customWords: z.array(z.string()).optional(),
+  wordPacks: roomWordPacksSchema.optional(),
   serverTime: z.number().optional(),
   /** Server time when a pending team shuffle happens; shown as a shared countdown. */
   shuffleAt: z.number().optional(),

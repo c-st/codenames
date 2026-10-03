@@ -13,6 +13,12 @@ import {
   SessionHistory,
   SessionRound,
   SessionEvent,
+  RoomWordPack,
+  roomWordPacksSchema,
+  customWordsSchema,
+  saveWordPackCommandSchema,
+  saveWordPackEnvelopeSchema,
+  WordPackSaveRejected,
 } from "schema";
 import { Env } from "./worker";
 import { isReconnectToken, publicPlayerId } from "./identity";
@@ -25,8 +31,7 @@ import {
 import {
   classic,
   randomAnimalEmoji,
-  wordPacks,
-  BuiltInWordPackId,
+  wordPacks as builtInWordPacks,
 } from "words";
 
 const GAME_STATE = "gameState";
@@ -48,6 +53,25 @@ const MAX_ROUND_EVENTS = 200;
 // Legacy Durable Object KV values are limited to 128 KiB; leave serialization headroom.
 const MAX_HISTORY_BYTES = 96 * 1024;
 const DEFAULT_ROOM_IDLE_TTL_SECONDS = 14 * 24 * 60 * 60;
+const MAX_WORD_PACKS = 30;
+const MAX_WORD_PACK_BYTES = 96 * 1024;
+const createWordPackLibrary = (): RoomWordPack[] =>
+  Object.entries(builtInWordPacks).map(([id, words]) => ({
+    id,
+    name: id[0].toUpperCase() + id.slice(1),
+    words: [...words],
+    revision: 0,
+  }));
+
+class WordPackSaveError extends Error {
+  constructor(
+    public code: WordPackSaveRejected["code"],
+    message: string,
+    public currentRevision?: number,
+  ) {
+    super(message);
+  }
+}
 
 export class CodenamesGame extends DurableObject {
   private roomExpiresAt: number | undefined;
@@ -55,7 +79,10 @@ export class CodenamesGame extends DurableObject {
   private disconnected: Record<string, number> = {};
   private selectedWordPack = "classic";
   private selectedTeamCount = 2;
-  private customWords: string[] = [];
+  private roomWordPacks: RoomWordPack[] = createWordPackLibrary();
+  private get customWords(): string[] {
+    return this.roomWordPacks.find((pack) => pack.id === "custom")?.words ?? [];
+  }
   // Cached between events; dropped after any failed command so storage stays the source of truth.
   private game: Codenames | undefined;
   private marks: StoredMark[] = [];
@@ -87,11 +114,32 @@ export class CodenamesGame extends DurableObject {
         wordPack: string;
         teamCount: number;
         customWords?: string[];
+        wordPacks?: RoomWordPack[];
       }>(ROOM_SETTINGS);
       if (settings) {
-        this.selectedWordPack = settings.wordPack;
         this.selectedTeamCount = settings.teamCount;
-        this.customWords = settings.customWords ?? [];
+        const library = roomWordPacksSchema.safeParse(settings.wordPacks);
+        if (library.success) this.roomWordPacks = library.data;
+        else {
+          if (settings.wordPacks !== undefined)
+            console.error(
+              "Invalid word pack library, resetting:",
+              library.error,
+            );
+          const legacyWords = customWordsSchema.safeParse(settings.customWords);
+          if (legacyWords.success)
+            this.roomWordPacks.push({
+              id: "custom",
+              name: "Custom",
+              words: legacyWords.data,
+              revision: 1,
+            });
+        }
+        this.selectedWordPack = this.roomWordPacks.some(
+          (pack) => pack.id === settings.wordPack,
+        )
+          ? settings.wordPack
+          : "classic";
       }
       const history =
         await this.ctx.storage.get<SessionHistory>(SESSION_HISTORY);
@@ -247,10 +295,25 @@ export class CodenamesGame extends DurableObject {
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
     // Parse JSON
     let parsedCommand;
+    let input: unknown;
     try {
-      parsedCommand = commandSchema.parse(JSON.parse(message.toString()));
+      input = JSON.parse(message.toString());
+      parsedCommand = commandSchema.parse(input);
     } catch (error) {
       console.error("Failed to parse JSON:", error);
+      const envelope = saveWordPackEnvelopeSchema.safeParse(input);
+      if (envelope.success) {
+        const validation = saveWordPackCommandSchema.safeParse(input);
+        this.sendWordPackSaveRejected(ws, {
+          type: "wordPackSaveRejected",
+          requestId: envelope.data.requestId,
+          packId: envelope.data.packId,
+          code: "invalid",
+          reason: validation.success
+            ? "Invalid word pack."
+            : (validation.error.issues[0]?.message ?? "Invalid word pack."),
+        });
+      }
       return;
     }
 
@@ -392,9 +455,17 @@ export class CodenamesGame extends DurableObject {
 
   /** Only the active spymaster drafting a clue shows as thinking. */
   private relayTyping(sender: WebSocket, typing: boolean) {
-    const player = this.findCachedPlayer(sender.deserializeAttachment()?.playerId);
+    const player = this.findCachedPlayer(
+      sender.deserializeAttachment()?.playerId,
+    );
     const turn = this.game?.getGameState().turn;
-    if (!player || player.role !== "spymaster" || player.team !== turn?.team || turn.hint) return;
+    if (
+      !player ||
+      player.role !== "spymaster" ||
+      player.team !== turn?.team ||
+      turn.hint
+    )
+      return;
     this.sendToAll({ type: "typing", playerId: player.id, typing }, sender);
   }
 
@@ -448,6 +519,9 @@ export class CodenamesGame extends DurableObject {
       startedAt: Date.now(),
       status: "active",
       wordPack: this.selectedWordPack,
+      wordPackName: this.roomWordPacks.find(
+        (pack) => pack.id === this.selectedWordPack,
+      )?.name,
       teamCount: this.selectedTeamCount,
       players: structuredClone(game.getGameState().players),
       events: [],
@@ -533,7 +607,7 @@ export class CodenamesGame extends DurableObject {
     this.disconnected = {};
     this.selectedWordPack = "classic";
     this.selectedTeamCount = 2;
-    this.customWords = [];
+    this.roomWordPacks = createWordPackLibrary();
     this.sessionHistory = { rounds: [], awardSeed: crypto.randomUUID() };
     // In-memory caches must not resurrect the deleted room.
     this.game = undefined;
@@ -574,7 +648,7 @@ export class CodenamesGame extends DurableObject {
       [ROOM_SETTINGS]: {
         wordPack: this.selectedWordPack,
         teamCount: this.selectedTeamCount,
-        customWords: this.customWords,
+        wordPacks: this.roomWordPacks,
       },
       [DISCONNECTED]: this.disconnected,
       [SHUFFLE_AT]: this.shuffleAt ?? null,
@@ -582,10 +656,23 @@ export class CodenamesGame extends DurableObject {
     });
     await this.scheduleAlarm(game);
 
+    await this.broadcastGameState(game, exclude, effects);
+  }
+
+  private async broadcastGameState(
+    game: Codenames,
+    exclude?: WebSocket,
+    effects: SharedEffect[] = [],
+    only?: WebSocket,
+  ): Promise<void> {
+    const gameState = game.getGameState();
     const websockets = this.ctx.getWebSockets();
     const promises = websockets
       .filter(
-        (websocket) => websocket !== exclude && websocket.readyState === 1,
+        (websocket) =>
+          websocket !== exclude &&
+          websocket.readyState === 1 &&
+          (!only || websocket === only),
       )
       .map((ws) => {
         const attachment = ws.deserializeAttachment();
@@ -619,6 +706,7 @@ export class CodenamesGame extends DurableObject {
           wordPack: this.selectedWordPack,
           teamCount: this.selectedTeamCount,
           customWords: this.customWords,
+          wordPacks: this.roomWordPacks,
           serverTime: Date.now(),
           shuffleAt: this.shuffleAt,
           effects,
@@ -641,6 +729,126 @@ export class CodenamesGame extends DurableObject {
       });
 
     await Promise.all(promises);
+  }
+
+  private prepareWordPack(
+    packId: string,
+    name: string,
+    words: string[],
+    expectedRevision: number,
+    legacy = false,
+  ): { pack: RoomWordPack; library: RoomWordPack[] } {
+    const current = this.roomWordPacks.find((pack) => pack.id === packId);
+    if (expectedRevision !== (current?.revision ?? 0)) {
+      throw new WordPackSaveError(
+        "conflict",
+        "This word pack changed. Load the latest version before saving.",
+        current?.revision ?? 0,
+      );
+    }
+    if (
+      !current &&
+      !legacy &&
+      !/^room-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(packId)
+    ) {
+      throw new WordPackSaveError(
+        "invalid",
+        "New word packs need a new room word pack ID.",
+      );
+    }
+    if (packId === "classic" && name !== "Classic") {
+      throw new WordPackSaveError(
+        "invalid",
+        "Classic keeps its name. You can edit its words.",
+      );
+    }
+    if (
+      this.roomWordPacks.some(
+        (pack) =>
+          pack.id !== packId && pack.name.toLowerCase() === name.toLowerCase(),
+      )
+    ) {
+      throw new WordPackSaveError(
+        "invalid",
+        "A word pack with this name already exists.",
+      );
+    }
+    if (!current && this.roomWordPacks.length >= MAX_WORD_PACKS) {
+      throw new WordPackSaveError(
+        "limit",
+        "This room can hold up to 30 word packs.",
+      );
+    }
+    const pack: RoomWordPack = {
+      id: packId,
+      name,
+      words: [...words],
+      revision: expectedRevision + 1,
+    };
+    const next = current
+      ? this.roomWordPacks.map((item) => (item.id === packId ? pack : item))
+      : [...this.roomWordPacks, pack];
+    if (
+      new TextEncoder().encode(JSON.stringify(next)).byteLength >
+      MAX_WORD_PACK_BYTES
+    ) {
+      throw new WordPackSaveError(
+        "limit",
+        "This room's word pack library is full. Use fewer or shorter words.",
+      );
+    }
+    return { pack, library: next };
+  }
+
+  private async persistWordPack(
+    packId: string,
+    name: string,
+    words: string[],
+    expectedRevision: number,
+    legacy = false,
+  ): Promise<RoomWordPack> {
+    const current = this.roomWordPacks.find((pack) => pack.id === packId);
+    const prepared = this.prepareWordPack(
+      packId,
+      name,
+      words,
+      expectedRevision,
+      legacy,
+    );
+    const selectedWordPack =
+      legacy && !current ? packId : this.selectedWordPack;
+    try {
+      // A single durable settings write commits the library and legacy selection together.
+      await this.ctx.storage.put({
+        [ROOM_SETTINGS]: {
+          wordPack: selectedWordPack,
+          teamCount: this.selectedTeamCount,
+          wordPacks: prepared.library,
+        },
+      });
+    } catch (error) {
+      console.error("Word pack storage write failed:", error);
+      throw new WordPackSaveError(
+        "storage_error",
+        "Your word pack could not be saved. Please retry.",
+        current?.revision ?? 0,
+      );
+    }
+    // Failed writes leave both the library and selected pack at their committed values.
+    this.roomWordPacks = prepared.library;
+    this.selectedWordPack = selectedWordPack;
+    return prepared.pack;
+  }
+
+  private sendWordPackSaveRejected(
+    ws: WebSocket,
+    event: WordPackSaveRejected,
+  ): void {
+    try {
+      ws.send(JSON.stringify(event));
+    } catch {
+      /* Client already gone */
+    }
   }
 
   private async handleCommand(command: Command, ws: WebSocket): Promise<void> {
@@ -676,9 +884,66 @@ export class CodenamesGame extends DurableObject {
       case "setCustomWords": {
         if (game.getGameState().turn)
           throw new GameError("Word lists can only change in the lobby");
-        this.customWords = command.words;
-        this.selectedWordPack = "custom";
-        await this.persistAndBroadcastGameState(game);
+        const current = this.roomWordPacks.find((pack) => pack.id === "custom");
+        if (current && command.expectedRevision === undefined)
+          throw new GameError(
+            "This word pack changed. Reload it and include its revision before saving.",
+          );
+        try {
+          await this.persistWordPack(
+            "custom",
+            current?.name ?? "Custom",
+            command.words,
+            command.expectedRevision ?? 0,
+            true,
+          );
+        } catch (error) {
+          if (error instanceof WordPackSaveError)
+            throw new GameError(error.message);
+          throw error;
+        }
+        await this.broadcastGameState(game);
+        break;
+      }
+      case "saveWordPack": {
+        try {
+          if (game.getGameState().turn)
+            throw new WordPackSaveError(
+              "game_running",
+              "Word packs can only be saved in the lobby.",
+            );
+          const pack = await this.persistWordPack(
+            command.packId,
+            command.name,
+            command.words,
+            command.expectedRevision,
+          );
+          await this.broadcastGameState(game);
+          try {
+            ws.send(
+              JSON.stringify({
+                type: "wordPackSaved",
+                requestId: command.requestId,
+                packId: pack.id,
+                revision: pack.revision,
+              }),
+            );
+          } catch {
+            /* The durable save succeeded even if its acknowledgement could not be delivered. */
+          }
+        } catch (error) {
+          if (!(error instanceof WordPackSaveError)) throw error;
+          if (error.code === "conflict")
+            await this.broadcastGameState(game, undefined, [], ws);
+          this.sendWordPackSaveRejected(ws, {
+            type: "wordPackSaveRejected",
+            requestId: command.requestId,
+            packId: command.packId,
+            code: error.code,
+            reason: error.message,
+            currentRevision: error.currentRevision,
+          });
+        }
         break;
       }
       case "randomizeName": {
@@ -709,14 +974,11 @@ export class CodenamesGame extends DurableObject {
         if (this.shuffleAt !== undefined)
           throw new GameError("Wait for the shuffle to finish");
         if (game.isReadyToStartGame()) {
-          const pack =
-            this.selectedWordPack === "custom"
-              ? this.customWords
-              : (wordPacks[this.selectedWordPack as BuiltInWordPackId] ??
-                classic);
-          if (pack.length < 25)
-            throw new GameError("Add at least 25 custom words");
-          game.setWords(pack);
+          const pack = this.roomWordPacks.find(
+            (item) => item.id === this.selectedWordPack,
+          );
+          if (!pack) throw new GameError("Select an available word pack");
+          game.setWords(pack.words);
           game.startGame();
           this.startRound(game);
           await this.persistAndBroadcastGameState(
@@ -841,8 +1103,8 @@ export class CodenamesGame extends DurableObject {
       case "setWordPack": {
         if (game.getGameState().turn)
           throw new GameError("Word packs can only change in the lobby");
-        if (command.wordPack === "custom" && this.customWords.length < 25)
-          throw new GameError("Save a custom list first");
+        if (!this.roomWordPacks.some((pack) => pack.id === command.wordPack))
+          throw new GameError("Word pack not found in this room");
         this.selectedWordPack = command.wordPack;
         await this.persistAndBroadcastGameState(game);
         break;

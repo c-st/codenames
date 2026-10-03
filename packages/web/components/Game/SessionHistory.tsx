@@ -117,7 +117,10 @@ function Round({ round, now }: { round: SessionRound; now: number }) {
               dateStyle: "medium",
               timeStyle: "short",
             })}{" "}
-            · {round.wordPack.charAt(0).toUpperCase() + round.wordPack.slice(1)}{" "}
+            ·{" "}
+            {round.wordPackName ??
+              round.wordPack.charAt(0).toUpperCase() +
+                round.wordPack.slice(1)}{" "}
             pack · {round.teamCount} teams
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">

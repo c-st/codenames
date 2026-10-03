@@ -14,51 +14,63 @@ pnpm --filter api test
 
 The local API runs on port 8787. `GET /health` returns `200 OK` for readiness checks. `GET /` redirects to a generated room name; a room request without a WebSocket upgrade returns `426`.
 
-`pnpm --filter api deploy` deploys the worker using `wrangler.toml`. `pnpm test:integration` runs server protocol tests followed by real-browser tests against local Wrangler and Next. See the [web test guide](../web/README.md#browser-integration-tests).
+`pnpm --filter api run deploy` deploys the worker using `wrangler.toml`. `pnpm test:integration` runs server protocol tests followed by real-browser tests against local Wrangler and Next. See the [web test guide](../web/README.md#browser-integration-tests).
 
 ## Connection protocol
 
 Connect to `ws://localhost:8787/<room-name>` locally or `wss://api.codenam.es/<room-name>` in production. Optional query parameters are:
 
-| Parameter  | Behavior                                                                                  |
-| ---------- | ----------------------------------------------------------------------------------------- |
-| `token`    | Private reconnect token; 21–64 letters, digits, underscores or hyphens. The public player ID is its SHA-256 hash, so the token itself is never broadcast. The pre-token `playerId` parameter is ignored because those values were public |
-| `name`     | Initial name for a new player; trimmed and limited to 50 characters                       |
-| `animal`   | Initial animal for a new player; one of the emojis in `animalSchema`                      |
+| Parameter | Behavior                                                                                                                                                                                                                                 |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`   | Private reconnect token; 21–64 letters, digits, underscores or hyphens. The public player ID is its SHA-256 hash, so the token itself is never broadcast. The pre-token `playerId` parameter is ignored because those values were public |
+| `name`    | Initial name for a new player; trimmed and limited to 50 characters                                                                                                                                                                      |
+| `animal`  | Initial animal for a new player; one of the emojis in `animalSchema`                                                                                                                                                                     |
 
 An existing player retains their server-stored profile, team and role on reconnect. Multiple sockets using the same token share one roster entry. If the identity has already been removed, reconnecting joins again. Requests without a valid token receive a generated identity.
 
-Player IDs are currently public in room snapshots and serve as reconnect identifiers. They are not private authentication credentials. Private reconnect credentials and host permissions remain planned improvements.
+Public roster IDs derive from private reconnect tokens and do not grant reconnect access. Tokens stay on the client and are never broadcast in room snapshots. Host permissions remain a planned improvement.
 
 Commands and events are JSON text frames. Their authoritative schemas are [message.ts](../schema/src/message.ts) and [game.ts](../schema/src/game.ts).
 
 ## Commands
 
-| Type                 | Fields           | Behavior                                                                |
-| -------------------- | ---------------- | ----------------------------------------------------------------------- |
-| `ping`               | None             | Reply with `pong` and server time                                       |
-| `setProfile`         | `name`, `animal` | Set a trimmed 1–50 character name and supported animal                  |
-| `setName`            | `name`           | Legacy name-only command, 1–50 characters                               |
-| `randomizeName`      | None             | Generate a new name, retaining the animal                               |
-| `setWordPack`        | `wordPack`       | Select a built-in or saved custom pack in the lobby                     |
-| `setCustomWords`     | `words`          | Validate, share and select a custom pack in the lobby                   |
-| `setTeamCount`       | `teamCount`      | Set 2–4 teams and reshuffle assignments in the lobby                    |
-| `shuffleTeams`       | None             | Create balanced random teams with one spymaster each, in the lobby      |
-| `promoteToSpymaster` | `playerId`       | Swap spymaster roles before or after a game; blocked during active play |
-| `startGame`          | None required    | Start a ready game or a rematch after completion                        |
-| `giveHint`           | `hint`, `count`  | Current team's spymaster gives one clue per turn; count 0–25            |
-| `revealWord`         | `word`           | Current team's operative reveals an unrevealed card after a clue        |
-| `endTurn`            | None             | Current team advances to the next turn                                  |
-| `endGame`            | None             | Clear the board and return to the lobby                                 |
+| Type                 | Fields                                                     | Behavior                                                                              |
+| -------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `ping`               | None                                                       | Reply with `pong` and server time                                                     |
+| `setProfile`         | `name`, `animal`                                           | Set a trimmed 1–50 character name and supported animal                                |
+| `randomizeName`      | None                                                       | Generate a new name, retaining the animal                                             |
+| `setWordPack`        | `wordPack`                                                 | Select a built-in or saved custom pack in the lobby                                   |
+| `setCustomWords`     | `words`, optional `expectedRevision`                       | Legacy custom-pack creation or revision-checked update in the lobby                   |
+| `saveWordPack`       | `packId`, `name`, `words`, `expectedRevision`, `requestId` | Save a named room pack with optimistic locking in the lobby                           |
+| `setTeamCount`       | `teamCount`                                                | Set 2–4 teams and reshuffle assignments in the lobby                                  |
+| `shuffleTeams`       | None                                                       | Start one shared 3-second countdown, then assign balanced random teams and spymasters |
+| `promoteToSpymaster` | `playerId`                                                 | Swap spymaster roles before or after a game; blocked during active play               |
+| `startGame`          | None required                                              | Start a ready game or a rematch after completion                                      |
+| `giveHint`           | `hint`, `count`                                            | Current team's spymaster gives one clue per turn; count 0–25                          |
+| `revealWord`         | `word`                                                     | Current team's operative reveals an unrevealed card after a clue                      |
+| `endTurn`            | None                                                       | Current team advances to the next turn                                                |
+| `endGame`            | None                                                       | Clear the board and return to the lobby                                               |
 
-Built-in pack IDs are `classic`, `movies`, `food`, `geography`, `science`, `tech`, `agile`, `design`, `startup`, and `internet`. `custom` requires a saved list. Custom lists contain 25–500 unique, trimmed words, each 1–50 characters; duplicates are rejected ignoring capitalization. The browser editor removes duplicates before submitting.
+Initial pack IDs are `classic`, `movies`, `food`, `geography`, `science`, `tech`, `agile`, `design`, `startup`, and `internet`. Each room owns editable copies; changes do not affect other rooms or the built-in source datasets. Lists contain 25–500 unique, trimmed words, each 1–50 characters; duplicates are rejected ignoring capitalization.
 
-The schema accepts optional `wordPack` and `teamCount` fields on `startGame`, but the handler uses the room's saved settings. Send the settings commands before starting.
+`startGame` uses the room's saved pack and team settings. Send the settings commands before starting.
+
+### Shared word pack library
+
+Snapshots include `wordPacks`, an array of `{ id, name, words, revision }`. The ten initial packs start at revision zero. Classic always exists and retains the name `Classic`; its words can be edited. Other pack names can change. Names are trimmed, limited to 50 characters, and unique ignoring capitalization. IDs use lowercase letters, numbers, underscores and hyphens, with a maximum length of 64.
+
+Create a pack using an ID of `room-` followed by a UUID and `expectedRevision: 0`. Edit an existing pack using its current revision. Successful saves increment the revision, broadcast the updated library, then acknowledge only the saving socket with `wordPackSaved: { requestId, packId, revision }`. Saves do not select the pack; `setWordPack` explicitly changes the shared selection. Boards use the selected room entry's saved words.
+
+Rejected saves receive `wordPackSaveRejected: { requestId, packId, code, reason, currentRevision? }`. Codes are `conflict`, `invalid`, `game_running`, `limit`, and `storage_error`. Conflicts include the latest revision and send the saver a fresh snapshot first, so editors can preserve their drafts while offering an explicit reload. Schema-invalid saves are acknowledged when their request ID and pack ID can be safely read. Storage failures leave the committed words, revision, and selection unchanged; the editor can retain its draft and retry using the same revision. The backend publishes the new library and acknowledges success only after its settings write completes. Pack edits are allowed only in the lobby.
+
+Rooms hold at most 30 packs, including the ten initial packs, and the serialized library has a 96 KiB budget. Over-limit saves leave the current library intact. Libraries and revisions survive reconnects, hibernation and rematches; expiry removes them and restores the original ten packs on the next visit.
+
+Existing room settings with `customWords` migrate to a pack with ID `custom`, name `Custom`, and revision one. The legacy `setCustomWords` command can initially create and select that pack; later updates require an explicit matching `expectedRevision` and do not change the selection. New clients should use `saveWordPack`. Snapshots retain a derived `customWords` field for compatibility, while storage keeps one library copy.
 
 ## Server responses
 
-- `gameStateUpdated`: contains `gameState`, including players, board, turn, clue history, the receiving client's `playerId`, readiness, remaining card counts, result, selected pack/team count, custom words, server time, shared sound effects and `sessionHistory`.
-- `commandRejected`: contains a `reason` when a schema-valid command violates game rules. Malformed JSON or schema-invalid commands are currently logged and ignored without a rejection frame.
+- `gameStateUpdated`: contains `gameState`, including players, board, turn, clue history, the receiving client's `playerId`, readiness, remaining card counts, result, selected pack/team count, shared `wordPacks`, custom words, server time, optional shared shuffle deadline `shuffleAt`, shared sound effects and `sessionHistory`.
+- `commandRejected`: contains a `reason` when a schema-valid command violates game rules. Malformed JSON or schema-invalid commands are logged and ignored, except safely identifiable `saveWordPack` requests, which receive a correlated invalid-save rejection.
 - `pong`: contains `serverTime` as Unix epoch milliseconds. Heartbeats are handled outside the game-event schema.
 
 Unrevealed card teams and assassin identities are omitted from operative snapshots. Spymasters and clients viewing a finished game receive the full board. Optional values are omitted when serialized to JSON; turn deadlines are ISO date strings on the wire.
@@ -67,7 +79,7 @@ Each shared sound effect has an `id`, `type` and `playAt` in Unix epoch millisec
 
 ## Persistence, reconnects and game rules
 
-Stored room keys are `gameState`, `roomSettings`, `disconnected`, `roomExpiresAt` and `sessionHistory`. Settings include the word pack, team count and custom list. Disconnect deadlines are persisted and handled by a durable alarm alongside turn deadlines. A disconnect removes a player only after the last live socket is gone and the 60-second grace expires. Returning during that grace preserves the assigned team and role. When everyone is removed, the active game ends; settings and history remain stored until room expiry.
+Stored room keys are `gameState`, `roomSettings`, `disconnected`, `roomExpiresAt`, `shuffleAt` and `sessionHistory`. Settings include the selected word pack, team count and room word pack library. Disconnect deadlines are persisted and handled by a durable alarm alongside turn deadlines. A disconnect removes a player only after the last live socket is gone and the 60-second grace expires. Returning during that grace preserves the assigned team and role. When everyone is removed, the active game ends; settings and history remain stored until room expiry.
 
 ### Automatic room expiry
 
@@ -85,7 +97,7 @@ Run these from the repository root:
 
 ```sh
 pnpm --filter api exec wrangler login
-pnpm --filter api deploy
+pnpm --filter api run deploy
 pnpm --filter api sweep:rooms --dry-run
 pnpm --filter api sweep:rooms --apply
 ```
@@ -98,7 +110,7 @@ The command uses `CLOUDFLARE_API_TOKEN` when supplied, otherwise it asks the ins
 
 ### Session history
 
-`sessionHistory.rounds` holds up to 50 rounds, ordered oldest to newest. Each round includes an ID, start/end timestamps in epoch milliseconds, status (`active`, `completed`, or `aborted`), word pack, team count, starting player roster, optional result and up to 200 events. The serialized history has a 96 KiB budget for the current KV-backed storage: older rounds, then older events or roster entries in an oversized single round, may be dropped to stay within it. `playersOmitted` records any roster truncation. Event schemas and exported types live in [game.ts](../schema/src/game.ts).
+`sessionHistory.rounds` holds up to 50 rounds, ordered oldest to newest. Each round includes an ID, start/end timestamps in epoch milliseconds, status (`active`, `completed`, or `aborted`), word pack ID, optional saved display name (`wordPackName`), team count, starting player roster, optional result and up to 200 events. The serialized history has a 96 KiB budget for the current KV-backed storage: older rounds, then older events or roster entries in an oversized single round, may be dropped to stay within it. `playersOmitted` records any roster truncation. Event schemas and exported types live in [game.ts](../schema/src/game.ts).
 
 `sessionHistory.awardSeed` keeps playful award titles stable for this room's lifetime, including rematches, reconnects, hibernation, and history pruning. New rooms receive a random UUID. Existing histories without a seed adopt their first retained round ID, or a random UUID if no rounds exist, and persist it. Room expiry removes the seed; reopening the same room name starts a fresh session with a new seed. The field remains optional in the schema for older clients and stored histories.
 
@@ -107,6 +119,8 @@ Hint events contain the public clue, count, team and timestamp. Clue and guess e
 Guess events contain the revealed word, guessing team, timestamp and outcome (`correct`, `opponent`, `neutral`, or `assassin`). History stores no unrevealed board identities. Rejected commands and duplicate guesses do not add events. A winning or assassin reveal completes the round once; stopping an unfinished game or removing its last player records an aborted round. Starting a rematch creates a separate round.
 
 The client derives KPIs and playful awards from retained rounds and events using the shared `calculateHistoryStats` helper in the schema package. Personal awards use only explicitly attributed spymaster guesses; team statistics include all recorded guesses. History is persisted with game state, restored after hibernation, shared in snapshots and removed with all other room data at expiry. Pre-existing games cannot reconstruct events from before history recording was introduced.
+
+In the lobby, `shuffleTeams` sets one persisted `shuffleAt` deadline three seconds ahead. Every client receives that same epoch-millisecond deadline and can display its countdown using `serverTime`. Teams and roles stay unchanged until the durable alarm reaches the deadline, then the server shuffles once and clears `shuffleAt`. Repeated presses during the countdown are ignored and do not restart it. The deadline survives hibernation, and the alarm shares scheduling with turns, disconnect grace and expiry. `startGame` is rejected while a shuffle is pending; an already-running game keeps its assignments if a stale shuffle alarm fires.
 
 Mutations are serialized through `blockConcurrencyWhile`. Expected rule rejections are caught inside the block so they do not reset the object. Simultaneous duplicate guesses consume one guess and produce one reveal event.
 

@@ -1,6 +1,6 @@
 import { CodenamesGame, SHUFFLE_COUNTDOWN_MS } from "./gameServer";
 import { publicPlayerId } from "./identity";
-import { sessionHistorySchema } from "schema";
+import { roomWordPacksSchema, sessionHistorySchema } from "schema";
 import type { GameState, GameStateForClient, SessionHistory } from "schema";
 
 vi.mock("cloudflare:workers", () => ({
@@ -497,7 +497,11 @@ describe("Durable Object room protocol", () => {
     const intruder = context.sockets.at(-1)!;
     expect(intruder.latest().playerId).not.toBe(id(1));
     expect(intruder.latest().playerId).not.toBe(pid(1));
-    expect(intruder.latest().board.some((card) => !card.revealed && card.team !== undefined)).toBe(false);
+    expect(
+      intruder
+        .latest()
+        .board.some((card) => !card.revealed && card.team !== undefined),
+    ).toBe(false);
   });
 
   it("rejects malformed commands without changing storage", async () => {
@@ -646,7 +650,10 @@ describe("Durable Object room protocol", () => {
     const spy = await connect(game, context, id(1));
     const agent = await connect(game, context, id(2));
     const before = context.storage.values.get("gameState");
-    await command(game, agent, { type: "promoteToSpymaster", playerId: pid(2) });
+    await command(game, agent, {
+      type: "promoteToSpymaster",
+      playerId: pid(2),
+    });
     expect(context.storage.values.get("gameState")).toBe(before);
     expect(JSON.parse(agent.messages.at(-1)!)).toMatchObject({
       type: "commandRejected",
@@ -660,7 +667,10 @@ describe("Durable Object room protocol", () => {
         ),
     ).toBe(true);
     await command(game, agent, { type: "revealWord", word: "bomb" });
-    await command(game, agent, { type: "promoteToSpymaster", playerId: pid(2) });
+    await command(game, agent, {
+      type: "promoteToSpymaster",
+      playerId: pid(2),
+    });
     expect(
       storedState(context).players.find((player) => player.id === pid(2))?.role,
     ).toBe("spymaster");
@@ -849,7 +859,9 @@ describe("idle room expiry", () => {
     expect(storedState(context).players).toHaveLength(0);
     expect(context.storage.alarm).toBe(leftAt + RETENTION_MS);
     expect(context.storage.values.get("roomSettings")).toMatchObject({
-      customWords: words,
+      wordPacks: expect.arrayContaining([
+        expect.objectContaining({ id: "custom", words }),
+      ]),
     });
     vi.advanceTimersByTime(RETENTION_MS - 60_001);
     await game.alarm();
@@ -966,6 +978,562 @@ describe("idle room expiry", () => {
       );
     },
   );
+});
+
+describe("shared room word pack library", () => {
+  const packId = (number: number) =>
+    `room-00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
+  const words = (prefix: string, count = 25) =>
+    Array.from({ length: count }, (_, number) => `${prefix} ${number}`);
+  const save = (
+    game: CodenamesGame,
+    socket: FakeSocket,
+    id: string,
+    name: string,
+    entries: string[],
+    expectedRevision = 0,
+    requestId = crypto.randomUUID(),
+  ) =>
+    command(game, socket, {
+      type: "saveWordPack",
+      packId: id,
+      name,
+      words: entries,
+      expectedRevision,
+      requestId,
+    });
+  const lastEvent = (socket: FakeSocket) => JSON.parse(socket.messages.at(-1)!);
+  const library = (socket: FakeSocket) => socket.latest().wordPacks!;
+
+  it("starts with ten independent room packs and uses edited Classic words for the actual board", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    expect(library(socket)).toHaveLength(10);
+    expect(library(socket).every((pack) => pack.revision === 0)).toBe(true);
+    const edited = words("Edited Classic");
+    await save(game, socket, "classic", "Classic", edited, 0, "edit-classic");
+    expect(lastEvent(socket)).toEqual({
+      type: "wordPackSaved",
+      requestId: "edit-classic",
+      packId: "classic",
+      revision: 1,
+    });
+    expect(socket.latest().wordPack).toBe("classic");
+    for (const number of [2, 3, 4]) await connect(game, context, id(number));
+    await command(game, socket, { type: "startGame" });
+    expect(
+      storedState(context).board.every((card) => edited.includes(card.word)),
+    ).toBe(true);
+    expect(socket.latest().sessionHistory?.rounds[0]).toMatchObject({
+      wordPack: "classic",
+      wordPackName: "Classic",
+    });
+    const other = await create();
+    const otherSocket = await connect(other.game, other.context, id(1));
+    expect(
+      library(otherSocket).find((pack) => pack.id === "classic"),
+    ).toMatchObject({ name: "Classic", revision: 0 });
+    expect(
+      library(otherSocket).find((pack) => pack.id === "classic")!.words,
+    ).not.toEqual(edited);
+  });
+
+  it("protects Classic's name and validates unique names, words, revisions, and new pack ids", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    const before = structuredClone(context.storage.values);
+    for (const [id, name, entries, revision] of [
+      ["classic", "Renamed Classic", words("Valid"), 0],
+      [packId(1), "  fOoD  ", words("Valid"), 0],
+      [packId(2), " ", words("Valid"), 0],
+      [packId(3), "New", Array(25).fill("Repeated"), 0],
+      ["not-a-new-room-id", "New", words("Valid"), 0],
+      ["INVALID-ID", "New", words("Valid"), 0],
+    ] as [string, string, string[], number][]) {
+      await save(game, socket, id, name, entries, revision, "invalid-save");
+      expect(lastEvent(socket)).toMatchObject({
+        type: "wordPackSaveRejected",
+        requestId: "invalid-save",
+        packId: id,
+        code: "invalid",
+      });
+      expect(context.storage.values).toEqual(before);
+    }
+    await save(
+      game,
+      socket,
+      packId(4),
+      "New",
+      words("Valid"),
+      2,
+      "missing-revision",
+    );
+    expect(lastEvent(socket)).toMatchObject({
+      code: "conflict",
+      currentRevision: 0,
+      requestId: "missing-revision",
+    });
+    await command(game, socket, {
+      type: "setWordPack",
+      wordPack: "unknown-pack",
+    });
+    expect(lastEvent(socket)).toMatchObject({ type: "commandRejected" });
+    expect(socket.latest().wordPack).toBe("classic");
+  });
+
+  it("serializes competing saves so the stale editor gets the latest pack and a targeted conflict", async () => {
+    const { game, context } = await create();
+    const first = await connect(game, context, id(1));
+    const second = await connect(game, context, id(2));
+    first.messages = [];
+    second.messages = [];
+    await Promise.all([
+      save(
+        game,
+        first,
+        "classic",
+        "Classic",
+        words("First editor"),
+        0,
+        "first-save",
+      ),
+      save(
+        game,
+        second,
+        "classic",
+        "Classic",
+        words("Stale editor"),
+        0,
+        "stale-save",
+      ),
+    ]);
+    expect(library(first).find((pack) => pack.id === "classic")).toMatchObject({
+      revision: 1,
+      words: words("First editor"),
+    });
+    expect(library(second)).toEqual(library(first));
+    expect(lastEvent(first)).toEqual({
+      type: "wordPackSaved",
+      packId: "classic",
+      revision: 1,
+      requestId: "first-save",
+    });
+    expect(lastEvent(second)).toMatchObject({
+      type: "wordPackSaveRejected",
+      packId: "classic",
+      code: "conflict",
+      currentRevision: 1,
+      requestId: "stale-save",
+    });
+    expect(JSON.parse(second.messages.at(-2)!).type).toBe("gameStateUpdated");
+    expect(
+      first.messages
+        .map((message) => JSON.parse(message))
+        .filter((event) => event.type === "wordPackSaveRejected"),
+    ).toEqual([]);
+    await save(
+      game,
+      second,
+      "classic",
+      "Classic",
+      words("Rebased editor"),
+      1,
+      "rebased-save",
+    );
+    expect(lastEvent(second)).toMatchObject({
+      type: "wordPackSaved",
+      revision: 2,
+      requestId: "rebased-save",
+    });
+    expect(library(first).find((pack) => pack.id === "classic")!.words).toEqual(
+      words("Rebased editor"),
+    );
+  });
+
+  it("allows independent simultaneous edits and does not implicitly change the selected pack", async () => {
+    const { game, context } = await create();
+    const first = await connect(game, context, id(1));
+    const second = await connect(game, context, id(2));
+    await Promise.all([
+      save(game, first, "classic", "Classic", words("Classic edit")),
+      save(game, second, "movies", "Cinema", words("Movie edit")),
+    ]);
+    expect(library(first).find((pack) => pack.id === "classic")).toMatchObject({
+      revision: 1,
+      words: words("Classic edit"),
+    });
+    expect(library(first).find((pack) => pack.id === "movies")).toMatchObject({
+      revision: 1,
+      name: "Cinema",
+      words: words("Movie edit"),
+    });
+    await save(game, second, packId(1), "Friends", words("Friend word"));
+    expect(first.latest().wordPack).toBe("classic");
+    await command(game, first, { type: "setWordPack", wordPack: packId(1) });
+    expect(second.latest().wordPack).toBe(packId(1));
+  });
+
+  it("preserves a pending shared shuffle while saving a pack and restoring the room", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    for (const number of [2, 3, 4]) await connect(game, context, id(number));
+    await command(game, socket, { type: "shuffleTeams" });
+    const shuffleAt = Date.now() + SHUFFLE_COUNTDOWN_MS;
+    await save(
+      game,
+      socket,
+      packId(1),
+      "Saved during shuffle",
+      words("Shared shuffle"),
+    );
+    expect(lastEvent(socket)).toMatchObject({
+      type: "wordPackSaved",
+      revision: 1,
+    });
+    expect(socket.latest().shuffleAt).toBe(shuffleAt);
+    expect(context.storage.values.get("shuffleAt")).toBe(shuffleAt);
+    expect(context.storage.alarm).toBe(shuffleAt);
+    await command(game, socket, { type: "setWordPack", wordPack: packId(1) });
+    const resumed = await create(context);
+    expect(socket.latest().shuffleAt).toBe(shuffleAt);
+    expect(library(socket).find((pack) => pack.id === packId(1))).toMatchObject(
+      { revision: 1, words: words("Shared shuffle") },
+    );
+    vi.advanceTimersByTime(SHUFFLE_COUNTDOWN_MS);
+    await resumed.game.alarm();
+    expect(socket.latest().shuffleAt).toBeUndefined();
+    expect(socket.latest().wordPack).toBe(packId(1));
+    await command(resumed.game, socket, { type: "startGame" });
+    expect(
+      storedState(context).board.every((card) =>
+        words("Shared shuffle").includes(card.word),
+      ),
+    ).toBe(true);
+  });
+
+  it.each(["classic", "new"])(
+    "keeps a failed %s save at its committed revision and accepts a retry with the same revision",
+    async (kind) => {
+      const { game, context } = await create();
+      const socket = await connect(game, context, id(1));
+      const observer = await connect(game, context, id(2));
+      const idToSave = kind === "classic" ? "classic" : packId(1);
+      const name = kind === "classic" ? "Classic" : "New pack";
+      const expectedRevision = kind === "classic" ? 1 : 0;
+      if (kind === "classic")
+        await save(game, socket, idToSave, name, words("Committed"));
+      const before = structuredClone(context.storage.values);
+      const observerFrames = observer.messages.length;
+      vi.spyOn(context.storage, "put").mockRejectedValueOnce(
+        new Error("Temporary write failure"),
+      );
+      await save(
+        game,
+        socket,
+        idToSave,
+        name,
+        words("Retry draft"),
+        expectedRevision,
+        "failed-write",
+      );
+      expect(lastEvent(socket)).toMatchObject({
+        type: "wordPackSaveRejected",
+        requestId: "failed-write",
+        code: "storage_error",
+        currentRevision: expectedRevision,
+      });
+      expect(context.storage.values).toEqual(before);
+      expect(observer.messages).toHaveLength(observerFrames);
+      // A later unrelated write must not persist the failed candidate from an in-memory cache.
+      await command(game, socket, {
+        type: "setProfile",
+        name: "Still here",
+        animal: "🦊",
+      });
+      const committed = library(observer).find((pack) => pack.id === idToSave);
+      if (kind === "classic")
+        expect(committed).toMatchObject({
+          revision: 1,
+          words: words("Committed"),
+        });
+      else expect(committed).toBeUndefined();
+      await save(
+        game,
+        socket,
+        idToSave,
+        name,
+        words("Retry draft"),
+        expectedRevision,
+        "retry-write",
+      );
+      expect(lastEvent(socket)).toMatchObject({
+        type: "wordPackSaved",
+        requestId: "retry-write",
+        revision: expectedRevision + 1,
+      });
+      expect(
+        library(observer).find((pack) => pack.id === idToSave),
+      ).toMatchObject({
+        revision: expectedRevision + 1,
+        words: words("Retry draft"),
+      });
+      const resumed = await create(context);
+      await connect(resumed.game, context, id(1));
+      expect(
+        library(observer).find((pack) => pack.id === idToSave),
+      ).toMatchObject({
+        revision: expectedRevision + 1,
+        words: words("Retry draft"),
+      });
+    },
+  );
+
+  it("rolls back failed legacy custom creation and revision-checked updates, including automatic selection", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    const put = vi.spyOn(context.storage, "put");
+    put.mockRejectedValueOnce(new Error("Temporary write failure"));
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Initial draft"),
+    });
+    expect(lastEvent(socket)).toMatchObject({
+      type: "commandRejected",
+      reason: "Your word pack could not be saved. Please retry.",
+    });
+    await command(game, socket, {
+      type: "setProfile",
+      name: "Retried profile",
+      animal: "🐼",
+    });
+    expect(socket.latest().wordPack).toBe("classic");
+    expect(library(socket).some((pack) => pack.id === "custom")).toBe(false);
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Initial draft"),
+    });
+    expect(socket.latest().wordPack).toBe("custom");
+    expect(library(socket).find((pack) => pack.id === "custom")!.revision).toBe(
+      1,
+    );
+    put.mockRejectedValueOnce(new Error("Temporary update failure"));
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Updated draft"),
+      expectedRevision: 1,
+    });
+    expect(lastEvent(socket)).toMatchObject({ type: "commandRejected" });
+    await command(game, socket, {
+      type: "setProfile",
+      name: "Another profile",
+      animal: "🐼",
+    });
+    expect(library(socket).find((pack) => pack.id === "custom")).toMatchObject({
+      revision: 1,
+      words: words("Initial draft"),
+    });
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Updated draft"),
+      expectedRevision: 1,
+    });
+    expect(library(socket).find((pack) => pack.id === "custom")).toMatchObject({
+      revision: 2,
+      words: words("Updated draft"),
+    });
+  });
+
+  it("restores a saved library and selection after hibernation while history keeps the pack's former display name", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    for (const number of [2, 3, 4]) await connect(game, context, id(number));
+    await save(game, socket, packId(1), "Friends", words("Custom board"));
+    await command(game, socket, { type: "setWordPack", wordPack: packId(1) });
+    const before = library(socket);
+    const resumed = await create(context);
+    expect(library(socket)).toEqual(before);
+    expect(socket.latest().wordPack).toBe(packId(1));
+    await command(resumed.game, socket, { type: "startGame" });
+    expect(
+      storedState(context).board.every((card) =>
+        words("Custom board").includes(card.word),
+      ),
+    ).toBe(true);
+    await command(resumed.game, socket, { type: "endGame" });
+    await save(
+      resumed.game,
+      socket,
+      packId(1),
+      "Renamed Friends",
+      words("Custom board"),
+      1,
+    );
+    expect(socket.latest().sessionHistory?.rounds[0]).toMatchObject({
+      wordPack: packId(1),
+      wordPackName: "Friends",
+    });
+    await command(resumed.game, socket, { type: "startGame" });
+    expect(socket.latest().sessionHistory?.rounds[1]).toMatchObject({
+      wordPack: packId(1),
+      wordPackName: "Renamed Friends",
+    });
+  });
+
+  it("migrates a legacy custom list and rejects legacy overwrite attempts without an explicit matching revision", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    state.board = [];
+    state.turn = undefined;
+    const entries = words("Migrated");
+    await context.storage.put({
+      gameState: JSON.stringify(state),
+      roomSettings: { wordPack: "custom", teamCount: 2, customWords: entries },
+    });
+    const { game } = await create(context);
+    const socket = await connect(game, context, id(1));
+    expect(library(socket)).toHaveLength(11);
+    expect(library(socket).find((pack) => pack.id === "custom")).toEqual({
+      id: "custom",
+      name: "Custom",
+      words: entries,
+      revision: 1,
+    });
+    expect(socket.latest().wordPack).toBe("custom");
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Bypass"),
+    });
+    expect(lastEvent(socket)).toMatchObject({ type: "commandRejected" });
+    expect(library(socket).find((pack) => pack.id === "custom")!.words).toEqual(
+      entries,
+    );
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Stale"),
+      expectedRevision: 0,
+    });
+    expect(lastEvent(socket)).toMatchObject({ type: "commandRejected" });
+    await command(game, socket, { type: "setWordPack", wordPack: "classic" });
+    await command(game, socket, {
+      type: "setCustomWords",
+      words: words("Matching"),
+      expectedRevision: 1,
+    });
+    expect(socket.latest().customWords).toEqual(words("Matching"));
+    expect(library(socket).find((pack) => pack.id === "custom")!.revision).toBe(
+      2,
+    );
+    expect(socket.latest().wordPack).toBe("classic");
+  });
+
+  it("rejects saves while a game is running and leaves the pack, selected deck, and revision unchanged", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    for (const number of [2, 3, 4]) await connect(game, context, id(number));
+    await command(game, socket, { type: "startGame" });
+    const before = structuredClone(context.storage.values);
+    await save(
+      game,
+      socket,
+      "classic",
+      "Classic",
+      words("Midgame edit"),
+      0,
+      "midgame-save",
+    );
+    expect(lastEvent(socket)).toMatchObject({
+      type: "wordPackSaveRejected",
+      requestId: "midgame-save",
+      code: "game_running",
+    });
+    expect(context.storage.values).toEqual(before);
+  });
+
+  it("limits the library to thirty packs while allowing edits to an existing pack at the limit", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    for (let number = 0; number < 20; number++) {
+      await save(
+        game,
+        socket,
+        packId(number),
+        `Added ${number}`,
+        words(`Pack ${number}`),
+      );
+      expect(lastEvent(socket).type).toBe("wordPackSaved");
+    }
+    expect(library(socket)).toHaveLength(30);
+    await save(
+      game,
+      socket,
+      packId(20),
+      "One too many",
+      words("Extra"),
+      0,
+      "count-limit",
+    );
+    expect(lastEvent(socket)).toMatchObject({
+      code: "limit",
+      requestId: "count-limit",
+    });
+    await save(game, socket, "classic", "Classic", words("Editable at limit"));
+    expect(lastEvent(socket)).toMatchObject({
+      type: "wordPackSaved",
+      revision: 1,
+    });
+    expect(library(socket)).toHaveLength(30);
+  });
+
+  it("rejects Unicode-heavy libraries that exceed the byte budget without changing the saved library", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    const heavyWords = Array.from(
+      { length: 500 },
+      (_, number) => `${String(number).padStart(4, "0")}-${"🍎".repeat(22)}`,
+    );
+    await save(game, socket, packId(1), "Big list", heavyWords);
+    expect(lastEvent(socket).type).toBe("wordPackSaved");
+    const before = structuredClone(context.storage.values);
+    await save(
+      game,
+      socket,
+      packId(2),
+      "Another big list",
+      heavyWords,
+      0,
+      "byte-limit",
+    );
+    expect(lastEvent(socket)).toMatchObject({
+      type: "wordPackSaveRejected",
+      code: "limit",
+      requestId: "byte-limit",
+    });
+    expect(context.storage.values).toEqual(before);
+    expect(
+      new TextEncoder().encode(JSON.stringify(library(socket))).byteLength,
+    ).toBeLessThanOrEqual(96 * 1024);
+    expect(roomWordPacksSchema.safeParse(library(socket)).success).toBe(true);
+  });
+
+  it("clears edited and added packs at expiry and reinitializes the original built-in library", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    await save(game, socket, "classic", "Classic", words("Edited"));
+    await save(game, socket, packId(1), "Added", words("Added words"));
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    vi.advanceTimersByTime(14 * 24 * 60 * 60 * 1_000 + 1);
+    await game.alarm();
+    expect(context.storage.values.size).toBe(0);
+    const newcomer = await connect(game, context, id(2));
+    expect(library(newcomer)).toHaveLength(10);
+    expect(library(newcomer).some((pack) => pack.id === packId(1))).toBe(false);
+    expect(
+      library(newcomer).find((pack) => pack.id === "classic"),
+    ).toMatchObject({ name: "Classic", revision: 0 });
+    expect(
+      library(newcomer).find((pack) => pack.id === "classic")!.words,
+    ).not.toEqual(words("Edited"));
+  });
 });
 
 describe("persistent session history", () => {

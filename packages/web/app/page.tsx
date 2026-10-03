@@ -67,8 +67,9 @@ export default function Home() {
     turnSeconds,
     reactions,
     react,
-    customWords,
-    setCustomWords,
+    wordPacks,
+    saveWordPack,
+    wordPackSaveResult,
     shuffleTeams,
     effects,
     serverClockOffset,
@@ -77,7 +78,8 @@ export default function Home() {
     retrySession,
   } = useCodenames(skipConnection);
 
-  const sound = useSoundEffects();
+  const currentPlayer = players.find((p) => p.id === currentPlayerId);
+  const sound = useSoundEffects(!!currentPlayer);
 
   const { playSharedEffect } = sound;
   useEffect(() => {
@@ -113,7 +115,6 @@ export default function Home() {
   }
 
   // Show splash screen if not connecting yet
-  const currentPlayer = players.find((p) => p.id === currentPlayerId);
   if (!currentPlayer) {
     if (skipConnection) {
       return (
@@ -186,8 +187,10 @@ export default function Home() {
                   randomizeName={randomizeName}
                   gameCanBeStarted={gameCanBeStarted}
                   startGame={startGame}
-                  customWords={customWords}
-                  setCustomWords={setCustomWords}
+                  wordPacks={wordPacks}
+                  saveWordPack={saveWordPack}
+                  wordPackSaveResult={wordPackSaveResult}
+                  isConnected={isConnected}
                   shuffleTeams={shuffleTeams}
                   shuffling={shuffle.shuffling}
                   roomId={sessionName}
