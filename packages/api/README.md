@@ -77,7 +77,24 @@ The last live socket closing starts a two-week idle retention window. A successf
 
 The expiration timestamp is persisted, and the existing durable alarm schedules the earliest turn, disconnect or expiry deadline. At expiry, the backend clears all storage and the alarm, then resets in-memory room settings and history. It also checks expiry before accepting a join, so delayed alarms cannot restore old data. Alarm retries do not recreate deleted room storage. Visiting the same room name afterward creates a fresh session.
 
-Existing stored rooms without expiry metadata adopt the policy when their Durable Object next wakes. Rooms that are already dormant without a scheduled alarm are not awakened merely by deploying this code; a one-time namespace sweep would be needed to enroll those rooms without waiting for access. [Cloudflare's namespace object-list API](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/subresources/objects/) can enumerate their IDs for such a maintenance job.
+Existing stored rooms without expiry metadata adopt the policy when their Durable Object next wakes. Rooms that are already dormant without a scheduled alarm are not awakened merely by deploying this code; the one-time sweep below enrolls those rooms without waiting for access. [Cloudflare's namespace object-list API](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/subresources/objects/) can enumerate their IDs for such a maintenance job.
+
+### One-time sweep for legacy rooms
+
+Run these from the repository root:
+
+```sh
+pnpm --filter api exec wrangler login
+pnpm --filter api deploy
+pnpm --filter api sweep:rooms --dry-run
+pnpm --filter api sweep:rooms --apply
+```
+
+The preview enumerates the production `codenames-api` / `CodenamesGame` namespace using Cloudflare's paginated API and counts objects with stored data. It does not wake or modify rooms. Apply requires the current API to be deployed first: it invokes the internal `enrollRoomExpiry` RPC through a temporary, authenticated Worker bound to the existing production class. Batches contain at most 20 IDs, with at most five RPCs in flight. It creates no players, leaves live rooms active, and preserves existing expiry deadlines. Previously dormant rooms with no deadline receive two weeks from enrollment, because their historical last-visit time was not recorded. Already-expired rooms are cleared by the existing expiry policy; empty rooms are not recreated.
+
+The temporary Worker is deleted in a `finally` block, and its endpoint disables itself after one hour if the process is interrupted. If cleanup fails or the process is killed, delete the printed `codenames-expiry-sweep-*` Worker in Cloudflare. Do not delete the `codenames-api` Worker or its Durable Object namespace. Partial failures stop the sweep with a nonzero exit code; rerunning is safe and does not extend deadlines. Console output reports counts and never prints tokens or room contents.
+
+The command uses `CLOUDFLARE_API_TOKEN` when supplied, otherwise it asks the installed Wrangler 3 to refresh its login and reads its cached OAuth token in memory. It never copies credentials into the repository. When more than one account is available, set `CLOUDFLARE_ACCOUNT_ID` explicitly. API tokens need account read, Workers scripts write, and Durable Objects read access for the production account. An existing `workers.dev` account subdomain is required. Live execution requires network access and authentication; the local tests validate enrollment, endpoint access, preview behavior, pagination, failure reporting and cleanup.
 
 ### Session history
 
