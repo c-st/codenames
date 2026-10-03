@@ -10,15 +10,23 @@ Install dependencies with `pnpm install --frozen-lockfile`. Run `pnpm --filter a
 - `pnpm typecheck`: API, frontend and shared type checks.
 - `pnpm --filter web build`: production static export. The existing Google Font requires network access during the build.
 - `pnpm --filter web exec playwright install chromium`: one-time browser setup.
-- `pnpm test:integration`: server integration tests followed by real Chromium multiplayer tests. Playwright starts local Wrangler and Next automatically on ports 8787 and 3000 (override with `E2E_API_PORT` and `E2E_WEB_PORT` to run beside another checkout); browser traces are retained on failure. It uses a separate `.next-e2e` build directory and unique rooms.
+- `pnpm test:integration`: server integration tests followed by real Chromium multiplayer tests. Playwright starts local Wrangler and Next automatically on ports 8787 and 3000 (override with `E2E_API_PORT` and `E2E_WEB_PORT` to run beside another checkout); browser traces are retained on failure. It uses a separate `.next-e2e` build directory and unique rooms. Its expiry check uses a test-only 60-second retention override and waits just over one minute.
 
 Server integration tests exercise the actual server, schema, storage flow and game engine with a mocked Cloudflare platform. Browser tests exercise the actual local Wrangler runtime and four independent browser clients, including profile persistence, repeated reloads without duplicates, offline recovery, custom lists, shuffled roles, guesses, coordinated audio scheduling, and every fun cue (card flips, marks, reactions, banners, celebrations, recap, rematch, thinking indicator, timer heartbeat) plus reconnect-token privacy. These tests verify local behavior; production network latency and outages still need monitoring.
 
 ## Room behavior
 
-Names and animal avatars are remembered in this browser across visits and rooms. Room identity is also remembered, so reloads, additional tabs and reopening the same room retain one player. The browser keeps a private reconnect token; other players only ever see a one-way hash of it as the public player id. Clearing browser storage creates a new identity; when storage is unavailable, persistence cannot be guaranteed. Disconnected players keep their team and role for 60 seconds. Returning after removal rejoins the room with the saved profile but may receive a different team or role. Room settings and disconnect deadlines survive server hibernation.
+Names and animal avatars are remembered in this browser across visits and rooms. Room identity is also remembered, so reloads, additional tabs and reopening the same room retain one player. The browser keeps a private reconnect token; other players only ever see a one-way hash of it as the public player id. Clearing browser storage creates a new identity; when storage is unavailable, persistence cannot be guaranteed. Disconnected players keep their team and role for 60 seconds. Returning after removal rejoins the room with the saved profile but may receive a different team or role. Room settings and disconnect deadlines survive server hibernation. Once the last connected player leaves, the room is retained for two weeks; then all backend room data is deleted automatically. A rejoin cancels expiry, and leaving again starts a fresh two-week window. Connected rooms do not expire. Opening an expired invitation creates a fresh room with the same name; browser-saved profiles remain available.
 
 The lobby supports shared custom packs of 25–500 unique words and browser-saved drafts. Shuffle teams & spymasters produces balanced random teams with one spymaster each. Classic two-team boards use a random starting team with nine words, eight for the other team, seven neutral cards and one assassin. Three- and four-team games use adapted card counts on the same 25-card board.
+
+### Session history and statistics
+
+The session history panel shows the up to 50 recent rounds, including the current round, with expandable clue and guess timelines. It records completed results and distinguishes rounds stopped before a result. Team win bars, guess accuracy and average completed-round duration summarize the retained history. Accuracy is correct guesses divided by recorded guesses, including active and stopped rounds; average duration includes completed rounds only. Assassin losses are labeled as losses, without inventing a winner when the game reports none.
+
+A playful trophy shelf celebrates spymasters and whole teams, with room-specific emoji titles for correct guesses, clue accuracy, combos, assassin hits and team streaks. Guesses are credited collectively to the team; personal awards apply only to the spymaster who gave the clue. Award titles stay the same throughout the room’s lifetime, including rejoins, rematches and history pruning. Different rooms can use different names, meaningful ties share trophies, and animations respect reduced-motion settings.
+
+History is shared with everyone in the room and survives reloads and server hibernation. Each round retains up to 200 public clue/guess events, with a 96 KiB total history budget that may remove older records, so room data stays bounded. No unrevealed card identities are recorded. History is cleared when the room expires; it is not a permanent cross-room leaderboard.
 
 ### Sound and browser interaction
 
@@ -40,7 +48,7 @@ Reveals flip the card and land with team-coloured sparkles, a wobble for wrong g
 4. **Better rematches:** rotate spymasters, keep or reshuffle teams, and exclude recently used words for fresher rounds.
 5. **Word-library tools:** clone built-in packs into the editor, import/export reusable packs, and offer language/difficulty tags.
 6. **Audio activation feedback:** show an “Enable sound” prompt until audio is running, so players joining by invitation know when an interaction is needed.
-7. **Round history and connection visibility:** show clues and guess outcomes, connected/reconnecting player badges, and production reconnect/error metrics.
+7. **Connection visibility:** show connected/reconnecting player badges and production reconnect/error metrics.
 
 ## Package documentation
 

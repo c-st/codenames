@@ -9,6 +9,10 @@ import {
   SharedEffect,
   animalSchema,
   CardMark,
+  sessionHistorySchema,
+  SessionHistory,
+  SessionRound,
+  SessionEvent,
 } from "schema";
 import { Env } from "./worker";
 import { isReconnectToken, publicPlayerId } from "./identity";
@@ -34,8 +38,17 @@ const REACTION_COOLDOWN_MS = 400;
 
 type Cue = SharedEffect["type"] | Omit<SharedEffect, "id" | "playAt">;
 type StoredMark = CardMark & { turnUntil: number };
+const ROOM_EXPIRES_AT = "roomExpiresAt";
+const SESSION_HISTORY = "sessionHistory";
+const MAX_SESSION_ROUNDS = 50;
+const MAX_ROUND_EVENTS = 200;
+// Legacy Durable Object KV values are limited to 128 KiB; leave serialization headroom.
+const MAX_HISTORY_BYTES = 96 * 1024;
+const DEFAULT_ROOM_IDLE_TTL_SECONDS = 14 * 24 * 60 * 60;
 
 export class CodenamesGame extends DurableObject {
+  private roomExpiresAt: number | undefined;
+  private readonly roomIdleTtlMs: number;
   private disconnected: Record<string, number> = {};
   private selectedWordPack = "classic";
   private selectedTeamCount = 2;
@@ -44,10 +57,27 @@ export class CodenamesGame extends DurableObject {
   private game: Codenames | undefined;
   private marks: StoredMark[] = [];
   private lastReactionAt = new Map<string, number>();
+  private sessionHistory: SessionHistory = {
+    rounds: [],
+    awardSeed: crypto.randomUUID(),
+  };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    const configuredTtl = Number(env.ROOM_IDLE_TTL_SECONDS);
+    this.roomIdleTtlMs =
+      (Number.isSafeInteger(configuredTtl) &&
+      configuredTtl >= 60 &&
+      Date.now() + configuredTtl * 1000 <= 8.64e15
+        ? configuredTtl
+        : DEFAULT_ROOM_IDLE_TTL_SECONDS) * 1000;
     this.ctx.blockConcurrencyWhile(async () => {
+      this.roomExpiresAt =
+        (await this.ctx.storage.get<number | null>(ROOM_EXPIRES_AT)) ??
+        undefined;
+      if (await this.deleteExpiredRoom()) return;
+      // Do not recreate storage when a deleted object's alarm is retried.
+      if (!(await this.ctx.storage.get<string>(GAME_STATE))) return;
       const settings = await this.ctx.storage.get<{
         wordPack: string;
         teamCount: number;
@@ -57,6 +87,20 @@ export class CodenamesGame extends DurableObject {
         this.selectedWordPack = settings.wordPack;
         this.selectedTeamCount = settings.teamCount;
         this.customWords = settings.customWords ?? [];
+      }
+      const history =
+        await this.ctx.storage.get<SessionHistory>(SESSION_HISTORY);
+      if (history) {
+        const parsed = sessionHistorySchema.safeParse(history);
+        if (parsed.success)
+          this.sessionHistory = {
+            ...parsed.data,
+            awardSeed:
+              parsed.data.awardSeed ??
+              parsed.data.rounds[0]?.id ??
+              this.sessionHistory.awardSeed,
+          };
+        else console.error("Invalid session history, resetting:", parsed.error);
       }
       this.disconnected =
         (await this.ctx.storage.get<Record<string, number>>(DISCONNECTED)) ??
@@ -84,7 +128,7 @@ export class CodenamesGame extends DurableObject {
   }
 
   private async loadGameInstance(): Promise<Codenames> {
-    // One durable alarm serves both turn deadlines and reconnect grace periods.
+    // One durable alarm serves turn deadlines, reconnect grace and room expiry.
     const onScheduleCallAdvanceTurn = (_date: Date) => {};
     const parameters = {
       ...defaultParameters,
@@ -132,6 +176,7 @@ export class CodenamesGame extends DurableObject {
   }
 
   private async handleFetch(request: Request): Promise<Response> {
+    await this.deleteExpiredRoom();
     const url = new URL(request.url);
     // Old clients sent their (publicly broadcast) id as "playerId"; it must never act as a credential.
     const candidateToken = url.searchParams.get("token");
@@ -230,6 +275,11 @@ export class CodenamesGame extends DurableObject {
 
   async alarm() {
     await this.ctx.blockConcurrencyWhile(async () => {
+      if (await this.deleteExpiredRoom()) return;
+      if (!(await this.ctx.storage.get<string>(GAME_STATE))) {
+        await this.ctx.storage.deleteAlarm();
+        return;
+      }
       const game = await this.getGameInstance();
       const now = Date.now();
       const connectedIds = new Set(
@@ -347,8 +397,124 @@ export class CodenamesGame extends DurableObject {
     );
   }
 
+  private hasConnectedPlayers(): boolean {
+    return this.ctx.getWebSockets().some((ws) => ws.readyState === 1);
+  }
+
+  private activeRound(): SessionRound | undefined {
+    const round = this.sessionHistory.rounds.at(-1);
+    return round?.status === "active" ? round : undefined;
+  }
+
+  private startRound(game: Codenames): void {
+    // Each successful start has its own immutable roster snapshot and event log.
+    const previous = this.activeRound();
+    if (previous) {
+      previous.status = "aborted";
+      previous.endedAt = Date.now();
+    }
+    this.sessionHistory.rounds.push({
+      id: nanoid(),
+      startedAt: Date.now(),
+      status: "active",
+      wordPack: this.selectedWordPack,
+      teamCount: this.selectedTeamCount,
+      players: structuredClone(game.getGameState().players),
+      events: [],
+    });
+    this.sessionHistory.rounds =
+      this.sessionHistory.rounds.slice(-MAX_SESSION_ROUNDS);
+  }
+
+  private recordEvent(event: SessionEvent): void {
+    const round = this.activeRound();
+    if (!round) return;
+    round.events.push(event);
+    round.events = round.events.slice(-MAX_ROUND_EVENTS);
+  }
+
+  private finalizeRound(game: Codenames): void {
+    const round = this.activeRound();
+    if (!round) return;
+    const result = game.getGameResult();
+    if (result) {
+      round.status = "completed";
+      round.result = result;
+      round.endedAt = Date.now();
+    } else if (!game.getGameState().turn) {
+      round.status = "aborted";
+      round.endedAt = Date.now();
+    }
+  }
+
+  private trimHistory(): void {
+    const size = () =>
+      new TextEncoder().encode(JSON.stringify(this.sessionHistory)).byteLength;
+    if (size() <= MAX_HISTORY_BYTES) return;
+    // Binary search avoids repeatedly serializing every item in an oversized history.
+    const retain = (
+      minimum: number,
+      maximum: number,
+      select: (count: number) => void,
+    ) => {
+      let low = minimum;
+      let high = maximum;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        select(middle);
+        if (size() <= MAX_HISTORY_BYTES) low = middle;
+        else high = middle - 1;
+      }
+      select(low);
+    };
+    const rounds = this.sessionHistory.rounds;
+    retain(1, rounds.length, (count) => {
+      this.sessionHistory.rounds = rounds.slice(-count);
+    });
+    const latest = this.sessionHistory.rounds[0];
+    if (latest && size() > MAX_HISTORY_BYTES) {
+      const events = latest.events;
+      retain(0, events.length, (count) => {
+        latest.events = count ? events.slice(-count) : [];
+      });
+    }
+    // Preserve the round itself even for unusually large rooms, and disclose partial snapshots.
+    if (latest && size() > MAX_HISTORY_BYTES) {
+      const players = latest.players;
+      const alreadyOmitted = latest.playersOmitted ?? 0;
+      retain(0, players.length, (count) => {
+        latest.players = players.slice(0, count);
+        latest.playersOmitted = alreadyOmitted + players.length - count;
+      });
+    }
+  }
+
+  private async deleteExpiredRoom(): Promise<boolean> {
+    if (
+      this.roomExpiresAt === undefined ||
+      this.roomExpiresAt > Date.now() ||
+      this.hasConnectedPlayers()
+    )
+      return false;
+    // Explicitly delete the alarm as well for compatibility with older runtimes.
+    await this.ctx.storage.deleteAll();
+    await this.ctx.storage.deleteAlarm();
+    this.roomExpiresAt = undefined;
+    this.disconnected = {};
+    this.selectedWordPack = "classic";
+    this.selectedTeamCount = 2;
+    this.customWords = [];
+    this.sessionHistory = { rounds: [], awardSeed: crypto.randomUUID() };
+    // In-memory caches must not resurrect the deleted room.
+    this.game = undefined;
+    this.marks = [];
+    this.lastReactionAt.clear();
+    return true;
+  }
+
   private async scheduleAlarm(game: Codenames) {
     const deadlines = Object.values(this.disconnected);
+    if (this.roomExpiresAt !== undefined) deadlines.push(this.roomExpiresAt);
     const turn = game.getGameState().turn;
     if (turn && !game.getGameResult()) deadlines.push(+turn.until);
     if (deadlines.length)
@@ -365,8 +531,13 @@ export class CodenamesGame extends DurableObject {
   ): Promise<void> {
     const gameState = game.getGameState();
     this.marks = this.currentMarks(game);
+    this.finalizeRound(game);
+    this.trimHistory();
+    if (this.hasConnectedPlayers()) this.roomExpiresAt = undefined;
+    else this.roomExpiresAt ??= Date.now() + this.roomIdleTtlMs;
     await this.ctx.storage.put({
       [MARKS]: this.marks,
+      [ROOM_EXPIRES_AT]: this.roomExpiresAt ?? null,
       [GAME_STATE]: JSON.stringify(gameState),
       [ROOM_SETTINGS]: {
         wordPack: this.selectedWordPack,
@@ -374,6 +545,7 @@ export class CodenamesGame extends DurableObject {
         customWords: this.customWords,
       },
       [DISCONNECTED]: this.disconnected,
+      [SESSION_HISTORY]: this.sessionHistory,
     });
     await this.scheduleAlarm(game);
 
@@ -418,6 +590,7 @@ export class CodenamesGame extends DurableObject {
           effects,
           marks: this.marks.map(({ word, playerId }) => ({ word, playerId })),
           turnSeconds: defaultParameters.turnDurationSeconds,
+          sessionHistory: this.sessionHistory,
         };
 
         const gameStateUpdatedEvent = {
@@ -505,6 +678,7 @@ export class CodenamesGame extends DurableObject {
             throw new GameError("Add at least 25 custom words");
           game.setWords(pack);
           game.startGame();
+          this.startRound(game);
           await this.persistAndBroadcastGameState(
             game,
             undefined,
@@ -525,6 +699,19 @@ export class CodenamesGame extends DurableObject {
           throw new GameError("Not spymaster");
         }
         game.giveHint({ hint: command.hint, count: command.count });
+        const turn = game.getGameState().turn!;
+        this.recordEvent({
+          type: "hint",
+          timestamp: Date.now(),
+          team: turn.team,
+          hint: turn.hint!.hint,
+          count: turn.hint!.count,
+          spymaster: {
+            id: player.id,
+            name: player.name,
+            animal: player.animal,
+          },
+        });
         await this.persistAndBroadcastGameState(game);
         break;
       }
@@ -536,12 +723,37 @@ export class CodenamesGame extends DurableObject {
         if (player.role === "spymaster") {
           throw new GameError("Spymaster cannot reveal words");
         }
+        // Attribute guesses to the player who gave this clue, even after role reassignment.
+        const currentTurn = game.getGameState().turn!;
+        const hintEvent = this.activeRound()?.events.findLast(
+          (event) => event.type === "hint" && event.team === currentTurn.team,
+        );
+        const spymaster =
+          hintEvent?.type === "hint" &&
+          hintEvent.hint === currentTurn.hint?.hint &&
+          hintEvent.count === currentTurn.hint?.count
+            ? hintEvent.spymaster
+            : undefined;
         const guessingTeam = player.team;
         game.revealWord(command.word, playerId);
         const card = game
           .getGameState()
           .board.find((c) => c.word === command.word)!;
         const result = game.getGameResult();
+        this.recordEvent({
+          type: "guess",
+          timestamp: Date.now(),
+          team: card.revealed!.byTeam,
+          word: card.word,
+          outcome: card.isAssassin
+            ? "assassin"
+            : card.team === card.revealed!.byTeam
+              ? "correct"
+              : card.team === undefined
+                ? "neutral"
+                : "opponent",
+          spymaster: spymaster ? structuredClone(spymaster) : undefined,
+        });
         const type = card.isAssassin
           ? "assassinReveal"
           : card.team === guessingTeam

@@ -6,13 +6,23 @@ export const roomUrl = () => `/?session=e2e-${randomUUID()}`;
 
 // Observe the real server frames alongside UI assertions. This catches duplicate
 // identities and mismatched team/board state that a screenshot cannot detect.
+const transportDebug = new WeakMap<Page, string[]>();
+
 export function watchRoom(page: Page) {
+  const debug: string[] = [];
+  transportDebug.set(page, debug);
   let latest: GameStateForClient | undefined;
   page.on("websocket", (socket) => {
+    socket.on("framesent", ({ payload }) => {
+      debug.push(`sent ${payload.toString()}`);
+    });
     socket.on("framereceived", ({ payload }) => {
       try {
         const event = JSON.parse(payload.toString());
-        if (event.type === "gameStateUpdated") latest = event.gameState;
+        if (event.type === "gameStateUpdated") {
+          latest = event.gameState;
+          debug.push(`players ${JSON.stringify(latest?.players)}`);
+        }
       } catch {
         // Only game-state JSON frames matter to these assertions.
       }
@@ -66,72 +76,67 @@ export function recordFrames(page: Page) {
 }
 
 export async function saveProfile(page: Page, name: string) {
+  await page.bringToFront();
   await page.getByLabel("Your name", { exact: true }).fill(name);
-  await page.getByRole("button", { name: "Save profile", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: new RegExp(name) }),
-  ).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "Save profile", exact: true })
+    .click({ noWaitAfter: true });
+  try {
+    await expect(
+      page.getByRole("button", { name: new RegExp(name) }),
+    ).toHaveCount(1);
+  } catch (error) {
+    console.log("PROFILE DEBUG", name, transportDebug.get(page)?.slice(-8));
+    console.log("PROFILE UI", await page.locator("body").innerText());
+    throw error;
+  }
 }
 
 export type SoundStart = { frequency: number; wallTime: number };
 
-/**
- * Replaces Web Audio with a silent fake that records every oscillator start. Tests check
- * which tones the game schedules and when, without depending on the host's audio stack
- * (a stuck audio service can stall a real AudioContext for many seconds). Like a real
- * browser, the fake starts suspended and only runs after the game resumes it on a gesture.
- */
-export function recordSounds(context: BrowserContext) {
-  return context.addInitScript(() => {
-    const recorded = window as typeof window & { soundStarts: SoundStart[] };
-    recorded.soundStarts = [];
-    const param = () => ({
-      value: 0,
-      setValueAtTime() {},
-      exponentialRampToValueAtTime() {},
-      linearRampToValueAtTime() {},
-    });
-    const node = () => ({ connect() {}, disconnect() {} });
-    class FakeAudioContext {
-      state: AudioContextState = "suspended";
-      destination = node();
-      private readonly createdAt = performance.now();
-      get currentTime() {
-        return (performance.now() - this.createdAt) / 1000;
-      }
-      resume() {
-        this.state = "running";
-        return Promise.resolve();
-      }
-      close() {
-        this.state = "closed";
-        return Promise.resolve();
-      }
-      createGain() {
-        return { ...node(), gain: param() };
-      }
-      createOscillator() {
-        const oscillator = {
-          ...node(),
-          type: "sine",
-          frequency: param(),
-          start: (when = 0) => {
-            recorded.soundStarts.push({
-              frequency: oscillator.frequency.value,
-              wallTime:
-                Date.now() + Math.max(0, when - this.currentTime) * 1000,
-            });
-          },
-          stop() {},
+// A real Web Audio graph and clock with a silent sink make these tests independent
+// of CI/headless machines' physical speakers while preserving gesture gating.
+export async function installSilentAudio(
+  context: BrowserContext,
+  recordTones = false,
+) {
+  await context.addInitScript(
+    ({ recordTones }) => {
+      const recorded = window as typeof window & {
+        soundStarts: { frequency: number; wallTime: number }[];
+        audioContexts: AudioContext[];
+      };
+      recorded.soundStarts = [];
+      recorded.audioContexts = [];
+      const NativeAudioContext = window.AudioContext;
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(options?: AudioContextOptions) {
+          super({
+            ...options,
+            sinkId: { type: "none" },
+          } as AudioContextOptions);
+          recorded.audioContexts.push(this);
+        }
+      };
+      if (!recordTones) return;
+      const create = AudioContext.prototype.createOscillator;
+      AudioContext.prototype.createOscillator = function () {
+        const oscillator = create.call(this);
+        const start = oscillator.start.bind(oscillator);
+        const audioContext = this;
+        oscillator.start = (when = 0) => {
+          recorded.soundStarts.push({
+            frequency: oscillator.frequency.value,
+            wallTime:
+              Date.now() + Math.max(0, when - audioContext.currentTime) * 1000,
+          });
+          start(when);
         };
         return oscillator;
-      }
-    }
-    Object.defineProperty(window, "AudioContext", {
-      value: FakeAudioContext,
-      configurable: true,
-    });
-  });
+      };
+    },
+    { recordTones },
+  );
 }
 
 export const soundStarts = (page: Page) =>

@@ -6,6 +6,10 @@ compatibility_date = "2024-11-06"
 
 send_metrics = false
 
+# Delete room data after two weeks without connected players (minimum 60 seconds).
+[vars]
+ROOM_IDLE_TTL_SECONDS = "1209600"
+
 [durable_objects]
 bindings = [
   { name = "CODENAMES", class_name = "CodenamesGame" }
@@ -16,7 +20,7 @@ routes = [
 ]
 
 [env.local]
-vars = { WORKER_ENV = "local" }
+vars = { WORKER_ENV = "local", ROOM_IDLE_TTL_SECONDS = "1209600" }
 [env.local.durable_objects]
   bindings = [
     { name = "CODENAMES", class_name = "CodenamesGame" }

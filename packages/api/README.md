@@ -57,7 +57,7 @@ The schema accepts optional `wordPack` and `teamCount` fields on `startGame`, bu
 
 ## Server responses
 
-- `gameStateUpdated`: contains `gameState`, including players, board, turn, clue history, the receiving client's `playerId`, readiness, remaining card counts, result, selected pack/team count, custom words, server time and shared sound effects.
+- `gameStateUpdated`: contains `gameState`, including players, board, turn, clue history, the receiving client's `playerId`, readiness, remaining card counts, result, selected pack/team count, custom words, server time, shared sound effects and `sessionHistory`.
 - `commandRejected`: contains a `reason` when a schema-valid command violates game rules. Malformed JSON or schema-invalid commands are currently logged and ignored without a rejection frame.
 - `pong`: contains `serverTime` as Unix epoch milliseconds. Heartbeats are handled outside the game-event schema.
 
@@ -67,7 +67,29 @@ Each shared sound effect has an `id`, `type` and `playAt` in Unix epoch millisec
 
 ## Persistence, reconnects and game rules
 
-Stored room keys are `gameState`, `roomSettings` and `disconnected`. Settings include the word pack, team count and custom list. Disconnect deadlines are persisted and handled by a durable alarm alongside turn deadlines. A disconnect removes a player only after the last live socket is gone and the 60-second grace expires. Returning during that grace preserves the assigned team and role. When everyone is removed, the active game ends; settings remain stored.
+Stored room keys are `gameState`, `roomSettings`, `disconnected`, `roomExpiresAt` and `sessionHistory`. Settings include the word pack, team count and custom list. Disconnect deadlines are persisted and handled by a durable alarm alongside turn deadlines. A disconnect removes a player only after the last live socket is gone and the 60-second grace expires. Returning during that grace preserves the assigned team and role. When everyone is removed, the active game ends; settings and history remain stored until room expiry.
+
+### Automatic room expiry
+
+The last live socket closing starts a two-week idle retention window. A successful rejoin cancels it; the next time the room becomes empty, a new window starts. Rooms with connected players are never expired. Disconnect-grace cleanup and turn alarms do not extend idle retention.
+
+`ROOM_IDLE_TTL_SECONDS` configures retention, with `1209600` (14 days) set for production and local development in `wrangler.toml`. Values must be whole seconds, at least 60, and within the supported date range; invalid or missing values use the two-week default. The minimum preserves the reconnect grace period.
+
+The expiration timestamp is persisted, and the existing durable alarm schedules the earliest turn, disconnect or expiry deadline. At expiry, the backend clears all storage and the alarm, then resets in-memory room settings and history. It also checks expiry before accepting a join, so delayed alarms cannot restore old data. Alarm retries do not recreate deleted room storage. Visiting the same room name afterward creates a fresh session.
+
+Existing stored rooms without expiry metadata adopt the policy when their Durable Object next wakes. Rooms that are already dormant without a scheduled alarm are not awakened merely by deploying this code; a one-time namespace sweep would be needed to enroll those rooms without waiting for access. [Cloudflare's namespace object-list API](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/subresources/objects/) can enumerate their IDs for such a maintenance job.
+
+### Session history
+
+`sessionHistory.rounds` holds up to 50 rounds, ordered oldest to newest. Each round includes an ID, start/end timestamps in epoch milliseconds, status (`active`, `completed`, or `aborted`), word pack, team count, starting player roster, optional result and up to 200 events. The serialized history has a 96 KiB budget for the current KV-backed storage: older rounds, then older events or roster entries in an oversized single round, may be dropped to stay within it. `playersOmitted` records any roster truncation. Event schemas and exported types live in [game.ts](../schema/src/game.ts).
+
+`sessionHistory.awardSeed` keeps playful award titles stable for this room's lifetime, including rematches, reconnects, hibernation, and history pruning. New rooms receive a random UUID. Existing histories without a seed adopt their first retained round ID, or a random UUID if no rounds exist, and persist it. Room expiry removes the seed; reopening the same room name starts a fresh session with a new seed. The field remains optional in the schema for older clients and stored histories.
+
+Hint events contain the public clue, count, team and timestamp. Clue and guess events can also include a `spymaster` identity snapshot (`id`, `name`, optional `animal`) for the person who gave the clue. Guesses retain that attribution through disconnect-driven role changes, rather than crediting the replacement spymaster. Older or unmatched clues leave guesses unattributed. No individual clicker identity is recorded.
+
+Guess events contain the revealed word, guessing team, timestamp and outcome (`correct`, `opponent`, `neutral`, or `assassin`). History stores no unrevealed board identities. Rejected commands and duplicate guesses do not add events. A winning or assassin reveal completes the round once; stopping an unfinished game or removing its last player records an aborted round. Starting a rematch creates a separate round.
+
+The client derives KPIs and playful awards from retained rounds and events using the shared `calculateHistoryStats` helper in the schema package. Personal awards use only explicitly attributed spymaster guesses; team statistics include all recorded guesses. History is persisted with game state, restored after hibernation, shared in snapshots and removed with all other room data at expiry. Pre-existing games cannot reconstruct events from before history recording was introduced.
 
 Mutations are serialized through `blockConcurrencyWhile`. Expected rule rejections are caught inside the block so they do not reset the object. Simultaneous duplicate guesses consume one guess and produce one reveal event.
 
@@ -83,6 +105,6 @@ Turns currently last 120 seconds. A positive clue count permits that number plus
 
 ## Server integration test scope
 
-`gameServer.integration.spec.ts` exercises the actual room server, schemas and game engine with an in-memory storage implementation and mocked Cloudflare socket/context APIs. It covers reconnect grace, lingering closed sockets, settings restoration, board privacy, role restrictions, shared sound classification/timing, finished-game guards, concurrent joins/profile updates, and duplicate guesses.
+`gameServer.integration.spec.ts` exercises the actual room server, schemas and game engine with an in-memory storage implementation and mocked Cloudflare socket/context APIs. It covers reconnect grace, lingering closed sockets, settings restoration, board privacy, role restrictions, shared sound classification/timing, finished-game guards, concurrent joins/profile updates, duplicate guesses, expiry across hibernation/rejoin/alarm retries, and bounded session history.
 
 These tests model platform behavior; they do not replace the browser suite's real local Wrangler runtime checks or production connection monitoring.

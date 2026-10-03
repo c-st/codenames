@@ -7,6 +7,7 @@ import useCodenames from "@/components/hooks/useCodenames";
 import Lobby from "@/components/Game/Lobby/Lobby";
 import GameControls from "@/components/Game/GameControls";
 import Board from "@/components/Game/Board/Board";
+import SessionHistory from "@/components/Game/SessionHistory";
 import SessionStatus from "@/components/Game/SessionStatus";
 import SplashScreen from "@/components/SplashScreen";
 import PracticeMode from "@/components/PracticeMode/PracticeMode";
@@ -38,6 +39,7 @@ export default function Home() {
     players,
     turn,
     hintHistory,
+    sessionHistory,
     board,
     remainingWordsByTeam,
     gameResult,
@@ -207,6 +209,7 @@ export default function Home() {
               sound={sound}
             />
           )}
+          <SessionHistory history={sessionHistory} />
         </main>
         <footer className="flex flex-col items-center gap-4">
           <fieldset disabled={!isConnected}>

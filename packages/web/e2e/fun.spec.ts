@@ -3,7 +3,7 @@ import type { GameStateForClient } from "schema";
 import {
   expectAnnounced,
   recordFrames,
-  recordSounds,
+  installSilentAudio,
   roomUrl,
   saveProfile,
   soundStarts,
@@ -31,7 +31,9 @@ async function startFourPlayerGame(
   beforeJoin?: (page: Page, index: number) => Promise<void>,
 ) {
   const contexts = await Promise.all(NAMES.map(() => browser.newContext()));
-  await Promise.all(contexts.map(recordSounds));
+  await Promise.all(
+    contexts.map((context) => installSilentAudio(context, true)),
+  );
   const pages = await Promise.all(contexts.map((context) => context.newPage()));
   if (process.env.E2E_DEBUG)
     pages.forEach((page, i) => {
@@ -371,7 +373,9 @@ test("the private reconnect token never reaches other players", async ({
     browser.newContext(),
     browser.newContext(),
   ]);
-  await Promise.all(contexts.map(recordSounds));
+  await Promise.all(
+    contexts.map((context) => installSilentAudio(context, true)),
+  );
   try {
     const [alice, bob] = await Promise.all(
       contexts.map((context) => context.newPage()),

@@ -1,6 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { GameStateForClient } from "schema";
-import { recordSounds, roomUrl, saveProfile, watchRoom } from "./support";
+import { getTeamName } from "../components/Game/Board/getTeamColor";
+import { installSilentAudio, roomUrl, saveProfile, watchRoom } from "./support";
 
 function assignments(state: GameStateForClient | undefined) {
   return state?.players
@@ -18,6 +19,7 @@ const rosterNames = (state: GameStateForClient | undefined) =>
   state?.players.map((player) => player.name).sort();
 
 async function openEditor(page: Page) {
+  await page.bringToFront();
   await page
     .getByText("Create or edit a custom word pack", { exact: false })
     .click();
@@ -26,11 +28,19 @@ async function openEditor(page: Page) {
   ).toBeVisible();
 }
 
+async function openHistory(page: Page) {
+  await page.bringToFront();
+  const panel = page.getByRole("group", { name: "Room history", exact: true });
+  if ((await panel.getAttribute("open")) === null)
+    await panel.locator(":scope > summary").click({ noWaitAfter: true });
+  return panel;
+}
+
 test("profile survives reload, reconnect and a fresh browser session without duplicate players", async ({
   browser,
 }) => {
   const context = await browser.newContext();
-  await recordSounds(context);
+  await installSilentAudio(context);
   let restored: BrowserContext | undefined;
   await context.addInitScript((apiPort) => {
     const tracked = window as typeof window & { roomSockets: WebSocket[] };
@@ -115,7 +125,7 @@ test("profile survives reload, reconnect and a fresh browser session without dup
     const storageState = await context.storageState();
     await context.close();
     restored = await browser.newContext({ storageState });
-    await recordSounds(restored);
+    await installSilentAudio(restored);
     const freshPage = await restored.newPage();
     const freshState = watchRoom(freshPage);
     await freshPage.goto(url);
@@ -144,11 +154,14 @@ test("profile survives reload, reconnect and a fresh browser session without dup
 test("four independent players share custom words, shuffled roles and the same board", async ({
   browser,
 }) => {
+  test.setTimeout(180_000);
   const contexts = await Promise.all(
     Array.from({ length: 4 }, () => browser.newContext()),
   );
   try {
-    await Promise.all(contexts.map(recordSounds));
+    await Promise.all(
+      contexts.map((context) => installSilentAudio(context, true)),
+    );
     const pages = await Promise.all(
       contexts.map((context) => context.newPage()),
     );
@@ -226,6 +239,7 @@ test("four independent players share custom words, shuffled roles and the same b
         ).toHaveLength(1);
       }
     }
+    await pages[0].bringToFront();
     await pages[0]
       .getByRole("button", { name: "Start Game", exact: true })
       .click();
@@ -268,6 +282,7 @@ test("four independent players share custom words, shuffled roles and the same b
     const card = states[spyIndex]()!.board.find(
       (word) => word.team === activeTeam && !word.isAssassin,
     )!;
+    await pages[spyIndex].bringToFront();
     await pages[spyIndex]
       .getByPlaceholder("Hint word", { exact: true })
       .fill("Connection");
@@ -278,8 +293,20 @@ test("four independent players share custom words, shuffled roles and the same b
       await expect.poll(() => state()?.turn?.hint?.hint).toBe("Connection");
     for (const page of pages) {
       // A real key gesture unlocks the AudioContext in every independently joined tab.
+      await page.bringToFront();
       await page.keyboard.press("Shift");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (
+                window as typeof window & { audioContexts: AudioContext[] }
+              ).audioContexts.at(-1)?.state,
+          ),
+        )
+        .toBe("running");
     }
+    await pages[operativeIndex].bringToFront();
     await pages[operativeIndex]
       .getByRole("button", { name: card.word, exact: true })
       .click();
@@ -327,9 +354,46 @@ test("four independent players share custom words, shuffled roles and the same b
     expect(
       Math.max(...recordedStarts) - Math.min(...recordedStarts),
     ).toBeLessThan(200);
+    for (let i = 0; i < pages.length; i++) {
+      await expect
+        .poll(() => states[i]()?.sessionHistory?.rounds[0]?.events)
+        .toEqual([
+          expect.objectContaining({
+            type: "hint",
+            team: activeTeam,
+            hint: "Connection",
+            count: 2,
+          }),
+          expect.objectContaining({
+            type: "guess",
+            team: activeTeam,
+            word: card.word,
+            outcome: "correct",
+          }),
+        ]);
+      await expect
+        .poll(() => states[i]()?.sessionHistory)
+        .toEqual(states[0]()!.sessionHistory);
+      const history = await openHistory(pages[i]);
+      await expect(
+        history.getByText("Active round", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        history.getByLabel("Total guesses", { exact: true }),
+      ).toHaveText("1");
+      await expect(
+        history.getByLabel("Guess accuracy", { exact: true }),
+      ).toHaveText("100%");
+      await expect(
+        history
+          .getByRole("list", { name: "Round events" })
+          .getByText(card.word, { exact: true }),
+      ).toBeVisible();
+    }
     await pages[operativeIndex].screenshot({
       path: "test-results/multiplayer-board.png",
       fullPage: true,
+      animations: "disabled",
     });
     await pages[operativeIndex].setViewportSize({ width: 390, height: 844 });
     expect(
@@ -347,8 +411,244 @@ test("four independent players share custom words, shuffled roles and the same b
     await pages[operativeIndex].screenshot({
       path: "test-results/multiplayer-board-mobile.png",
       fullPage: true,
+      animations: "disabled",
+    });
+    await pages[0].bringToFront();
+    await pages[0]
+      .getByRole("button", { name: "End game", exact: true })
+      .click();
+    for (let i = 0; i < pages.length; i++) {
+      await expect
+        .poll(() => states[i]()?.sessionHistory?.rounds[0]?.status)
+        .toBe("aborted");
+      const history = await openHistory(pages[i]);
+      await expect(
+        history.getByText("Aborted round", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        history.getByLabel("Rounds completed", { exact: true }),
+      ).toHaveText("0");
+    }
+    const roomAwardSeed = states[0]()!.sessionHistory!.awardSeed;
+    const retainedTitles = await (await openHistory(pages[0]))
+      .getByRole("heading", { level: 4 })
+      .allTextContents();
+    await pages[0].reload();
+    await expect
+      .poll(() => states[0]()?.sessionHistory?.rounds[0]?.status)
+      .toBe("aborted");
+    await expect(
+      (await openHistory(pages[0])).getByLabel("Total guesses", {
+        exact: true,
+      }),
+    ).toHaveText("1");
+
+    // Finish a rematch to verify completed-round averages, team wins and retained accuracy.
+    await pages[0].bringToFront();
+    await pages[0]
+      .getByRole("button", { name: "Start Game", exact: true })
+      .click();
+    for (const state of states)
+      await expect.poll(() => state()?.sessionHistory?.rounds.length).toBe(2);
+    const winner = states[0]()!.turn!.team;
+    const winningSpy = states.findIndex((state) =>
+      state()!.players.some(
+        (player) =>
+          player.id === state()!.playerId &&
+          player.team === winner &&
+          player.role === "spymaster",
+      ),
+    );
+    const winningOperative = states.findIndex((state) =>
+      state()!.players.some(
+        (player) =>
+          player.id === state()!.playerId &&
+          player.team === winner &&
+          player.role === "operative",
+      ),
+    );
+    const winningSpyPlayer = states[winningSpy]()!.players.find(
+      (player) => player.id === states[winningSpy]()!.playerId,
+    )!;
+    const initialSpyPlayerId = states[spyIndex]()!.playerId;
+    const winningWords = states[winningSpy]()!
+      .board.filter((word) => word.team === winner)
+      .map((word) => word.word);
+    await pages[winningSpy].bringToFront();
+    await pages[winningSpy]
+      .getByPlaceholder("Hint word", { exact: true })
+      .fill("Victory");
+    await pages[winningSpy].getByRole("spinbutton").fill("9");
+    await pages[winningSpy]
+      .getByRole("button", { name: "Give hint", exact: true })
+      .click();
+    for (const state of states)
+      await expect.poll(() => state()?.turn?.hint?.hint).toBe("Victory");
+    await pages[winningOperative].bringToFront();
+    for (const word of winningWords) {
+      await pages[winningOperative]
+        .getByRole("button", { name: word, exact: true })
+        .click();
+      await expect
+        .poll(
+          () =>
+            states[winningOperative]()?.board.find((card) => card.word === word)
+              ?.revealed?.byTeam,
+        )
+        .toBe(winner);
+    }
+    for (let i = 0; i < pages.length; i++) {
+      await expect
+        .poll(() => states[i]()?.sessionHistory?.rounds[1]?.status)
+        .toBe("completed");
+      await expect
+        .poll(() => states[i]()?.sessionHistory?.awardSeed)
+        .toBe(roomAwardSeed);
+      await expect
+        .poll(() => states[i]()?.sessionHistory)
+        .toEqual(states[0]()!.sessionHistory);
+      const history = await openHistory(pages[i]);
+      await expect(
+        history.getByLabel("Rounds completed", { exact: true }),
+      ).toHaveText("1");
+      await expect(
+        history.getByLabel("Total guesses", { exact: true }),
+      ).toHaveText(String(1 + winningWords.length));
+      await expect(
+        history.getByLabel("Guess accuracy", { exact: true }),
+      ).toHaveText("100%");
+      await expect(
+        history.getByLabel(`${getTeamName(winner)} wins`, { exact: true }),
+      ).toHaveText("1");
+      await expect(
+        history.getByLabel("Avg. completed round", { exact: true }),
+      ).toHaveText(/\d+[smh]/);
+      await expect
+        .poll(() =>
+          states[i]()
+            ?.sessionHistory?.rounds[1]?.events.filter(
+              (event) => event.type === "guess",
+            )
+            .map((event) => event.spymaster?.id),
+        )
+        .toEqual(winningWords.map(() => winningSpyPlayer.id));
+      const clueAward = history.locator(
+        'article[data-award="spy-most-correct"]',
+      );
+      await expect(
+        clueAward.getByText(winningSpyPlayer.name, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        clueAward.getByText(
+          `${winningWords.length + (initialSpyPlayerId === winningSpyPlayer.id ? 1 : 0)} correct guesses`,
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        history
+          .locator('article[data-award="team-most-correct"]')
+          .getByText(`Team ${getTeamName(winner)}`, { exact: true }),
+      ).toBeVisible();
+      const titles = await history
+        .getByRole("heading", { level: 4 })
+        .allTextContents();
+      for (const retainedTitle of retainedTitles)
+        expect(titles).toContain(retainedTitle);
+      expect(titles).toEqual(
+        await (await openHistory(pages[0]))
+          .getByRole("heading", { level: 4 })
+          .allTextContents(),
+      );
+      await expect(
+        history.getByText(`${getTeamName(winner)} wins`, { exact: true }),
+      ).toBeVisible();
+    }
+    await pages[0].setViewportSize({ width: 1280, height: 900 });
+    await pages[0].screenshot({
+      path: "test-results/session-history.png",
+      fullPage: true,
+      animations: "disabled",
+    });
+    await pages[0].setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        pages[0].evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+    await pages[0].screenshot({
+      path: "test-results/session-history-mobile.png",
+      fullPage: true,
+      animations: "disabled",
     });
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test("an empty room expires through real durable alarms and reopens with fresh settings", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const contexts = await Promise.all(
+    Array.from({ length: 4 }, () => browser.newContext()),
+  );
+  let reopened: BrowserContext | undefined;
+  try {
+    await Promise.all(contexts.map((context) => installSilentAudio(context)));
+    const pages = await Promise.all(
+      contexts.map((context) => context.newPage()),
+    );
+    const states = pages.map(watchRoom);
+    const url = roomUrl();
+    for (const page of pages) {
+      await page.goto(url);
+      await expect(page.getByText("Connected", { exact: true })).toBeVisible();
+    }
+    await expect.poll(() => states[0]()?.players.length).toBe(4);
+    await openEditor(pages[0]);
+    const words = Array.from({ length: 25 }, (_, i) => `Expiry Word ${i + 1}`);
+    await pages[0]
+      .getByLabel("Your words (up to 50 characters each)")
+      .fill(words.join("\n"));
+    await pages[0]
+      .getByRole("button", { name: "Save & use custom pack" })
+      .click();
+    await expect.poll(() => states[0]()?.customWords).toEqual(words);
+    await pages[0]
+      .getByRole("button", { name: /Shuffle teams & spymasters/ })
+      .click();
+    await pages[0].bringToFront();
+    await pages[0]
+      .getByRole("button", { name: "Start Game", exact: true })
+      .click();
+    await expect.poll(() => states[0]()?.sessionHistory?.rounds.length).toBe(1);
+    await pages[0].bringToFront();
+    await pages[0]
+      .getByRole("button", { name: "End game", exact: true })
+      .click();
+    await expect
+      .poll(() => states[0]()?.sessionHistory?.rounds[0]?.status)
+      .toBe("aborted");
+    await Promise.all(contexts.map((context) => context.close()));
+
+    // The worker has a test-only 60-second idle TTL. No connection to this room
+    // remains alive while the actual Wrangler alarm deletes its durable storage.
+    reopened = await browser.newContext();
+    const observer = await reopened.newPage();
+    await observer.waitForTimeout(62_000);
+    const state = watchRoom(observer);
+    await observer.goto(url);
+    await expect.poll(() => state()?.wordPack).toBe("classic");
+    await expect.poll(() => state()?.customWords ?? []).toEqual([]);
+    await expect.poll(() => state()?.sessionHistory?.rounds).toEqual([]);
+    await expect.poll(() => state()?.players.length).toBe(1);
+    await expect(
+      (await openHistory(observer)).getByText("No rounds yet", { exact: true }),
+    ).toBeVisible();
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+    await reopened?.close();
   }
 });
