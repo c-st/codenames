@@ -151,7 +151,9 @@ test("reveals flip with juice, marks are shared, reactions float and banners ann
     await cardButton(operative, first).click();
     await Promise.all(
       pages.map(async (page) => {
-        await expect(page.locator('[data-landing="correct"]')).toHaveCount(1);
+        await expect(page.locator('[data-last-landing="correct"]')).toHaveCount(
+          1,
+        );
         await expect(cardButton(page, first)).toHaveAccessibleName(
           /, revealed/,
         );
@@ -177,7 +179,11 @@ test("reveals flip with juice, marks are shared, reactions float and banners ann
       "style",
       /rotateY\(180deg\)/,
     );
-    await expect(pages[roles.otherOp].locator("[data-landing]")).toHaveCount(0);
+    // Give a replayed landing time to appear before asserting it never did.
+    await pages[roles.otherOp].waitForTimeout(1_000);
+    await expect(
+      pages[roles.otherOp].locator("[data-last-landing]"),
+    ).toHaveCount(0);
 
     // Finding both words for a clue of 2 celebrates a perfect clue for everyone.
     await cardButton(operative, second).click();
@@ -239,7 +245,9 @@ test("the assassin flashes the screen, winners party, losers get rain, then reca
         await expect(
           page.locator(`[data-last-flash-id="${strike()!.id}"]`),
         ).toBeAttached();
-        await expect(page.locator('[data-landing="assassin"]')).toHaveCount(1);
+        await expect(
+          page.locator('[data-last-landing="assassin"]'),
+        ).toHaveCount(1);
         const losers = i === roles.spy || i === roles.op;
         await expect(
           page.locator(`[data-celebration="${losers ? "lose" : "win"}"]`),
@@ -363,6 +371,7 @@ test("the private reconnect token never reaches other players", async ({
     browser.newContext(),
     browser.newContext(),
   ]);
+  await Promise.all(contexts.map(recordSounds));
   try {
     const [alice, bob] = await Promise.all(
       contexts.map((context) => context.newPage()),
@@ -380,7 +389,7 @@ test("the private reconnect token never reaches other players", async ({
     const room = new URL(url, "http://localhost").searchParams.get("session")!;
     const token = await alice.evaluate(
       (key) => localStorage.getItem(key),
-      `codenames:playerId:${room}`,
+      `codenames:token:${room}`,
     );
     expect(token).toBeTruthy();
     expect(aliceState()!.playerId).not.toBe(token);

@@ -75,26 +75,62 @@ export async function saveProfile(page: Page, name: string) {
 
 export type SoundStart = { frequency: number; wallTime: number };
 
-/** Records every Web Audio oscillator start, so tests check real sound scheduling. */
+/**
+ * Replaces Web Audio with a silent fake that records every oscillator start. Tests check
+ * which tones the game schedules and when, without depending on the host's audio stack
+ * (a stuck audio service can stall a real AudioContext for many seconds). Like a real
+ * browser, the fake starts suspended and only runs after the game resumes it on a gesture.
+ */
 export function recordSounds(context: BrowserContext) {
   return context.addInitScript(() => {
     const recorded = window as typeof window & { soundStarts: SoundStart[] };
     recorded.soundStarts = [];
-    const create = AudioContext.prototype.createOscillator;
-    AudioContext.prototype.createOscillator = function () {
-      const oscillator = create.call(this);
-      const start = oscillator.start.bind(oscillator);
-      const audioContext = this;
-      oscillator.start = (when = 0) => {
-        recorded.soundStarts.push({
-          frequency: oscillator.frequency.value,
-          wallTime:
-            Date.now() + Math.max(0, when - audioContext.currentTime) * 1000,
-        });
-        start(when);
-      };
-      return oscillator;
-    };
+    const param = () => ({
+      value: 0,
+      setValueAtTime() {},
+      exponentialRampToValueAtTime() {},
+      linearRampToValueAtTime() {},
+    });
+    const node = () => ({ connect() {}, disconnect() {} });
+    class FakeAudioContext {
+      state: AudioContextState = "suspended";
+      destination = node();
+      private readonly createdAt = performance.now();
+      get currentTime() {
+        return (performance.now() - this.createdAt) / 1000;
+      }
+      resume() {
+        this.state = "running";
+        return Promise.resolve();
+      }
+      close() {
+        this.state = "closed";
+        return Promise.resolve();
+      }
+      createGain() {
+        return { ...node(), gain: param() };
+      }
+      createOscillator() {
+        const oscillator = {
+          ...node(),
+          type: "sine",
+          frequency: param(),
+          start: (when = 0) => {
+            recorded.soundStarts.push({
+              frequency: oscillator.frequency.value,
+              wallTime:
+                Date.now() + Math.max(0, when - this.currentTime) * 1000,
+            });
+          },
+          stop() {},
+        };
+        return oscillator;
+      }
+    }
+    Object.defineProperty(window, "AudioContext", {
+      value: FakeAudioContext,
+      configurable: true,
+    });
   });
 }
 

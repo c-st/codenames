@@ -30,6 +30,7 @@ test("profile survives reload, reconnect and a fresh browser session without dup
   browser,
 }) => {
   const context = await browser.newContext();
+  await recordSounds(context);
   let restored: BrowserContext | undefined;
   await context.addInitScript((apiPort) => {
     const tracked = window as typeof window & { roomSockets: WebSocket[] };
@@ -114,6 +115,7 @@ test("profile survives reload, reconnect and a fresh browser session without dup
     const storageState = await context.storageState();
     await context.close();
     restored = await browser.newContext({ storageState });
+    await recordSounds(restored);
     const freshPage = await restored.newPage();
     const freshState = watchRoom(freshPage);
     await freshPage.goto(url);
