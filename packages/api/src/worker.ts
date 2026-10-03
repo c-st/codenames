@@ -4,6 +4,7 @@ import { CodenamesGame } from "./gameServer";
 export interface Env {
   CODENAMES: DurableObjectNamespace<CodenamesGame>;
   WORKER_ENV: string | undefined;
+  ROOM_IDLE_TTL_SECONDS?: string;
 }
 
 export default {

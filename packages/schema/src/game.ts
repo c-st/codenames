@@ -84,6 +84,54 @@ export const gameResult = z.object({
   losingTeam: z.number().optional(),
 });
 
+export const sessionPlayerSchema = playerSchema.pick({
+  id: true,
+  name: true,
+  animal: true,
+});
+export type SessionPlayer = z.infer<typeof sessionPlayerSchema>;
+
+export const sessionEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("hint"),
+    timestamp: z.number(),
+    team: z.number(),
+    hint: z.string(),
+    count: z.number(),
+    spymaster: sessionPlayerSchema.optional(),
+  }),
+  z.object({
+    type: z.literal("guess"),
+    timestamp: z.number(),
+    team: z.number(),
+    word: z.string(),
+    outcome: z.enum(["correct", "opponent", "neutral", "assassin"]),
+    spymaster: sessionPlayerSchema.optional(),
+  }),
+]);
+
+export const sessionRoundSchema = z.object({
+  id: z.string(),
+  startedAt: z.number(),
+  endedAt: z.number().optional(),
+  status: z.enum(["active", "completed", "aborted"]),
+  wordPack: z.string(),
+  teamCount: z.number(),
+  players: z.array(playerSchema),
+  result: gameResult.optional(),
+  playersOmitted: z.number().int().nonnegative().optional(),
+  events: z.array(sessionEventSchema).max(200),
+});
+
+export const sessionHistorySchema = z.object({
+  rounds: z.array(sessionRoundSchema).max(50),
+  awardSeed: z.string().min(1).optional(),
+});
+
+export type SessionEvent = z.infer<typeof sessionEventSchema>;
+export type SessionRound = z.infer<typeof sessionRoundSchema>;
+export type SessionHistory = z.infer<typeof sessionHistorySchema>;
+
 export const gameStateSchemaForClient = gameStateSchema.extend({
   playerId: z.string(),
   gameCanStart: z.boolean(),
@@ -94,6 +142,7 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   customWords: z.array(z.string()).optional(),
   serverTime: z.number().optional(),
   effects: z.array(sharedEffectSchema).optional(),
+  sessionHistory: sessionHistorySchema.optional(),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;

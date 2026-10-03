@@ -1,5 +1,6 @@
 import { CodenamesGame } from "./gameServer";
-import type { GameState, GameStateForClient } from "schema";
+import { sessionHistorySchema } from "schema";
+import type { GameState, GameStateForClient, SessionHistory } from "schema";
 
 vi.mock("cloudflare:workers", () => ({
   DurableObject: class {
@@ -52,6 +53,9 @@ class FakeStorage {
   async delete(key: string) {
     return this.values.delete(key);
   }
+  async deleteAll() {
+    this.values.clear();
+  }
   async setAlarm(deadline: number) {
     this.alarm = deadline;
   }
@@ -83,10 +87,13 @@ class FakeContext {
 const id = (number: number) => `player_${String(number).padStart(16, "0")}`;
 const command = (game: CodenamesGame, socket: FakeSocket, value: object) =>
   game.webSocketMessage(socket as unknown as WebSocket, JSON.stringify(value));
-const create = async (context = new FakeContext()) => {
+const create = async (
+  context = new FakeContext(),
+  roomIdleTtlSeconds?: string,
+) => {
   const game = new CodenamesGame(
     context as unknown as DurableObjectState,
-    {} as never,
+    { ROOM_IDLE_TTL_SECONDS: roomIdleTtlSeconds } as never,
   );
   await context.ready;
   return { game, context };
@@ -531,5 +538,787 @@ describe("Durable Object room protocol", () => {
       agent.latest().board.find((card) => card.word === "bomb")?.isAssassin,
     ).toBe(true);
     expect(context.storage.alarm).toBe(Date.now() + 60_000); // Unconnected players still receive reconnect grace.
+  });
+});
+
+describe("idle room expiry", () => {
+  const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+
+  it("deletes all room data and the alarm two weeks after the last socket disconnects", async () => {
+    const { game, context } = await create();
+    const first = await connect(game, context, id(1));
+    const second = await connect(game, context, id(1));
+    const words = Array.from({ length: 25 }, (_, i) => `Word ${i}`);
+    await command(game, first, { type: "setCustomWords", words });
+    await game.webSocketClose(first as unknown as WebSocket, 1000, "", true);
+    expect(context.storage.values.get("roomExpiresAt")).toBeNull();
+    const leftAt = Date.now();
+    await game.webSocketClose(second as unknown as WebSocket, 1000, "", true);
+    expect(context.storage.values.get("roomExpiresAt")).toBe(
+      leftAt + RETENTION_MS,
+    );
+    expect(context.storage.alarm).toBe(leftAt + 60_000);
+    vi.advanceTimersByTime(60_000);
+    await game.alarm();
+    expect(storedState(context).players).toHaveLength(0);
+    expect(context.storage.alarm).toBe(leftAt + RETENTION_MS);
+    expect(context.storage.values.get("roomSettings")).toMatchObject({
+      customWords: words,
+    });
+    vi.advanceTimersByTime(RETENTION_MS - 60_001);
+    await game.alarm();
+    expect(context.storage.values.size).toBeGreaterThan(0);
+    vi.advanceTimersByTime(1);
+    await game.alarm();
+    expect(context.storage.values.size).toBe(0);
+    expect(context.storage.alarm).toBeUndefined();
+    // Alarm retries and constructor wakeups must not recreate empty room data.
+    await game.alarm();
+    await create(context);
+    expect(context.storage.values.size).toBe(0);
+    expect(context.storage.alarm).toBeUndefined();
+    const newcomer = await connect(game, context, id(2));
+    expect(newcomer.latest()).toMatchObject({
+      wordPack: "classic",
+      teamCount: 2,
+      customWords: [],
+      board: [],
+    });
+    expect(newcomer.latest().players).toHaveLength(1);
+  });
+
+  it("preserves a persisted expiry through hibernation without extending it on alarms", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    const expiresAt = context.storage.values.get("roomExpiresAt");
+    vi.advanceTimersByTime(60_000);
+    const resumed = await create(context);
+    await resumed.game.alarm();
+    expect(context.storage.values.get("roomExpiresAt")).toBe(expiresAt);
+    expect(context.storage.alarm).toBe(expiresAt);
+    vi.advanceTimersByTime(RETENTION_MS - 60_000);
+    const expired = await create(context);
+    expect(context.storage.values.size).toBe(0);
+    await expired.game.alarm();
+    expect(context.storage.values.size).toBe(0);
+  });
+
+  it("cancels expiry on rejoin and starts a fresh deadline only after the player leaves again", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    const oldDeadline = context.storage.values.get("roomExpiresAt") as number;
+    vi.advanceTimersByTime(RETENTION_MS - 1);
+    const rejoined = await connect(game, context, id(1));
+    expect(context.storage.values.get("roomExpiresAt")).toBeNull();
+    vi.advanceTimersByTime(RETENTION_MS);
+    await game.alarm();
+    expect(storedState(context).players).toHaveLength(1);
+    expect(context.storage.values.get("roomExpiresAt")).toBeNull();
+    await game.webSocketClose(rejoined as unknown as WebSocket, 1000, "", true);
+    expect(context.storage.values.get("roomExpiresAt")).toBe(
+      Date.now() + RETENTION_MS,
+    );
+    expect(context.storage.values.get("roomExpiresAt")).not.toBe(oldDeadline);
+  });
+
+  it("recreates an expired room on join even when its cleanup alarm was delayed", async () => {
+    const { game, context } = await create();
+    const socket = await connect(game, context, id(1));
+    await command(game, socket, { type: "setTeamCount", teamCount: 3 });
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    vi.advanceTimersByTime(RETENTION_MS + 1);
+    const joined = await connect(game, context, id(2));
+    expect(joined.latest()).toMatchObject({
+      teamCount: 2,
+      wordPack: "classic",
+      customWords: [],
+    });
+    expect(joined.latest().players.map((p) => p.id)).toEqual([id(2)]);
+    expect(context.storage.values.get("roomExpiresAt")).toBeNull();
+  });
+
+  it("adopts existing stored rooms without expiry metadata when they next wake", async () => {
+    const context = new FakeContext();
+    context.storage.values.set("gameState", JSON.stringify(playingState()));
+    const { game } = await create(context);
+    expect(context.storage.values.get("roomExpiresAt")).toBe(
+      Date.now() + RETENTION_MS,
+    );
+    expect(context.storage.alarm).toBe(Date.now() + 60_000);
+    vi.advanceTimersByTime(RETENTION_MS);
+    await game.alarm();
+    expect(context.storage.values.size).toBe(0);
+  });
+
+  it("does not persist never-joined rooms and honors a configurable timeout", async () => {
+    const { game, context } = await create(undefined, "120");
+    expect(context.storage.values.size).toBe(0);
+    expect(context.storage.alarm).toBeUndefined();
+    const socket = await connect(game, context, id(1));
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    expect(context.storage.values.get("roomExpiresAt")).toBe(
+      Date.now() + 120_000,
+    );
+    vi.advanceTimersByTime(60_000);
+    await game.alarm();
+    expect(context.storage.alarm).toBe(Date.now() + 60_000);
+    vi.advanceTimersByTime(60_000);
+    await game.alarm();
+    expect(context.storage.values.size).toBe(0);
+  });
+
+  it.each(["invalid", "0", "59", "1.5", "Infinity", "9007199254740991"])(
+    "uses the safe default for invalid timeout %s",
+    async (value) => {
+      const { game, context } = await create(undefined, value);
+      const socket = await connect(game, context, id(1));
+      await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+      expect(context.storage.values.get("roomExpiresAt")).toBe(
+        Date.now() + RETENTION_MS,
+      );
+    },
+  );
+});
+
+describe("persistent session history", () => {
+  const storedHistory = (context: FakeContext): SessionHistory =>
+    structuredClone(
+      context.storage.values.get("sessionHistory") as SessionHistory,
+    );
+  const startSession = async () => {
+    const { game, context } = await create();
+    for (let number = 1; number <= 4; number++)
+      await connect(game, context, id(number));
+    await command(game, context.sockets[0], { type: "startGame" });
+    return { game, context };
+  };
+  const turnSocket = (
+    context: FakeContext,
+    role: "spymaster" | "operative",
+  ) => {
+    const state = storedState(context);
+    const player = state.players.find(
+      (player) => player.team === state.turn?.team && player.role === role,
+    )!;
+    return context.sockets.findLast(
+      (socket) => !socket.closed && socket.attachment?.playerId === player.id,
+    )!;
+  };
+
+  it("restores the round log after hibernation and keeps each rematch's roster snapshot separate", async () => {
+    const { game, context } = await startSession();
+    const first = storedHistory(context).rounds[0];
+    expect(first).toMatchObject({
+      id: expect.any(String),
+      startedAt: Date.now(),
+      status: "active",
+      wordPack: "classic",
+      teamCount: 2,
+      events: [],
+    });
+    expect(first.players).toEqual(storedState(context).players);
+    expect(first).not.toHaveProperty("board");
+    await command(game, context.sockets[0], {
+      type: "setProfile",
+      name: "New name",
+      animal: "🦊",
+    });
+    expect(storedHistory(context).rounds[0].players).toEqual(first.players);
+    vi.advanceTimersByTime(1_000);
+    await command(game, turnSocket(context, "spymaster"), {
+      type: "giveHint",
+      hint: "  fruit  ",
+      count: 2,
+    });
+    const ownWord = storedState(context).board.find(
+      (card) => card.team === storedState(context).turn?.team,
+    )!.word;
+    await command(game, turnSocket(context, "operative"), {
+      type: "revealWord",
+      word: ownWord,
+    });
+    const beforeReload = storedHistory(context);
+    const resumed = await create(context);
+    expect(storedHistory(context)).toEqual(beforeReload);
+    for (const socket of context.sockets)
+      expect(socket.latest().sessionHistory).toEqual(beforeReload);
+    expect(beforeReload.rounds[0].events[0]).toMatchObject({
+      type: "hint",
+      hint: "fruit",
+      timestamp: Date.now(),
+    });
+    vi.advanceTimersByTime(1_000);
+    await command(resumed.game, context.sockets[0], { type: "endGame" });
+    await command(resumed.game, context.sockets[0], { type: "startGame" });
+    const rounds = storedHistory(context).rounds;
+    expect(rounds).toHaveLength(2);
+    expect(rounds[0]).toMatchObject({
+      id: first.id,
+      status: "aborted",
+      endedAt: Date.now(),
+    });
+    expect(rounds[1]).toMatchObject({
+      status: "active",
+      startedAt: Date.now(),
+      events: [],
+    });
+    expect(rounds[1].id).not.toBe(first.id);
+    expect(
+      rounds[1].players.find((player) => player.id === id(1)),
+    ).toMatchObject({ name: "New name", animal: "🦊" });
+  });
+
+  it.each(["correct", "opponent", "neutral", "assassin"] as const)(
+    "records only a revealed %s outcome with the original guessing team's attribution",
+    async (outcome) => {
+      const { game, context } = await startSession();
+      const state = storedState(context);
+      const team = state.turn!.team;
+      const clueGiver = state.players.find(
+        (player) => player.team === team && player.role === "spymaster",
+      )!;
+      const spymaster = { id: clueGiver.id, name: clueGiver.name };
+      const card = state.board.find((card) =>
+        outcome === "assassin"
+          ? card.isAssassin
+          : outcome === "correct"
+            ? card.team === team
+            : outcome === "opponent"
+              ? card.team !== undefined && card.team !== team
+              : card.team === undefined && !card.isAssassin,
+      )!;
+      await command(game, turnSocket(context, "spymaster"), {
+        type: "giveHint",
+        hint: "test",
+        count: 0,
+      });
+      vi.advanceTimersByTime(500);
+      await command(game, turnSocket(context, "operative"), {
+        type: "revealWord",
+        word: card.word,
+      });
+      const round = storedHistory(context).rounds[0];
+      expect(round.events).toEqual([
+        {
+          type: "hint",
+          timestamp: Date.now() - 500,
+          team,
+          hint: "test",
+          count: 0,
+          spymaster,
+        },
+        {
+          type: "guess",
+          timestamp: Date.now(),
+          team,
+          word: card.word,
+          outcome,
+          spymaster,
+        },
+      ]);
+      expect(round).not.toHaveProperty("board");
+      expect(round.events[1]).not.toHaveProperty("isAssassin");
+      expect(round.events[1]).not.toHaveProperty("cardTeam");
+      for (const socket of context.sockets)
+        expect(socket.latest().sessionHistory).toEqual(storedHistory(context));
+      expect(sessionHistorySchema.safeParse({ rounds: [round] }).success).toBe(
+        true,
+      );
+      if (outcome === "assassin")
+        expect(round).toMatchObject({
+          status: "completed",
+          endedAt: Date.now(),
+          result: { losingTeam: team },
+        });
+    },
+  );
+
+  it("finalizes a win exactly once and retains it through rematch, reload, and explicit reset", async () => {
+    const { game, context } = await startSession();
+    const team = storedState(context).turn!.team;
+    const agent = turnSocket(context, "operative");
+    await command(game, turnSocket(context, "spymaster"), {
+      type: "giveHint",
+      hint: "all",
+      count: 0,
+    });
+    const words = storedState(context)
+      .board.filter((card) => card.team === team)
+      .map((card) => card.word);
+    for (const word of words)
+      await command(game, agent, { type: "revealWord", word });
+    const completed = storedHistory(context).rounds[0];
+    expect(completed).toMatchObject({
+      status: "completed",
+      endedAt: Date.now(),
+      result: { winningTeam: team },
+    });
+    expect(completed.events).toHaveLength(words.length + 1);
+    vi.advanceTimersByTime(2_000);
+    await command(game, agent, { type: "revealWord", word: words[0] });
+    await command(game, agent, { type: "endGame" });
+    expect(storedHistory(context).rounds[0]).toEqual(completed);
+    const resumed = await create(context);
+    await command(resumed.game, agent, { type: "startGame" });
+    expect(storedHistory(context).rounds).toHaveLength(2);
+    expect(storedHistory(context).rounds[0]).toEqual(completed);
+    expect(storedHistory(context).rounds[1].status).toBe("active");
+  });
+
+  it("logs neither rejected actions nor duplicate concurrent guesses", async () => {
+    const { game, context } = await startSession();
+    const spy = turnSocket(context, "spymaster");
+    const agent = turnSocket(context, "operative");
+    const ownWord = storedState(context).board.find(
+      (card) => card.team === storedState(context).turn?.team,
+    )!.word;
+    await command(game, agent, { type: "revealWord", word: ownWord });
+    await command(game, agent, {
+      type: "giveHint",
+      hint: "wrong role",
+      count: 1,
+    });
+    await command(game, spy, { type: "giveHint", hint: " ", count: 1 });
+    expect(storedHistory(context).rounds[0].events).toEqual([]);
+    await command(game, spy, { type: "giveHint", hint: "fruit", count: 2 });
+    await command(game, spy, { type: "giveHint", hint: "duplicate", count: 2 });
+    await Promise.all([
+      command(game, agent, { type: "revealWord", word: ownWord }),
+      command(game, agent, { type: "revealWord", word: ownWord }),
+    ]);
+    await command(game, agent, { type: "revealWord", word: "missing" });
+    expect(
+      storedHistory(context).rounds[0].events.map((event) => event.type),
+    ).toEqual(["hint", "guess"]);
+  });
+
+  it("keeps the original clue giver's attribution when a disconnect promotes a replacement spymaster", async () => {
+    const { game, context } = await startSession();
+    for (const number of [5, 6]) await connect(game, context, id(number));
+    const team = storedState(context).turn!.team;
+    const originalSpy = turnSocket(context, "spymaster");
+    const originalId = originalSpy.attachment!.playerId;
+    await command(game, originalSpy, {
+      type: "setProfile",
+      name: "Original clue giver",
+      animal: "🦊",
+    });
+    await command(game, originalSpy, {
+      type: "giveHint",
+      hint: "fruit",
+      count: 0,
+    });
+    const originalIdentity = {
+      id: originalId,
+      name: "Original clue giver",
+      animal: "🦊",
+    };
+    await game.webSocketClose(
+      originalSpy as unknown as WebSocket,
+      1000,
+      "",
+      true,
+    );
+    vi.advanceTimersByTime(60_001);
+    await game.alarm();
+    expect(storedState(context).turn!.team).toBe(team);
+    expect(
+      storedState(context).players.some((player) => player.id === originalId),
+    ).toBe(false);
+    const replacementSpy = turnSocket(context, "spymaster");
+    expect(replacementSpy.attachment!.playerId).not.toBe(originalId);
+    const ownWord = storedState(context).board.find(
+      (card) => card.team === team,
+    )!.word;
+    await command(game, turnSocket(context, "operative"), {
+      type: "revealWord",
+      word: ownWord,
+    });
+    const history = storedHistory(context);
+    expect(history.rounds[0].events[0]).toMatchObject({
+      type: "hint",
+      spymaster: originalIdentity,
+    });
+    expect(history.rounds[0].events[1]).toMatchObject({
+      type: "guess",
+      team,
+      outcome: "correct",
+      spymaster: originalIdentity,
+    });
+    expect(history.rounds[0].events[1]).not.toHaveProperty("operative");
+    await command(game, replacementSpy, { type: "endTurn" });
+    await command(game, turnSocket(context, "spymaster"), { type: "endTurn" });
+    await command(game, replacementSpy, {
+      type: "setProfile",
+      name: "Replacement clue giver",
+      animal: "🐼",
+    });
+    await command(game, replacementSpy, {
+      type: "giveHint",
+      hint: "fruit",
+      count: 0,
+    });
+    const nextWord = storedState(context).board.find(
+      (card) => card.team === team && !card.revealed,
+    )!.word;
+    await command(game, turnSocket(context, "operative"), {
+      type: "revealWord",
+      word: nextWord,
+    });
+    expect(storedHistory(context).rounds[0].events.at(-1)).toMatchObject({
+      type: "guess",
+      team,
+      spymaster: {
+        id: replacementSpy.attachment!.playerId,
+        name: "Replacement clue giver",
+        animal: "🐼",
+      },
+    });
+  });
+
+  it("snapshots each clue's profile while grouping future clues by the same stable player id", async () => {
+    const { game, context } = await startSession();
+    const spy = turnSocket(context, "spymaster");
+    const team = storedState(context).turn!.team;
+    const playerId = spy.attachment!.playerId;
+    await command(game, spy, {
+      type: "setProfile",
+      name: "First name",
+      animal: "🐧",
+    });
+    await command(game, spy, { type: "giveHint", hint: "fruit", count: 0 });
+    await command(game, spy, {
+      type: "setProfile",
+      name: "New name",
+      animal: "🦉",
+    });
+    const word = storedState(context).board.find(
+      (card) => card.team === team,
+    )!.word;
+    await command(game, turnSocket(context, "operative"), {
+      type: "revealWord",
+      word,
+    });
+    const firstEvents = storedHistory(context).rounds[0].events;
+    for (const event of firstEvents)
+      expect(event.spymaster).toEqual({
+        id: playerId,
+        name: "First name",
+        animal: "🐧",
+      });
+    const resumed = await create(context);
+    await command(resumed.game, spy, { type: "endTurn" });
+    await command(resumed.game, turnSocket(context, "spymaster"), {
+      type: "endTurn",
+    });
+    await command(resumed.game, spy, {
+      type: "giveHint",
+      hint: "new clue",
+      count: 0,
+    });
+    expect(storedHistory(context).rounds[0].events.at(-1)?.spymaster).toEqual({
+      id: playerId,
+      name: "New name",
+      animal: "🦉",
+    });
+    expect(storedHistory(context).rounds[0].events[0].spymaster).toEqual({
+      id: playerId,
+      name: "First name",
+      animal: "🐧",
+    });
+  });
+
+  it("does not invent player attribution for older history events without clue-giver identities", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    const history: SessionHistory = {
+      rounds: [
+        {
+          id: "legacy-round",
+          startedAt: Date.now(),
+          status: "active",
+          wordPack: "classic",
+          teamCount: 2,
+          players: state.players,
+          events: [
+            {
+              type: "hint",
+              timestamp: Date.now(),
+              team: 0,
+              hint: "fruit",
+              count: 2,
+            },
+          ],
+        },
+      ],
+    };
+    await context.storage.put({
+      gameState: JSON.stringify(state),
+      sessionHistory: history,
+    });
+    const { game } = await create(context);
+    const agent = await connect(game, context, id(2));
+    await command(game, agent, { type: "revealWord", word: "apple" });
+    expect(storedHistory(context).rounds[0].events.at(-1)).toMatchObject({
+      type: "guess",
+      team: 0,
+      outcome: "correct",
+    });
+    expect(
+      storedHistory(context).rounds[0].events.at(-1)?.spymaster,
+    ).toBeUndefined();
+  });
+
+  it.each([
+    { hint: "different", count: 2 },
+    { hint: "fruit", count: 1 },
+  ])(
+    "does not attribute a guess to an older hint that differs from the active clue: %s",
+    async (clue) => {
+      const context = new FakeContext();
+      const state = playingState();
+      const history: SessionHistory = {
+        rounds: [
+          {
+            id: "mismatched-clue",
+            startedAt: Date.now(),
+            status: "active",
+            wordPack: "classic",
+            teamCount: 2,
+            players: state.players,
+            events: [
+              {
+                type: "hint",
+                timestamp: Date.now(),
+                team: 0,
+                ...clue,
+                spymaster: { id: id(1), name: "Older spy" },
+              },
+            ],
+          },
+        ],
+      };
+      await context.storage.put({
+        gameState: JSON.stringify(state),
+        sessionHistory: history,
+      });
+      const { game } = await create(context);
+      const agent = await connect(game, context, id(2));
+      await command(game, agent, { type: "revealWord", word: "apple" });
+      expect(
+        storedHistory(context).rounds[0].events.at(-1)?.spymaster,
+      ).toBeUndefined();
+    },
+  );
+
+  it("aborts once after all players' reconnect grace expires", async () => {
+    const { game, context } = await startSession();
+    for (const socket of context.sockets)
+      await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    expect(storedHistory(context).rounds[0].status).toBe("active");
+    vi.advanceTimersByTime(60_001);
+    await game.alarm();
+    const aborted = storedHistory(context).rounds[0];
+    expect(aborted).toMatchObject({ status: "aborted", endedAt: Date.now() });
+    expect(aborted.result).toBeUndefined();
+    vi.advanceTimersByTime(1_000);
+    await game.alarm();
+    await create(context);
+    expect(storedHistory(context).rounds[0]).toEqual(aborted);
+  });
+
+  it("retains at most 50 recent rounds and 200 recent events per round", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    state.turn = undefined;
+    state.board = [];
+    const history: SessionHistory = {
+      rounds: Array.from({ length: 50 }, (_, number) => ({
+        id: `round-${number}`,
+        startedAt: Date.now() - 2_000,
+        endedAt: Date.now() - 1_000,
+        status: "aborted",
+        wordPack: "classic",
+        teamCount: 2,
+        players: state.players,
+        events: [],
+      })),
+    };
+    await context.storage.put({
+      gameState: JSON.stringify(state),
+      sessionHistory: history,
+    });
+    const { game } = await create(context);
+    const agent = await connect(game, context, id(2));
+    for (const number of [1, 3, 4]) await connect(game, context, id(number));
+    expect(storedHistory(context).awardSeed).toBe("round-0");
+    await command(game, agent, { type: "startGame" });
+    const capped = storedHistory(context);
+    expect(capped.rounds).toHaveLength(50);
+    expect(capped.rounds[0].id).toBe("round-1");
+    expect(capped.awardSeed).toBe("round-0");
+    capped.rounds.at(-1)!.events = Array.from({ length: 199 }, (_, number) => ({
+      type: "hint",
+      timestamp: Date.now() - 1_000,
+      team: 0,
+      hint: `old-${number}`,
+      count: 0,
+    }));
+    await context.storage.put({ sessionHistory: capped });
+    const resumed = await create(context);
+    const activeAgent = turnSocket(context, "operative");
+    const ownWord = storedState(context).board.find(
+      (card) => card.team === storedState(context).turn?.team,
+    )!.word;
+    await command(resumed.game, turnSocket(context, "spymaster"), {
+      type: "giveHint",
+      hint: "latest",
+      count: 0,
+    });
+    await command(resumed.game, activeAgent, {
+      type: "revealWord",
+      word: ownWord,
+    });
+    const events = storedHistory(context).rounds.at(-1)!.events;
+    expect(events).toHaveLength(200);
+    expect(events[0]).toMatchObject({ hint: "old-1" });
+    expect(events.at(-2)).toMatchObject({ type: "hint", hint: "latest" });
+    expect(events.at(-1)).toMatchObject({
+      type: "guess",
+      word: ownWord,
+      outcome: "correct",
+    });
+    expect(storedHistory(context).awardSeed).toBe("round-0");
+    expect(sessionHistorySchema.safeParse(storedHistory(context)).success).toBe(
+      true,
+    );
+  });
+
+  it("deletes the persisted and in-memory history at room expiry", async () => {
+    const { game, context } = await startSession();
+    const oldSeed = storedHistory(context).awardSeed;
+    expect(storedHistory(context).rounds).toHaveLength(1);
+    for (const socket of context.sockets)
+      await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    vi.advanceTimersByTime(14 * 24 * 60 * 60 * 1_000 + 1);
+    await game.alarm();
+    expect(context.storage.values.size).toBe(0);
+    expect(context.storage.values.has("sessionHistory")).toBe(false);
+    const newcomer = await connect(game, context, id(7));
+    expect(newcomer.latest().sessionHistory).toEqual({
+      rounds: [],
+      awardSeed: expect.any(String),
+    });
+    expect(storedHistory(context)).toEqual(newcomer.latest().sessionHistory);
+    expect(storedHistory(context).awardSeed).not.toBe(oldSeed);
+  });
+
+  it("preserves one room's award seed through rematches, hibernation, and rejoins", async () => {
+    const { game, context } = await startSession();
+    const seed = storedHistory(context).awardSeed;
+    expect(seed).toMatch(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);
+    await command(game, context.sockets[0], { type: "endGame" });
+    await command(game, context.sockets[0], { type: "startGame" });
+    expect(storedHistory(context).awardSeed).toBe(seed);
+    const resumed = await create(context);
+    expect(storedHistory(context).awardSeed).toBe(seed);
+    for (const socket of context.sockets)
+      await resumed.game.webSocketClose(
+        socket as unknown as WebSocket,
+        1000,
+        "",
+        true,
+      );
+    vi.advanceTimersByTime(60_001);
+    await resumed.game.alarm();
+    const rejoined = await connect(resumed.game, context, id(1));
+    expect(rejoined.latest().sessionHistory?.awardSeed).toBe(seed);
+    const otherRoom = await create();
+    await connect(otherRoom.game, otherRoom.context, id(1));
+    expect(storedHistory(otherRoom.context).awardSeed).not.toBe(seed);
+  });
+
+  it("keeps Unicode-heavy histories below the legacy Durable Object value-size limit", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    state.turn = undefined;
+    state.board = [];
+    const history: SessionHistory = {
+      rounds: Array.from({ length: 50 }, (_, number) => ({
+        id: `round-${number}`,
+        startedAt: Date.now() - 2_000,
+        endedAt: Date.now() - 1_000,
+        status: "aborted",
+        wordPack: "classic",
+        teamCount: 2,
+        players: state.players,
+        events: Array.from({ length: 200 }, () => ({
+          type: "hint",
+          timestamp: Date.now(),
+          team: 0,
+          hint: "🍎".repeat(50),
+          count: 0,
+        })),
+      })),
+    };
+    await context.storage.put({
+      gameState: JSON.stringify(state),
+      sessionHistory: history,
+    });
+    const { game } = await create(context);
+    const recent = storedHistory(context);
+    expect(recent.rounds.length).toBeLessThan(50);
+    expect(recent.rounds.at(-1)!.id).toBe("round-49");
+    expect(recent.awardSeed).toBe("round-0");
+    expect(
+      new TextEncoder().encode(JSON.stringify(recent)).byteLength,
+    ).toBeLessThanOrEqual(96 * 1024);
+    const agent = await connect(game, context, id(2));
+    await command(game, agent, { type: "startGame" });
+    expect(storedHistory(context).rounds.at(-1)!.status).toBe("active");
+    expect(storedHistory(context).awardSeed).toBe("round-0");
+    expect(
+      new TextEncoder().encode(JSON.stringify(storedHistory(context)))
+        .byteLength,
+    ).toBeLessThanOrEqual(96 * 1024);
+  });
+
+  it("preserves an active round with an explicitly marked partial roster if its snapshot alone exceeds the budget", async () => {
+    const context = new FakeContext();
+    const state = playingState();
+    const players = Array.from({ length: 1_000 }, (_, number) => ({
+      id: id(number),
+      name: "🐼".repeat(25),
+      team: number % 2,
+      role: "operative" as const,
+    }));
+    const history: SessionHistory = {
+      rounds: [
+        {
+          id: "oversized-active",
+          startedAt: Date.now(),
+          status: "active",
+          wordPack: "classic",
+          teamCount: 2,
+          players,
+          events: [],
+        },
+      ],
+    };
+    await context.storage.put({
+      gameState: JSON.stringify(state),
+      sessionHistory: history,
+    });
+    await create(context);
+    const round = storedHistory(context).rounds[0];
+    expect(round).toMatchObject({ id: "oversized-active", status: "active" });
+    expect(round.playersOmitted).toBeGreaterThan(0);
+    expect(round.players.length + round.playersOmitted!).toBe(1_000);
+    expect(
+      new TextEncoder().encode(JSON.stringify(storedHistory(context)))
+        .byteLength,
+    ).toBeLessThanOrEqual(96 * 1024);
   });
 });

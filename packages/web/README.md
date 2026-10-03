@@ -49,6 +49,22 @@ Drafts are saved locally for the room. **Save & use custom pack** publishes the 
 
 **Shuffle teams & spymasters** balances teams and randomly selects one spymaster per team. Changing the number of teams also reshuffles assignments. Roles cannot change during an active round; players can swap roles after the game finishes.
 
+## Session history and KPIs
+
+The session history panel is available in the lobby and during play. Expand a round to see its public clues and guess outcomes. The current round updates as everyone plays; completed rounds show their result, while stopped rounds are marked separately.
+
+The panel summarizes the up to 50 retained rounds with completed-round counts, guess accuracy, average completed-round duration and per-team win bars. Accuracy includes recorded guesses in active, completed and stopped rounds. Average duration includes completed rounds only, measured from start to result. Team labels describe the teams in each round, not a permanent player leaderboard; shuffling can change membership. Assassin losses are displayed as losses when no winner is reported.
+
+Each round retains up to 200 public clue/guess events, with a 96 KiB total history budget that may remove older records. History survives reloads and is shared by all clients. The backend deletes the room, including history and custom packs, after two weeks without connected players. Rejoining before expiry cancels that deadline. Opening an expired link creates a fresh session with the same room name; saved browser profiles and unpublished word drafts remain local.
+
+### Playful awards
+
+The trophy shelf recognizes both spymasters and teams. Individual spymaster awards cover correct guesses guided by their clues, accuracy (at least three attributed guesses), the best correct-guess combo under one recorded clue, and assassin hits. Team awards recognize collective correct guesses and consecutive correct guesses. The person clicking a card receives no individual credit or blame.
+
+Award titles and emojis are chosen from playful variants using the room's persisted `awardSeed`. Everyone joining the same link sees the same names, which stay fixed across rematches, reloads, reconnects and history pruning. Different rooms can have different names; expiry starts a fresh room. Nonzero achievements are required, ties share the award, and reduced-motion preferences are respected by trophy animations. Assassin awards include sample-size context; they are playful counts, not a permanent ranking of people.
+
+Spymaster credit follows the identity recorded when a clue was given, even if roles change before the team guesses. Older guesses without recorded attribution contribute to team KPIs but are skipped for personal awards. Changing a display name does not create a second player in the award calculations.
+
 ## Sound troubleshooting
 
 The game automatically creates or resumes its audio context when a player clicks/taps the page or presses a key. Browsers generally require this interaction before allowing sound. Someone who joins through an invitation and only watches should interact with the page once. Another player cannot enable audio for them. [MDN describes this browser policy](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
@@ -72,9 +88,9 @@ pnpm --filter web exec playwright install chromium
 pnpm test:integration
 ```
 
-Playwright starts Wrangler on port 8787 and Next on port 3000. Outside CI it may reuse servers already running on those ports; stop unrelated or stale servers before testing. Test Next uses `.next-e2e` so its output does not conflict with the production `dist` directory. The test API endpoint is fixed to the local server; leave `NEXT_PUBLIC_API_URL` unset for this suite.
+Playwright starts Wrangler on port 8787 and Next on port 3000. The suite starts fresh servers; stop development servers using those ports before testing. It runs browser tests one at a time for stable timing, with four independent clients inside the multiplayer test. Test Next uses `.next-e2e` so its output does not conflict with the production `dist` directory. The test API endpoint is fixed to the local server; leave `NEXT_PUBLIC_API_URL` unset for this suite. The test worker overrides `ROOM_IDLE_TTL_SECONDS` to 60 seconds for a real expiry check; production and ordinary local development retain the two-week setting.
 
-The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing custom words, shuffled roles, a board, clues and reveals. They compare shared sound events and instrument actual Web Audio scheduling. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow.
+The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing custom words, shuffled roles, a board, clues, reveals and persistent session history. They compare shared sound events and instrument actual Web Audio scheduling. Test contexts use a real AudioContext with a silent output sink, preserving oscillator timing and gesture activation while avoiding dependence on speaker hardware. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow. History checks cover an active round, a stopped round restored after reload, and a completed rematch with shared KPIs. The expiry test waits just over one minute, so the full suite takes longer than the gameplay checks.
 
 Failure traces are retained under `packages/web/test-results/`. To inspect one:
 
