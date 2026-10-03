@@ -33,11 +33,11 @@ Browser storage keys are:
 | Key                                | Contents                      |
 | ---------------------------------- | ----------------------------- |
 | `codenames:profile`                | Name and animal               |
-| `codenames:playerId:<room-name>`   | Stable identity for that room |
+| `codenames:token:<room-name>`      | Private reconnect token for that room |
 | `codenames:muted`                  | Personal mute preference      |
 | `codenames:word-draft:<room-name>` | Unpublished custom-word draft |
 
-Room IDs use localStorage, with migration from older sessionStorage IDs. Additional tabs in the same browser share a player identity. A different browser or cleared storage creates a separate identity. Browser storage is local to the site's origin; it is not an account or cross-device profile.
+Room tokens use localStorage. Values under the older `codenames:playerId:<room-name>` key were broadcast to other players, so they are never reused as tokens. Additional tabs in the same browser share a player identity. A different browser or cleared storage creates a separate identity. Browser storage is local to the site's origin; it is not an account or cross-device profile.
 
 Connections recover automatically after unexpected disconnection, with heartbeat checks and retry backoff. The server keeps a disconnected player's team and role for 60 seconds. The client disables game actions while disconnected; unsent actions must be tried again after reconnection.
 
@@ -72,9 +72,9 @@ pnpm --filter web exec playwright install chromium
 pnpm test:integration
 ```
 
-Playwright starts Wrangler on port 8787 and Next on port 3000. Outside CI it may reuse servers already running on those ports; stop unrelated or stale servers before testing. Test Next uses `.next-e2e` so its output does not conflict with the production `dist` directory. The test API endpoint is fixed to the local server; leave `NEXT_PUBLIC_API_URL` unset for this suite.
+Playwright starts Wrangler on port 8787 and Next on port 3000 (set `E2E_API_PORT`/`E2E_WEB_PORT` to run beside another checkout). Outside CI it may reuse servers already running on those ports; stop unrelated or stale servers before testing. Test Next uses `.next-e2e` so its output does not conflict with the production `dist` directory. The test API endpoint is fixed to the local server; leave `NEXT_PUBLIC_API_URL` unset for this suite.
 
-The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing custom words, shuffled roles, a board, clues and reveals. They compare shared sound events and instrument actual Web Audio scheduling. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow.
+The tests cover profile restoration, repeated reloads, multiple tabs sharing one identity, reconnect after a simulated socket failure while offline, and four independent players sharing custom words, shuffled roles, a board, clues and reveals. They compare shared sound events and record Web Audio scheduling through a silent fake `AudioContext`, so a misbehaving host audio service cannot stall the suite. Local audio assertions allow 200 ms of timing difference; this is a test tolerance, not a production latency guarantee. Mobile checks include 50-character words and horizontal overflow. `e2e/fun.spec.ts` covers card flips and landings, tap feedback, shared marks, reactions, banners, the assassin flash, win/lose celebrations, recap awards, rematch, the spymaster thinking indicator, the timer heartbeat and buzzer, and reconnect-token privacy.
 
 Failure traces are retained under `packages/web/test-results/`. To inspect one:
 

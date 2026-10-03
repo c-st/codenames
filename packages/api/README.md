@@ -22,11 +22,11 @@ Connect to `ws://localhost:8787/<room-name>` locally or `wss://api.codenam.es/<r
 
 | Parameter  | Behavior                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------- |
-| `playerId` | Reuse a room identity; accepted IDs contain 21–64 letters, digits, underscores or hyphens |
+| `token`    | Private reconnect token; 21–64 letters, digits, underscores or hyphens. The public player ID is its SHA-256 hash, so the token itself is never broadcast. The pre-token `playerId` parameter is ignored because those values were public |
 | `name`     | Initial name for a new player; trimmed and limited to 50 characters                       |
 | `animal`   | Initial animal for a new player; one of the emojis in `animalSchema`                      |
 
-An existing player retains their server-stored profile, team and role on reconnect. Multiple sockets using the same ID share one roster entry. If the identity has already been removed, reconnecting joins again. Requests without a valid ID receive a generated ID.
+An existing player retains their server-stored profile, team and role on reconnect. Multiple sockets using the same token share one roster entry. If the identity has already been removed, reconnecting joins again. Requests without a valid token receive a generated identity.
 
 Player IDs are currently public in room snapshots and serve as reconnect identifiers. They are not private authentication credentials. Private reconnect credentials and host permissions remain planned improvements.
 
