@@ -7,16 +7,16 @@
 Install dependencies with `pnpm install --frozen-lockfile`. Run `pnpm --filter api dev` and `pnpm --filter web dev` in separate terminals. The web client uses `ws://localhost:8787` in development; `NEXT_PUBLIC_API_URL` overrides it.
 
 - `pnpm test`: word-pack, game-rule, schema and server protocol tests.
-- `pnpm --filter web typecheck`: frontend and shared type checks.
+- `pnpm typecheck`: API, frontend and shared type checks.
 - `pnpm --filter web build`: production static export. The existing Google Font requires network access during the build.
 - `pnpm --filter web exec playwright install chromium`: one-time browser setup.
-- `pnpm test:integration`: server integration tests followed by real Chromium multiplayer tests. Playwright starts local Wrangler and Next automatically on ports 8787 and 3000; browser traces are retained on failure. It uses a separate `.next-e2e` build directory and unique rooms.
+- `pnpm test:integration`: server integration tests followed by real Chromium multiplayer tests. Playwright starts local Wrangler and Next automatically on ports 8787 and 3000 (override with `E2E_API_PORT` and `E2E_WEB_PORT` to run beside another checkout); browser traces are retained on failure. It uses a separate `.next-e2e` build directory and unique rooms.
 
-Server integration tests exercise the actual server, schema, storage flow and game engine with a mocked Cloudflare platform. Browser tests exercise the actual local Wrangler runtime and four independent browser clients, including profile persistence, repeated reloads without duplicates, offline recovery, custom lists, shuffled roles, guesses, and coordinated audio scheduling. These tests verify local behavior; production network latency and outages still need monitoring.
+Server integration tests exercise the actual server, schema, storage flow and game engine with a mocked Cloudflare platform. Browser tests exercise the actual local Wrangler runtime and four independent browser clients, including profile persistence, repeated reloads without duplicates, offline recovery, custom lists, shuffled roles, guesses, coordinated audio scheduling, and every fun cue (card flips, marks, reactions, banners, celebrations, recap, rematch, thinking indicator, timer heartbeat) plus reconnect-token privacy. These tests verify local behavior; production network latency and outages still need monitoring.
 
 ## Room behavior
 
-Names and animal avatars are remembered in this browser across visits and rooms. Room identity is also remembered, so reloads, additional tabs and reopening the same room retain one player. Clearing browser storage creates a new identity; when storage is unavailable, persistence cannot be guaranteed. Disconnected players keep their team and role for 60 seconds. Returning after removal rejoins the room with the saved profile but may receive a different team or role. Room settings and disconnect deadlines survive server hibernation.
+Names and animal avatars are remembered in this browser across visits and rooms. Room identity is also remembered, so reloads, additional tabs and reopening the same room retain one player. The browser keeps a private reconnect token; other players only ever see a one-way hash of it as the public player id. Clearing browser storage creates a new identity; when storage is unavailable, persistence cannot be guaranteed. Disconnected players keep their team and role for 60 seconds. Returning after removal rejoins the room with the saved profile but may receive a different team or role. Room settings and disconnect deadlines survive server hibernation.
 
 The lobby supports shared custom packs of 25–500 unique words and browser-saved drafts. Shuffle teams & spymasters produces balanced random teams with one spymaster each. Classic two-team boards use a random starting team with nine words, eight for the other team, seven neutral cards and one assassin. Three- and four-team games use adapted card counts on the same 25-card board.
 
@@ -28,10 +28,14 @@ The speaker button controls mute, which is remembered per browser. An unmuted sp
 
 Shared server events specify the sound, a unique event ID and a playback time. Clients estimate the server clock through heartbeats and schedule the same cue. Muted or audio-blocked clients skip cues without queuing them for later. Reconnect snapshots do not replay past sounds. Cues arriving more than one second after their playback time are discarded; slightly late cues play immediately. Network latency and device behavior mean exact sample-level synchronization is not guaranteed.
 
+## Playfulness
+
+Reveals flip the card and land with team-coloured sparkles, a wobble for wrong guesses, or a blow-up, red flash and screen shake for the assassin. Cards are dealt in at the start of each game; ribbons announce who starts, whose turn it is and perfect clues, timed from the same shared cues as the sounds. Operatives can mark cards as maybes (📍 or right-click) so teammates see each other's picks, everyone can send floating emoji reactions, and the room sees when the spymaster is drafting a clue. The timer ring gets urgent, beats like a heart for the last ten seconds and buzzes at zero. Winners get team-coloured confetti, losers a small rain cloud, followed by a recap of every clue with silly awards and a one-tap rematch. Reduced-motion preferences turn off the movement.
+
 ## Recommended next improvements
 
-1. **Host controls and ready checks:** give one host control over shared settings/reset, let every player confirm readiness, and explain what is missing before start. Use private reconnect credentials separate from public player IDs before exposing rooms to untrusted players.
-2. **Optional reveal confirmation or team votes:** reduce accidental mobile guesses and let teammates signal tentative choices before committing a card.
+1. **Host controls and ready checks:** give one host control over shared settings/reset, let every player confirm readiness, and explain what is missing before start.
+2. **Optional reveal confirmation:** reduce accidental mobile guesses, e.g. require a mark before a reveal.
 3. **Flexible timers and pause:** offer classic untimed play, configurable deadlines and host pause for breaks or connection trouble.
 4. **Better rematches:** rotate spymasters, keep or reshuffle teams, and exclude recently used words for fresher rounds.
 5. **Word-library tools:** clone built-in packs into the editor, import/export reusable packs, and offer language/difficulty tags.
