@@ -1,33 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { GameStateForClient } from "schema";
-
-const roomUrl = () => `/?session=e2e-${randomUUID()}`;
-
-// Observe the real server frames alongside UI assertions. This catches duplicate
-// identities and mismatched team/board state that a screenshot cannot detect.
-function watchRoom(page: Page) {
-  let latest: GameStateForClient | undefined;
-  page.on("websocket", (socket) => {
-    socket.on("framereceived", ({ payload }) => {
-      try {
-        const event = JSON.parse(payload.toString());
-        if (event.type === "gameStateUpdated") latest = event.gameState;
-      } catch {
-        // Only game-state JSON frames matter to these assertions.
-      }
-    });
-  });
-  return () => latest;
-}
-
-async function saveProfile(page: Page, name: string) {
-  await page.getByLabel("Your name", { exact: true }).fill(name);
-  await page.getByRole("button", { name: "Save profile", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: new RegExp(name) }),
-  ).toHaveCount(1);
-}
+import { recordSounds, roomUrl, saveProfile, watchRoom } from "./support";
 
 function assignments(state: GameStateForClient | undefined) {
   return state?.players
@@ -58,17 +31,18 @@ test("profile survives reload, reconnect and a fresh browser session without dup
 }) => {
   const context = await browser.newContext();
   let restored: BrowserContext | undefined;
-  await context.addInitScript(() => {
+  await context.addInitScript((apiPort) => {
     const tracked = window as typeof window & { roomSockets: WebSocket[] };
     tracked.roomSockets = [];
     const NativeWebSocket = window.WebSocket;
     window.WebSocket = class extends NativeWebSocket {
       constructor(...args: ConstructorParameters<typeof WebSocket>) {
         super(...args);
-        if (String(args[0]).includes(":8787/")) tracked.roomSockets.push(this);
+        if (String(args[0]).includes(`:${apiPort}/`))
+          tracked.roomSockets.push(this);
       }
     };
-  });
+  }, process.env.E2E_API_PORT ?? "8787");
   try {
     const page = await context.newPage();
     const state = watchRoom(page);
@@ -172,32 +146,7 @@ test("four independent players share custom words, shuffled roles and the same b
     Array.from({ length: 4 }, () => browser.newContext()),
   );
   try {
-    await Promise.all(
-      contexts.map((context) =>
-        context.addInitScript(() => {
-          const recorded = window as typeof window & {
-            soundStarts: { frequency: number; wallTime: number }[];
-          };
-          recorded.soundStarts = [];
-          const create = AudioContext.prototype.createOscillator;
-          AudioContext.prototype.createOscillator = function () {
-            const oscillator = create.call(this);
-            const start = oscillator.start.bind(oscillator);
-            const audioContext = this;
-            oscillator.start = (when = 0) => {
-              recorded.soundStarts.push({
-                frequency: oscillator.frequency.value,
-                wallTime:
-                  Date.now() +
-                  Math.max(0, when - audioContext.currentTime) * 1000,
-              });
-              start(when);
-            };
-            return oscillator;
-          };
-        }),
-      ),
-    );
+    await Promise.all(contexts.map(recordSounds));
     const pages = await Promise.all(
       contexts.map((context) => context.newPage()),
     );

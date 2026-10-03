@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Override to run a second checkout's suite alongside another dev server.
+const apiPort = process.env.E2E_API_PORT ?? "8787";
+const webPort = process.env.E2E_WEB_PORT ?? "3000";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -8,22 +12,20 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: `http://localhost:${webPort}`,
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command:
-        "../api/node_modules/.bin/wrangler dev --config ../api/wrangler.toml --env local --ip 127.0.0.1 --port 8787",
-      url: "http://localhost:8787/health",
+      command: `../api/node_modules/.bin/wrangler dev --config ../api/wrangler.toml --env local --ip 127.0.0.1 --port ${apiPort}`,
+      url: `http://localhost:${apiPort}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command:
-        "CODENAMES_E2E=true ./node_modules/.bin/next dev --hostname localhost --port 3000",
-      url: "http://localhost:3000",
+      command: `CODENAMES_E2E=true NEXT_PUBLIC_API_URL=ws://localhost:${apiPort} ./node_modules/.bin/next dev --hostname localhost --port ${webPort}`,
+      url: `http://localhost:${webPort}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
