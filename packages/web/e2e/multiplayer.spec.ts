@@ -1,7 +1,14 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import type { GameStateForClient } from "schema";
 import { getTeamName } from "../components/Game/Board/getTeamColor";
-import { installSilentAudio, roomUrl, saveProfile, watchRoom } from "./support";
+import {
+  closeProfile,
+  installSilentAudio,
+  openProfile,
+  roomUrl,
+  saveProfile,
+  watchRoom,
+} from "./support";
 
 function assignments(state: GameStateForClient | undefined) {
   return state?.players
@@ -59,9 +66,17 @@ test("profile survives reload, reconnect and a fresh browser session without dup
     const state = watchRoom(page);
     const url = roomUrl();
     await page.goto(url);
-    const animal = page.getByLabel("Your animal", { exact: true });
-    await animal.selectOption({ index: 1 });
-    const selectedAnimal = await animal.inputValue();
+    // The animal grid applies a pick instantly; arrow keys move like native radios.
+    await openProfile(page);
+    const animals = page.getByRole("radiogroup", { name: "Your animal" });
+    await animals.getByRole("radio", { name: /^Dog/ }).click();
+    await expect.poll(() => state()?.players[0]?.animal).toBe("🐶");
+    await page.keyboard.press("ArrowLeft");
+    await expect(animals.getByRole("radio", { name: /^Cat/ })).toBeFocused();
+    const selectedAnimal = "🐱";
+    await expect.poll(() => state()?.players[0]?.animal).toBe(selectedAnimal);
+    const animal = page.getByRole("radio", { name: /^Cat/ });
+    await expect(animal).toHaveAttribute("aria-checked", "true");
     await saveProfile(page, "Reconnect Ranger");
     await expect.poll(() => state()?.players[0]?.name).toBe("Reconnect Ranger");
     const id = state()!.playerId;
@@ -69,10 +84,12 @@ test("profile survives reload, reconnect and a fresh browser session without dup
     // Repeated reloads exercise overlapping close/open websocket lifecycles.
     for (let attempt = 0; attempt < 3; attempt++) {
       await page.reload();
+      await openProfile(page);
       await expect(page.getByLabel("Your name", { exact: true })).toHaveValue(
         "Reconnect Ranger",
       );
-      await expect(animal).toHaveValue(selectedAnimal);
+      await expect(animal).toHaveAttribute("aria-checked", "true");
+      await closeProfile(page);
       await expect.poll(() => state()?.playerId).toBe(id);
       await expect
         .poll(() => state()?.players.map((player) => player.id))
@@ -134,12 +151,13 @@ test("profile survives reload, reconnect and a fresh browser session without dup
       .poll(() => freshState()?.players.map((player) => player.id))
       .toEqual([id]);
     await freshPage.goto(roomUrl());
+    await openProfile(freshPage);
     await expect(
       freshPage.getByLabel("Your name", { exact: true }),
     ).toHaveValue("Reconnect Ranger");
     await expect(
-      freshPage.getByLabel("Your animal", { exact: true }),
-    ).toHaveValue(selectedAnimal);
+      freshPage.getByRole("radio", { name: /^Cat/ }),
+    ).toHaveAttribute("aria-checked", "true");
     await expect
       .poll(() =>
         freshState()?.players.map(({ name, animal }) => ({ name, animal })),
@@ -213,8 +231,19 @@ test("four independent players share custom words, shuffled roles and the same b
     await pages[0]
       .getByRole("button", { name: /Shuffle teams & spymasters/ })
       .click();
+    // Everyone watches the same countdown; nobody can start mid-ceremony.
+    await expect.poll(() => states[0]()?.shuffleAt).toBeGreaterThan(0);
+    const shuffleAt = states[0]()!.shuffleAt;
+    for (let i = 0; i < pages.length; i++) {
+      await expect.poll(() => states[i]()?.shuffleAt).toBe(shuffleAt);
+      await expect(pages[i].locator('[data-shuffle="counting"]')).toBeVisible();
+      await expect(
+        pages[i].getByRole("button", { name: /Shuffle teams & spymasters/ }),
+      ).toBeDisabled();
+    }
     for (let i = 0; i < states.length; i++) {
-      await expect.poll(() => states[i]() !== beforeShuffle[i]).toBe(true);
+      await expect.poll(() => states[i]()?.shuffleAt).toBeUndefined();
+      expect(states[i]() !== beforeShuffle[i]).toBe(true);
     }
     for (const state of states) {
       await expect.poll(() => state()?.gameCanStart).toBe(true);

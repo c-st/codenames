@@ -19,6 +19,9 @@ import TurnBanner from "@/components/Fun/TurnBanner";
 import ScreenFlash from "@/components/Fun/ScreenFlash";
 import { FloatingReactions, ReactionBar } from "@/components/Fun/Reactions";
 import useVisualCues from "@/components/Fun/useVisualCues";
+import ShuffleCeremony, {
+  useShuffleCountdown,
+} from "@/components/Fun/ShuffleCeremony";
 import { getTeamColor } from "@/components/Game/Board/getTeamColor";
 
 export default function Home() {
@@ -40,6 +43,7 @@ export default function Home() {
     turn,
     hintHistory,
     sessionHistory,
+    shuffleAt,
     board,
     remainingWordsByTeam,
     gameResult,
@@ -88,6 +92,7 @@ export default function Home() {
 
   const { banner, lastBanner, flashId, lastFlashId, shakeScope } =
     useVisualCues(effects, serverClockOffset, sessionName);
+  const shuffle = useShuffleCountdown(shuffleAt, serverClockOffset);
 
   // A little pop whenever someone's reaction floats in.
   const { pop } = sound;
@@ -151,7 +156,7 @@ export default function Home() {
           <header className="grid w-full max-w-4xl grid-cols-[1fr_auto] items-center gap-2 md:flex md:justify-between">
             <Logo />
             <button
-              className="rounded-xl bg-surface px-2 py-1 text-lg"
+              className="glass-panel !rounded-xl px-2.5 py-1 text-lg transition-shadow hover:shadow-[0_0_16px_rgba(160,112,224,0.5)]"
               onClick={sound.toggleMute}
               title={sound.muted ? "Unmute" : "Mute"}
             >
@@ -184,6 +189,7 @@ export default function Home() {
                   customWords={customWords}
                   setCustomWords={setCustomWords}
                   shuffleTeams={shuffleTeams}
+                  shuffling={shuffle.shuffling}
                   roomId={sessionName}
                   wordPack={wordPack}
                   teamCount={teamCount}
@@ -246,6 +252,12 @@ export default function Home() {
             myTeam={currentPlayer.team}
           />
           <ScreenFlash flashId={flashId} lastFlashId={lastFlashId} />
+          <ShuffleCeremony
+            secondsLeft={shuffle.secondsLeft}
+            revealing={shuffle.revealing}
+            players={players}
+            sound={sound}
+          />
           <FloatingReactions reactions={reactions} players={players} />
         </div>
       </div>

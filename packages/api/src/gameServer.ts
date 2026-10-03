@@ -35,6 +35,9 @@ const ROOM_SETTINGS = "roomSettings";
 const DISCONNECTED = "disconnected";
 const MARKS = "marks";
 const REACTION_COOLDOWN_MS = 400;
+const SHUFFLE_AT = "shuffleAt";
+/** The shuffle ceremony: everyone watches the same countdown, then teams change at once. */
+export const SHUFFLE_COUNTDOWN_MS = 3_000;
 
 type Cue = SharedEffect["type"] | Omit<SharedEffect, "id" | "playAt">;
 type StoredMark = CardMark & { turnUntil: number };
@@ -56,6 +59,8 @@ export class CodenamesGame extends DurableObject {
   // Cached between events; dropped after any failed command so storage stays the source of truth.
   private game: Codenames | undefined;
   private marks: StoredMark[] = [];
+  /** When a requested shuffle happens; presses during the countdown are ignored. */
+  private shuffleAt: number | undefined;
   private lastReactionAt = new Map<string, number>();
   private sessionHistory: SessionHistory = {
     rounds: [],
@@ -106,6 +111,8 @@ export class CodenamesGame extends DurableObject {
         (await this.ctx.storage.get<Record<string, number>>(DISCONNECTED)) ??
         {};
       this.marks = (await this.ctx.storage.get<StoredMark[]>(MARKS)) ?? [];
+      this.shuffleAt =
+        (await this.ctx.storage.get<number | null>(SHUFFLE_AT)) ?? undefined;
       const game = await this.getGameInstance();
       const connectedIds = new Set(
         this.ctx
@@ -312,6 +319,11 @@ export class CodenamesGame extends DurableObject {
           game.removePlayer(id);
           delete this.disconnected[id];
         }
+      }
+      if (this.shuffleAt !== undefined && this.shuffleAt <= now) {
+        this.shuffleAt = undefined;
+        // A game that started meanwhile keeps its teams.
+        if (!game.getGameState().turn) game.shuffleTeams();
       }
       const turn = game.getGameState().turn;
       let effects: SharedEffect[] = [];
@@ -526,6 +538,7 @@ export class CodenamesGame extends DurableObject {
     // In-memory caches must not resurrect the deleted room.
     this.game = undefined;
     this.marks = [];
+    this.shuffleAt = undefined;
     this.lastReactionAt.clear();
     return true;
   }
@@ -533,6 +546,7 @@ export class CodenamesGame extends DurableObject {
   private async scheduleAlarm(game: Codenames) {
     const deadlines = Object.values(this.disconnected);
     if (this.roomExpiresAt !== undefined) deadlines.push(this.roomExpiresAt);
+    if (this.shuffleAt !== undefined) deadlines.push(this.shuffleAt);
     const turn = game.getGameState().turn;
     if (turn && !game.getGameResult()) deadlines.push(+turn.until);
     if (deadlines.length)
@@ -563,6 +577,7 @@ export class CodenamesGame extends DurableObject {
         customWords: this.customWords,
       },
       [DISCONNECTED]: this.disconnected,
+      [SHUFFLE_AT]: this.shuffleAt ?? null,
       [SESSION_HISTORY]: this.sessionHistory,
     });
     await this.scheduleAlarm(game);
@@ -605,6 +620,7 @@ export class CodenamesGame extends DurableObject {
           teamCount: this.selectedTeamCount,
           customWords: this.customWords,
           serverTime: Date.now(),
+          shuffleAt: this.shuffleAt,
           effects,
           marks: this.marks.map(({ word, playerId }) => ({ word, playerId })),
           turnSeconds: defaultParameters.turnDurationSeconds,
@@ -649,7 +665,11 @@ export class CodenamesGame extends DurableObject {
         break;
       }
       case "shuffleTeams": {
-        game.shuffleTeams();
+        if (game.getGameState().turn)
+          throw new GameError("End the game before shuffling teams");
+        // Debounced: the running countdown already promises a shuffle.
+        if (this.shuffleAt !== undefined) break;
+        this.shuffleAt = Date.now() + SHUFFLE_COUNTDOWN_MS;
         await this.persistAndBroadcastGameState(game);
         break;
       }
@@ -686,6 +706,8 @@ export class CodenamesGame extends DurableObject {
       }
 
       case "startGame": {
+        if (this.shuffleAt !== undefined)
+          throw new GameError("Wait for the shuffle to finish");
         if (game.isReadyToStartGame()) {
           const pack =
             this.selectedWordPack === "custom"

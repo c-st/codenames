@@ -18,7 +18,7 @@ export function ReactionBar({
     <div
       role="toolbar"
       aria-label="Send a reaction"
-      className="flex flex-wrap justify-center gap-1 rounded-2xl bg-surface/70 p-1.5 backdrop-blur"
+      className="glass-panel flex flex-wrap justify-center gap-1 !rounded-2xl p-1.5 backdrop-blur"
     >
       {reactionEmojiSchema.options.map((emoji) => (
         <motion.button

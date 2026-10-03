@@ -14,6 +14,7 @@ import Sparkles from "@/components/Fun/Sparkles";
 import HintInput from "./HintInput";
 import { getTeamColor, getTeamName } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
+import AnimalAvatar from "@/components/ui/AnimalAvatar";
 import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function Board({
@@ -111,10 +112,10 @@ export default function Board({
           <motion.div
             key={statusMessage}
             role="status"
-            className={`rounded-2xl px-4 py-3 text-center text-lg font-bold ${
+            className={`rounded-2xl border px-4 py-3 text-center text-lg font-bold backdrop-blur ${
               isCurrentTurn
-                ? "bg-accent/20 text-accent"
-                : "bg-surface text-purple-400/70"
+                ? "border-accent/40 bg-accent/15 text-purple-100 shadow-[0_0_28px_-6px_rgba(160,112,224,0.7)]"
+                : "border-purple-400/15 bg-surface/70 text-purple-300/80"
             }`}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -245,7 +246,8 @@ function Result({
       {/* Winning podium */}
       {teamPlayers.length > 0 && color && (
         <motion.div
-          className={`flex flex-col items-center gap-3 rounded-2xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-8 py-5 shadow-xl`}
+          className="glass-panel glass-wash flex flex-col items-center gap-3 px-8 py-6"
+          style={{ ["--wash" as string]: color.hex, boxShadow: `0 0 50px -10px ${color.hex}` }}
           initial={{ opacity: 0, y: 12, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{
@@ -255,7 +257,7 @@ function Result({
             delay: 0.4,
           }}
         >
-          <div className="flex gap-3">
+          <div className="relative flex flex-wrap justify-center gap-4">
             {teamPlayers.map((player, i) => (
               <motion.div
                 key={player.id}
@@ -270,15 +272,20 @@ function Result({
                 }}
               >
                 <motion.span
-                  className="select-none text-3xl md:text-4xl"
-                  animate={isWin && !reduceMotion ? { y: [0, -4, 0] } : {}}
+                  className="relative"
+                  animate={isWin && !reduceMotion ? { y: [0, -8, 0] } : {}}
                   transition={{
                     repeat: isWin ? 2 : 0,
                     duration: 0.4,
                     delay: 0.7 + i * 0.15,
                   }}
                 >
-                  {player.animal || "🐾"}
+                  <AnimalAvatar
+                    animal={player.animal}
+                    crowned={player.role === "spymaster"}
+                    glow={isWin}
+                    glowColor={color.hex}
+                  />
                 </motion.span>
                 <span className="max-w-20 truncate text-center text-xs font-semibold !text-white/80">
                   {player.name}

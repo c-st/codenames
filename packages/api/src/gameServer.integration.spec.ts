@@ -1,4 +1,4 @@
-import { CodenamesGame } from "./gameServer";
+import { CodenamesGame, SHUFFLE_COUNTDOWN_MS } from "./gameServer";
 import { publicPlayerId } from "./identity";
 import { sessionHistorySchema } from "schema";
 import type { GameState, GameStateForClient, SessionHistory } from "schema";
@@ -354,6 +354,8 @@ describe("Durable Object room protocol", () => {
       }
     }
     await command(game, sockets[0], { type: "shuffleTeams" });
+    vi.advanceTimersByTime(SHUFFLE_COUNTDOWN_MS);
+    await game.alarm();
     const resumed = await create(context);
     expect(sockets[0].latest()).toMatchObject({
       customWords: words,
@@ -365,6 +367,97 @@ describe("Durable Object room protocol", () => {
     expect(
       storedState(context).board.every((card) => words.includes(card.word)),
     ).toBe(true);
+  });
+
+  it("runs one shared shuffle countdown, ignores repeat presses, and reshuffles everyone at once", async () => {
+    const { game, context } = await create();
+    const sockets = [];
+    for (let i = 1; i <= 6; i++)
+      sockets.push(await connect(game, context, id(i)));
+    const before = storedState(context).players;
+    const rejections = (socket: FakeSocket) =>
+      socket.messages
+        .map((message) => JSON.parse(message))
+        .filter((event) => event.type === "commandRejected");
+
+    await command(game, sockets[0], { type: "shuffleTeams" });
+    const shuffleAt = Date.now() + SHUFFLE_COUNTDOWN_MS;
+    for (const socket of sockets)
+      expect(socket.latest().shuffleAt).toBe(shuffleAt);
+    expect(context.storage.alarm).toBe(shuffleAt);
+    // Nothing moves until the countdown ends.
+    expect(storedState(context).players).toEqual(before);
+
+    // Mashing the button (from anyone) neither restarts nor stacks the countdown.
+    vi.advanceTimersByTime(1_000);
+    const broadcasts = sockets[1].messages.length;
+    await command(game, sockets[1], { type: "shuffleTeams" });
+    await command(game, sockets[2], { type: "shuffleTeams" });
+    expect(sockets[1].messages).toHaveLength(broadcasts);
+    expect(sockets[1].latest().shuffleAt).toBe(shuffleAt);
+
+    // Starting mid-ceremony is refused.
+    await command(game, sockets[0], { type: "startGame" });
+    expect(rejections(sockets[0])).toEqual([
+      { type: "commandRejected", reason: "Wait for the shuffle to finish" },
+    ]);
+    expect(storedState(context).turn).toBeUndefined();
+
+    // An early alarm (e.g. another deadline) leaves the ceremony running.
+    await game.alarm();
+    expect(sockets[0].latest().shuffleAt).toBe(shuffleAt);
+
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.advanceTimersByTime(2_000);
+    await game.alarm();
+    for (const socket of sockets) {
+      expect(socket.latest().shuffleAt).toBeUndefined();
+      expect(socket.latest().players).toEqual(storedState(context).players);
+    }
+    const after = storedState(context).players;
+    const shuffled = after.some(
+      (player, index) =>
+        player.id !== before[index].id || player.team !== before[index].team,
+    );
+    expect(shuffled).toBe(true);
+    for (const team of [0, 1])
+      expect(
+        after.filter((p) => p.team === team && p.role === "spymaster"),
+      ).toHaveLength(1);
+    expect(context.storage.alarm).toBeUndefined();
+
+    // A finished ceremony can be started again.
+    await command(game, sockets[3], { type: "shuffleTeams" });
+    expect(sockets[3].latest().shuffleAt).toBe(
+      Date.now() + SHUFFLE_COUNTDOWN_MS,
+    );
+  });
+
+  it("restores a pending shuffle after hibernation and skips it once a game started", async () => {
+    const { game, context } = await create();
+    const sockets = [];
+    for (let i = 1; i <= 4; i++)
+      sockets.push(await connect(game, context, id(i)));
+    await command(game, sockets[0], { type: "shuffleTeams" });
+    const shuffleAt = Date.now() + SHUFFLE_COUNTDOWN_MS;
+
+    const resumed = await create(context);
+    vi.advanceTimersByTime(SHUFFLE_COUNTDOWN_MS);
+    await resumed.game.alarm();
+    expect(context.storage.values.get("shuffleAt")).toBeNull();
+    expect(sockets[0].latest().shuffleAt).toBeUndefined();
+    expect(shuffleAt).toBeLessThanOrEqual(Date.now());
+
+    // If a game is somehow running when the alarm fires, its teams stay put.
+    await command(resumed.game, sockets[0], { type: "shuffleTeams" });
+    context.storage.values.set("gameState", JSON.stringify(playingState()));
+    const playing = await create(context);
+    const teams = storedState(context).players.map((p) => [p.id, p.team]);
+    vi.advanceTimersByTime(SHUFFLE_COUNTDOWN_MS);
+    await playing.game.alarm();
+    expect(storedState(context).players.map((p) => [p.id, p.team])).toEqual(
+      teams,
+    );
   });
 
   it("does not let a client take over a player by presenting the public id broadcast to everyone", async () => {

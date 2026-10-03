@@ -99,3 +99,130 @@
     animation: none;
   }
 }
+
+/* ---------- Glass & glow: the shared look of the room ---------- */
+
+.glass-panel {
+  border: 1px solid rgba(160, 112, 224, 0.22);
+  border-radius: 1.75rem;
+  background: linear-gradient(
+    180deg,
+    rgba(42, 31, 72, 0.72),
+    rgba(26, 21, 48, 0.82)
+  );
+  box-shadow:
+    0 24px 60px -24px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* A coloured wash from the top edge, e.g. a team's colour via --wash. */
+.glass-wash {
+  position: relative;
+  overflow: hidden;
+}
+.glass-wash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at top,
+    var(--wash, #a070e0),
+    transparent 65%
+  );
+  opacity: 0.2;
+}
+
+/* Soft breathing light behind an avatar; colour via --halo. */
+.halo::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  z-index: 0;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    var(--halo, rgba(160, 112, 224, 0.55)),
+    transparent 68%
+  );
+  filter: blur(6px);
+  animation: halo-breathe 3.2s ease-in-out infinite;
+}
+@keyframes halo-breathe {
+  50% {
+    transform: scale(1.12);
+    opacity: 0.75;
+  }
+}
+
+/* Slowly rotating gold ring around the chosen thing. */
+@property --ring-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.ring-spin::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--ring-angle),
+    #ffd060,
+    #a070e0,
+    rgba(255, 255, 255, 0.4),
+    #ffd060
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring-spin 3s linear infinite;
+}
+@keyframes ring-spin {
+  to {
+    --ring-angle: 360deg;
+  }
+}
+
+/* A light sweep across primary call-to-action buttons. */
+.sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: sheen 3.2s ease-in-out infinite;
+}
+@keyframes sheen {
+  0%,
+  60% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo::before,
+  .ring-spin::after,
+  .sheen::after {
+    animation: none;
+  }
+}

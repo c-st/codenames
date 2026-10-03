@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Player, Turn } from "schema";
+import AnimalAvatar from "@/components/ui/AnimalAvatar";
 import { getTeamColor, getTeamName } from "./getTeamColor";
 
+/** One glowing scoreboard per team; the team whose turn it is breathes in its colour. */
 export default function TeamInfo({
   isGameOver,
   players,
@@ -28,82 +30,98 @@ export default function TeamInfo({
       {Object.entries(teams).map(([teamId, teamPlayers]) => {
         const team = Number(teamId);
         const color = getTeamColor(team);
-        const isActive = turn.team === team;
+        const isActive = turn.team === team && !isGameOver;
         const remaining = remainingWordsByTeam[team] ?? 0;
         return (
           <motion.section
             key={teamId}
             aria-label={`Team ${getTeamName(team)}`}
-            className={`flex items-center gap-3 rounded-xl bg-surface/50 p-3 transition-opacity ${!isGameOver && !isActive ? "opacity-60" : ""}`}
-            // The active team's panel breathes in its colour.
+            className={`glass-panel glass-wash flex items-center gap-4 !rounded-2xl p-3 transition-opacity duration-500 ${!isGameOver && !isActive ? "opacity-55" : ""}`}
+            style={{ ["--wash" as string]: color.hex }}
             animate={
-              isActive && !isGameOver
+              isActive
                 ? {
                     boxShadow: [
                       `0 0 0px ${color.hex}00`,
-                      `0 0 22px ${color.hex}99`,
+                      `0 0 26px ${color.hex}aa`,
                       `0 0 0px ${color.hex}00`,
                     ],
                   }
                 : { boxShadow: `0 0 0px ${color.hex}00` }
             }
             transition={
-              isActive && !isGameOver
+              isActive
                 ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
                 : { duration: 0.3 }
             }
           >
-            <div className="flex min-w-16 flex-col items-center gap-1">
-              <span className="text-xs font-semibold text-purple-200">
+            <div className="relative flex min-w-16 flex-col items-center gap-0.5">
+              <span
+                className="text-xs font-black uppercase tracking-[0.14em]"
+                style={{ color: color.hex, textShadow: `0 0 10px ${color.hex}` }}
+              >
                 {getTeamName(team)}
               </span>
               <motion.span
                 key={remaining}
                 aria-label={`${remaining} words remaining`}
-                className={`flex h-10 w-10 select-none items-center justify-center rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} text-xl font-black !text-white`}
-                initial={{ scale: 1.6, rotate: -12 }}
+                className="select-none text-4xl font-black tabular-nums !text-white"
+                style={{ textShadow: `0 0 18px ${color.hex}` }}
+                initial={{ scale: 1.7, rotate: -12 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 14 }}
               >
                 {remaining}
               </motion.span>
-              <AnimatePresence>
-                {isActive && !isGameOver && (
+              <AnimatePresence mode="wait">
+                {isActive && (
                   <motion.span
-                    className="text-[0.6rem] font-bold text-amber-400"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    key={turn.hint ? "guessing" : "clue"}
+                    className="text-[0.6rem] font-bold tracking-wider text-amber-300"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
                   >
                     {turn.hint ? "GUESSING" : "GIVING CLUE"}
                   </motion.span>
                 )}
               </AnimatePresence>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="relative flex min-w-0 flex-wrap gap-x-3 gap-y-2">
               {[...teamPlayers]
                 .sort(
                   (a, b) =>
                     Number(b.role === "spymaster") -
                     Number(a.role === "spymaster"),
                 )
-                .map((player) => (
-                  <div
-                    key={player.id}
-                    className={`flex items-center gap-1.5 rounded-full bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-3 py-1 text-sm font-semibold !text-white ${player.id === currentPlayer.id ? "ring-1 ring-accent/60" : ""}`}
-                  >
-                    <span aria-hidden="true">{player.animal || "🐾"}</span>
-                    <span className="max-w-24 truncate">{player.name}</span>
-                    {player.role === "spymaster" && (
-                      <span aria-label="Spymaster" title="Spymaster">
-                        🕵️
+                .map((player) => {
+                  const isYou = player.id === currentPlayer.id;
+                  return (
+                    <div
+                      key={player.id}
+                      className="flex min-w-0 items-center gap-1.5 pt-1.5"
+                    >
+                      <AnimalAvatar
+                        animal={player.animal}
+                        size="sm"
+                        crowned={player.role === "spymaster"}
+                        isYou={isYou}
+                        glowColor={color.hex}
+                      />
+                      <span className="max-w-24 truncate text-sm font-bold !text-white">
+                        {player.name}
                       </span>
-                    )}
-                    {player.id === currentPlayer.id && (
-                      <span className="text-[0.6rem] text-white/60">you</span>
-                    )}
-                  </div>
-                ))}
+                      {player.role === "spymaster" && (
+                        <span className="sr-only">Spymaster</span>
+                      )}
+                      {isYou && (
+                        <span className="text-[0.6rem] font-bold text-purple-200/70">
+                          you
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </motion.section>
         );

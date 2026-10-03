@@ -190,6 +190,7 @@ const useCodenames = (skip = false) => {
     remainingWordsByTeam: gameState?.remainingWordsByTeam ?? [],
     gameResult: gameState?.gameResult,
     sessionHistory: gameState?.sessionHistory,
+    shuffleAt: gameState?.shuffleAt,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
     celebration,

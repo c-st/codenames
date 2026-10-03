@@ -165,6 +165,8 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   teamCount: z.number().optional(),
   customWords: z.array(z.string()).optional(),
   serverTime: z.number().optional(),
+  /** Server time when a pending team shuffle happens; shown as a shared countdown. */
+  shuffleAt: z.number().optional(),
   effects: z.array(sharedEffectSchema).optional(),
   /** Operatives' tentative picks for the current turn. */
   marks: z.array(cardMarkSchema).optional(),

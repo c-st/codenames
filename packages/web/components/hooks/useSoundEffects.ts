@@ -145,6 +145,21 @@ const useSoundEffects = () => {
     [playTone],
   );
 
+  // Shuffle ceremony: a beep per count that climbs, then a riffle and a "ta-da".
+  const shuffleCount = useCallback(
+    (count: number) => {
+      playTone(440 + (3 - Math.min(3, count)) * 110, 0.12, "triangle", 0.16);
+    },
+    [playTone],
+  );
+
+  const shuffleReveal = useCallback(() => {
+    for (let i = 0; i < 12; i++)
+      playTone(700 + ((i * 7) % 5) * 60, 0.03, "triangle", 0.07, i * 0.03);
+    playTone(659, 0.14, "sine", 0.2, 0.38);
+    playTone(988, 0.3, "sine", 0.24, 0.5);
+  }, [playTone]);
+
   const timeUp = useCallback(() => {
     playTone(220, 0.18, "square", 0.08);
     playTone(165, 0.3, "square", 0.08, 0.16);
@@ -210,6 +225,8 @@ const useSoundEffects = () => {
     gameStart,
     perfectClue,
     tick,
+    shuffleCount,
+    shuffleReveal,
     timeUp,
     pop,
     haptic,

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { GameResult, Player, Turn } from "schema";
 import { Button } from "../ui/Button";
+import AnimalAvatar from "../ui/AnimalAvatar";
 import { getTeamColor, getTeamName } from "./Board/getTeamColor";
 import { getSpymasterTitle } from "./spymasterTitle";
 
@@ -55,7 +56,7 @@ export default function GameControls({
         {!gameCanBeStarted && gameIsRunning && (
           <motion.div
             key="waiting"
-            className="flex flex-col items-start rounded-2xl border border-purple-700/30 bg-surface p-5 shadow-md"
+            className="glass-panel flex flex-col items-start p-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -71,7 +72,7 @@ export default function GameControls({
         {gameResult && gameIsRunning && (
           <motion.div
             key="role-swap"
-            className="flex flex-col items-center gap-3 rounded-2xl border border-purple-700/30 bg-surface p-4 shadow-md"
+            className="glass-panel flex flex-col items-center gap-3 p-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -125,7 +126,7 @@ function RoleSwapper({
   );
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap justify-center gap-4">
       {Object.entries(teams).map(([teamId, teamPlayers]) => {
         const color = getTeamColor(parseInt(teamId));
         return (
@@ -139,17 +140,21 @@ function RoleSwapper({
                 return (
                   <motion.button
                     key={player.id}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    className={`flex items-center gap-2 rounded-2xl border py-1 pl-1 pr-3 text-sm font-semibold transition-colors ${
                       isSpy
-                        ? `bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} !text-white`
-                        : "bg-elevated !text-white hover:bg-purple-800/50"
+                        ? "border-amber-300/40 bg-amber-300/10 !text-white"
+                        : "border-purple-400/20 bg-elevated !text-white hover:border-purple-400/50"
                     }`}
                     whileHover={!isSpy ? { scale: 1.03 } : {}}
                     whileTap={!isSpy ? { scale: 0.97 } : {}}
                     onClick={() => !isSpy && promoteToSpymaster(player.id)}
                   >
-                    <span
-                      className={`inline-block h-2 w-2 rounded-full ${isSpy ? "bg-amber-400" : "bg-white/30"}`}
+                    <AnimalAvatar
+                      animal={player.animal}
+                      size="sm"
+                      crowned={isSpy}
+                      isYou={isYou}
+                      glowColor={color.hex}
                     />
                     <span className="truncate">
                       {player.name}

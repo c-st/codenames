@@ -75,12 +75,33 @@ export function recordFrames(page: Page) {
   return frames;
 }
 
+/** The lobby keeps name and animal in a sheet, opened from the arena. */
+export async function openProfile(page: Page) {
+  const name = page.getByLabel("Your name", { exact: true });
+  if (!(await name.isVisible()))
+    await page
+      .getByRole("button", { name: /Change your name or animal/ })
+      .click();
+  await expect(name).toBeVisible();
+}
+
+export async function closeProfile(page: Page) {
+  const sheet = page.getByRole("dialog", { name: "Edit your profile" });
+  if (await sheet.isVisible()) await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+}
+
 export async function saveProfile(page: Page, name: string) {
   await page.bringToFront();
+  await openProfile(page);
   await page.getByLabel("Your name", { exact: true }).fill(name);
+  // Saving also closes the sheet.
   await page
     .getByRole("button", { name: "Save profile", exact: true })
     .click({ noWaitAfter: true });
+  await expect(
+    page.getByRole("dialog", { name: "Edit your profile" }),
+  ).toHaveCount(0);
   try {
     await expect(
       page.getByRole("button", { name: new RegExp(name) }),
