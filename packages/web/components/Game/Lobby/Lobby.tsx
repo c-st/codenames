@@ -1,10 +1,9 @@
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Player } from "schema";
+import { Animal, Player, WordPackId } from "schema";
 import NameInput from "./NameInput";
+import WordPackEditor from "./WordPackEditor";
 import { getTeamColor, getTeamName } from "../Board/getTeamColor";
 import { getSpymasterTitle } from "../spymasterTitle";
-
-type WordPackId = "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet";
 
 const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
   { id: "classic", label: "Classic", emoji: "📝" },
@@ -17,6 +16,7 @@ const WORD_PACKS: { id: WordPackId; label: string; emoji: string }[] = [
   { id: "design", label: "Design", emoji: "🎨" },
   { id: "startup", label: "Startup", emoji: "🚀" },
   { id: "internet", label: "Internet", emoji: "🌐" },
+  { id: "custom", label: "Custom", emoji: "✏️" },
 ];
 
 const TEAM_COUNTS = [2, 3, 4];
@@ -25,7 +25,7 @@ export default function Lobby({
   players,
   currentPlayerId,
   promoteToSpymaster,
-  setName,
+  setProfile,
   randomizeName,
   startGame,
   gameCanBeStarted,
@@ -33,12 +33,16 @@ export default function Lobby({
   teamCount,
   setWordPack,
   setTeamCount,
+  customWords,
+  setCustomWords,
+  shuffleTeams,
+  roomId,
   onBackToHome,
 }: {
   players: Player[];
   currentPlayerId: string;
   promoteToSpymaster: (playerId: string) => void;
-  setName: (name: string) => void;
+  setProfile: (name: string, animal: Animal) => void;
   randomizeName: () => void;
   gameCanBeStarted: boolean;
   startGame: () => void;
@@ -46,9 +50,12 @@ export default function Lobby({
   teamCount: number;
   setWordPack: (pack: WordPackId) => void;
   setTeamCount: (count: number) => void;
+  customWords?: string[];
+  setCustomWords: (words: string[]) => void;
+  shuffleTeams: () => void;
+  roomId?: string;
   onBackToHome?: () => void;
 }) {
-
   const currentPlayer = players.find((player) => player.id === currentPlayerId);
   if (!currentPlayer) {
     return null;
@@ -66,7 +73,8 @@ export default function Lobby({
   );
 
   const roleEmoji = currentPlayer.role === "spymaster" ? "🕵️" : "🔍";
-  const roleName = currentPlayer.role === "spymaster" ? getSpymasterTitle() : "Operative";
+  const roleName =
+    currentPlayer.role === "spymaster" ? getSpymasterTitle() : "Operative";
 
   return (
     <motion.div
@@ -86,7 +94,12 @@ export default function Lobby({
           className="cursor-default select-none text-4xl"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.1 }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 15,
+            delay: 0.1,
+          }}
         >
           {roleEmoji}
         </motion.span>
@@ -96,12 +109,24 @@ export default function Lobby({
         </div>
         <div className="flex flex-col items-center gap-2">
           <p className="text-sm font-semibold text-purple-400">Your name</p>
-          <NameInput name={currentPlayer.name} setName={setName} onRandomize={randomizeName} />
+          <NameInput
+            name={currentPlayer.name}
+            animal={currentPlayer.animal}
+            setProfile={setProfile}
+            onRandomize={randomizeName}
+          />
         </div>
       </motion.div>
 
       {/* Section: Teams */}
       <SectionHeader label="TEAMS" delay={0.15} />
+      <button
+        type="button"
+        onClick={shuffleTeams}
+        className="rounded-xl bg-elevated px-4 py-2 text-sm font-semibold text-purple-200 hover:bg-purple-800/50"
+      >
+        🎲 Shuffle teams & spymasters
+      </button>
 
       <LayoutGroup>
         <div className="flex min-h-48 w-full justify-center gap-6">
@@ -114,9 +139,16 @@ export default function Lobby({
                 className="flex flex-1 flex-col items-center gap-3"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + i * 0.1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 20,
+                  delay: 0.2 + i * 0.1,
+                }}
               >
-                <span className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}>
+                <span
+                  className={`rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-4 py-1 text-sm font-bold !text-white`}
+                >
                   Team {getTeamName(parseInt(teamId))}
                 </span>
                 <div className="flex w-full flex-col items-center gap-2">
@@ -140,8 +172,14 @@ export default function Lobby({
                             exit={{ opacity: 0, scale: 0.9 }}
                             whileHover={!isSpy ? { scale: 1.03 } : {}}
                             whileTap={!isSpy ? { scale: 0.97 } : {}}
-                            onClick={() => !isSpy && promoteToSpymaster(player.id)}
-                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            onClick={() =>
+                              !isSpy && promoteToSpymaster(player.id)
+                            }
+                            transition={{
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 25,
+                            }}
                           >
                             <motion.span
                               layout
@@ -150,7 +188,7 @@ export default function Lobby({
                               transition={{ duration: 0.3 }}
                             />
                             <span className="flex-1 truncate text-left">
-                              {player.name}
+                              {player.animal} {player.name}
                               {isYou && " (you)"}
                             </span>
                             {isSpy && (
@@ -164,7 +202,9 @@ export default function Lobby({
                               </motion.span>
                             )}
                             {!isSpy && (
-                              <span className="flex-shrink-0 text-[0.65rem] text-purple-400/50">promote</span>
+                              <span className="flex-shrink-0 text-[0.65rem] text-purple-400/50">
+                                promote
+                              </span>
                             )}
                           </motion.button>
                         );
@@ -184,19 +224,32 @@ export default function Lobby({
         className="flex w-full flex-col gap-5"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.35 }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 20,
+          delay: 0.35,
+        }}
       >
         {/* Word Pack */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold text-purple-400/70">Word Pack</span>
+          <span className="text-xs font-bold text-purple-400/70">
+            Word Pack
+          </span>
           <div className="flex flex-wrap gap-2">
             {WORD_PACKS.map((pack) => (
               <motion.button
                 key={pack.id}
+                disabled={pack.id === "custom" && !customWords?.length}
+                title={
+                  pack.id === "custom" && !customWords?.length
+                    ? "Save a custom word list below first"
+                    : undefined
+                }
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
                   wordPack === pack.id
                     ? "bg-gradient-to-br from-primary to-accent !text-white shadow-md"
-                    : "bg-elevated !text-white hover:bg-purple-800/50"
+                    : "bg-elevated !text-white hover:bg-purple-800/50 disabled:cursor-not-allowed disabled:opacity-40"
                 }`}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -208,9 +261,17 @@ export default function Lobby({
           </div>
         </div>
 
+        <WordPackEditor
+          words={customWords}
+          onSave={setCustomWords}
+          roomId={roomId}
+        />
+
         {/* Team Count */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold text-purple-400/70">Number of Teams</span>
+          <span className="text-xs font-bold text-purple-400/70">
+            Number of Teams
+          </span>
           <div className="flex gap-2">
             {TEAM_COUNTS.map((count) => {
               const needsPlayers = count * 2;

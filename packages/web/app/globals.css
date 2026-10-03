@@ -33,25 +33,39 @@
 }
 
 .card-shadow-default {
-  box-shadow: 0 6px 0 #d0c0e0, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #d0c0e0,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-purple {
-  box-shadow: 0 6px 0 #6040a0, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #6040a0,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-emerald {
-  box-shadow: 0 6px 0 #308060, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #308060,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-pink {
-  box-shadow: 0 6px 0 #a04060, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #a04060,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-blue {
-  box-shadow: 0 6px 0 #305090, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #305090,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-neutral {
-  box-shadow: 0 6px 0 #2a2540, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #2a2540,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 .card-shadow-assassin {
-  box-shadow: 0 6px 0 #a03040, 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 6px 0 #a03040,
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes confetti {
@@ -72,4 +86,16 @@
   animation: confetti linear forwards;
   will-change: transform, opacity;
   backface-visibility: hidden;
+}
+
+/* Keep decorative effects still when the player requests less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .glow {
+    animation: none;
+  }
+
+  .animate-confetti {
+    display: none;
+    animation: none;
+  }
 }

@@ -1,8 +1,42 @@
 import { z } from "zod";
 
+export const animalSchema = z.enum([
+  "🦊",
+  "🐱",
+  "🐶",
+  "🐼",
+  "🐰",
+  "🐻",
+  "🦉",
+  "🐧",
+  "🐨",
+  "🐸",
+  "🦁",
+  "🐢",
+  "🐬",
+  "🦝",
+  "🐝",
+  "🦋",
+]);
+export type Animal = z.infer<typeof animalSchema>;
+
+export const sharedEffectSchema = z.object({
+  id: z.string(),
+  type: z.enum([
+    "correctGuess",
+    "wrongGuess",
+    "assassinReveal",
+    "gameWin",
+    "turnChange",
+  ]),
+  playAt: z.number(),
+});
+export type SharedEffect = z.infer<typeof sharedEffectSchema>;
+
 export const playerSchema = z.object({
   id: z.string(),
   name: z.string(),
+  animal: animalSchema.optional(),
   team: z.number(),
   role: z.enum(["spymaster", "operative"]),
 });
@@ -35,7 +69,7 @@ const hintHistorySchema = z.array(
   hintSchema.extend({
     team: z.number(),
     inTurn: z.number(),
-  })
+  }),
 );
 
 export const gameStateSchema = z.object({
@@ -57,6 +91,9 @@ export const gameStateSchemaForClient = gameStateSchema.extend({
   remainingWordsByTeam: z.array(z.number()),
   wordPack: z.string().optional(),
   teamCount: z.number().optional(),
+  customWords: z.array(z.string()).optional(),
+  serverTime: z.number().optional(),
+  effects: z.array(sharedEffectSchema).optional(),
 });
 
 export type GameState = z.infer<typeof gameStateSchema>;

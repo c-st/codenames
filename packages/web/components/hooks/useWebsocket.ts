@@ -1,130 +1,159 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const INITIAL_RECONNECT_DELAY = 500;
-const MAX_RECONNECT_DELAY = 15000;
-const BACKOFF_MULTIPLIER = 2;
-const PING_INTERVAL = 25000;
-const PONG_TIMEOUT = 5000;
-
-const useWebSocket = (url: string, skip: boolean) => {
+const useWebSocket = (
+  url: string,
+  skip: boolean,
+  resolveUrl?: () => string,
+) => {
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pingTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const pongTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const intentionalCloseRef = useRef(false);
-  const [incomingMessage, setIncomingMessage] = useState<string>();
+  const [incomingMessages, setIncomingMessages] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-
-  const clearTimers = useCallback(() => {
-    clearTimeout(reconnectTimerRef.current);
-    clearInterval(pingTimerRef.current);
-    clearTimeout(pongTimerRef.current);
-  }, []);
-
-  const startPing = useCallback(() => {
-    clearInterval(pingTimerRef.current);
-    pingTimerRef.current = setInterval(() => {
-      if (
-        socketRef.current &&
-        socketRef.current.readyState === WebSocket.OPEN
-      ) {
-        socketRef.current.send(JSON.stringify({ type: "ping" }));
-        pongTimerRef.current = setTimeout(() => {
-          // No pong received — connection is dead, force close to trigger reconnect
-          console.warn("Pong timeout — closing stale connection");
-          socketRef.current?.close(4000, "Pong timeout");
-        }, PONG_TIMEOUT);
-      }
-    }, PING_INTERVAL);
-  }, []);
-
-  const connect = useCallback(() => {
-    if (skip) return;
-
-    intentionalCloseRef.current = false;
-    const ws = new WebSocket(url);
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      if (socketRef.current !== ws) return;
-      setIsConnected(true);
-      setIncomingMessage(undefined);
-      reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
-      console.log("WebSocket connected", url);
-      startPing();
-    };
-
-    ws.onmessage = (event) => {
-      if (socketRef.current !== ws) return;
-      const data = event.data;
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === "pong") {
-          clearTimeout(pongTimerRef.current);
-          return;
-        }
-      } catch {
-        // Not JSON, pass through
-      }
-      setIncomingMessage(data);
-    };
-
-    ws.onclose = (e) => {
-      if (socketRef.current !== ws) return;
-      setIsConnected(false);
-      clearInterval(pingTimerRef.current);
-      clearTimeout(pongTimerRef.current);
-      console.info("WebSocket disconnected", e.code, e.reason);
-
-      if (!intentionalCloseRef.current) {
-        const delay = reconnectDelayRef.current;
-        console.info(`Reconnecting in ${delay}ms...`);
-        reconnectTimerRef.current = setTimeout(() => {
-          reconnectDelayRef.current = Math.min(
-            reconnectDelayRef.current * BACKOFF_MULTIPLIER,
-            MAX_RECONNECT_DELAY
-          );
-          connect();
-        }, delay);
-      }
-    };
-
-    ws.onerror = (e) => {
-      if (socketRef.current !== ws) return;
-      console.error("WebSocket error", e);
-      // onclose will fire after onerror, which handles reconnection
-    };
-  }, [url, skip, startPing]);
+  const [serverClockOffset, setServerClockOffset] = useState(0);
 
   useEffect(() => {
-    connect();
-    return () => {
-      intentionalCloseRef.current = true;
-      clearTimers();
-      socketRef.current?.close(1000);
+    setIsConnected(false);
+    setIncomingMessages([]);
+    if (skip || !url) return;
+    let disposed = false;
+    let delay = 500;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+    let pingTimer: ReturnType<typeof setInterval>;
+    let pongTimer: ReturnType<typeof setTimeout>;
+    let connectTimer: ReturnType<typeof setTimeout>;
+    let batchTimer: ReturnType<typeof setTimeout>;
+    let pending: string[] = [];
+    let pingAt = 0;
+    let clockKnown = false;
+    let stopped = false;
+
+    const clearConnectionTimers = () => {
+      clearInterval(pingTimer);
+      clearTimeout(pongTimer);
+      clearTimeout(connectTimer);
     };
-  }, [connect, clearTimers]);
+    const connect = () => {
+      if (disposed || stopped) return;
+      clearTimeout(reconnectTimer);
+      clearConnectionTimers();
+      const ws = new WebSocket(resolveUrl?.() ?? url);
+      socketRef.current = ws;
+      connectTimer = setTimeout(
+        () => ws.close(4000, "Connection timeout"),
+        10000,
+      );
+      const ping = () => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        pingAt = Date.now();
+        ws.send(JSON.stringify({ type: "ping" }));
+        clearTimeout(pongTimer);
+        pongTimer = setTimeout(
+          () => ws.close(4000, "Heartbeat timeout"),
+          10000,
+        );
+      };
+      ws.onopen = () => {
+        if (disposed || socketRef.current !== ws) return;
+        clearTimeout(connectTimer);
+        setIsConnected(true);
+        delay = 500;
+        ping();
+        pingTimer = setInterval(ping, 25000);
+      };
+      ws.onmessage = (event) => {
+        if (
+          disposed ||
+          socketRef.current !== ws ||
+          typeof event.data !== "string"
+        )
+          return;
+        try {
+          const parsed = JSON.parse(event.data);
+          if (parsed.type === "pong") {
+            clearTimeout(pongTimer);
+            if (typeof parsed.serverTime === "number") {
+              setServerClockOffset(
+                parsed.serverTime - (pingAt + Date.now()) / 2,
+              );
+              clockKnown = true;
+            }
+            return;
+          }
+          if (!clockKnown && typeof parsed.gameState?.serverTime === "number") {
+            setServerClockOffset(parsed.gameState.serverTime - Date.now());
+          }
+        } catch {
+          /* Schema validation happens in the game hook. */
+        }
+        pending.push(event.data);
+        // Batch without dropping intermediate events when React coalesces renders.
+        clearTimeout(batchTimer);
+        batchTimer = setTimeout(() => {
+          setIncomingMessages(pending);
+          pending = [];
+        }, 0);
+      };
+      ws.onclose = (event) => {
+        if (disposed || socketRef.current !== ws) return;
+        setIsConnected(false);
+        clearConnectionTimers();
+        if (event.code === 1000) stopped = true;
+        if (stopped) return;
+        reconnectTimer = setTimeout(
+          connect,
+          delay * (0.8 + Math.random() * 0.4),
+        );
+        delay = Math.min(delay * 2, 15000);
+      };
+      ws.onerror = () => {
+        /* Close callback handles retry. */
+      };
+    };
+    const recover = () => {
+      if (document.visibilityState === "hidden" || disposed || stopped) return;
+      const ws = socketRef.current;
+      if (!ws || ws.readyState === WebSocket.CLOSED) connect();
+      else if (ws.readyState === WebSocket.OPEN) {
+        pingAt = Date.now();
+        ws.send(JSON.stringify({ type: "ping" }));
+        clearTimeout(pongTimer);
+        pongTimer = setTimeout(
+          () => ws.close(4000, "Resume heartbeat timeout"),
+          10000,
+        );
+      }
+    };
+    connect();
+    window.addEventListener("online", recover);
+    document.addEventListener("visibilitychange", recover);
+    return () => {
+      disposed = true;
+      clearTimeout(reconnectTimer);
+      clearTimeout(batchTimer);
+      clearConnectionTimers();
+      window.removeEventListener("online", recover);
+      document.removeEventListener("visibilitychange", recover);
+      const ws = socketRef.current;
+      socketRef.current = null;
+      ws?.close(1000);
+    };
+  }, [url, skip, resolveUrl]);
 
-  const sendMessage = (message: string) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(message);
-    } else {
-      console.warn("WebSocket not connected, message not sent", message);
-    }
-  };
-
-  const closeConnection = (code: number = 1000) => {
-    intentionalCloseRef.current = true;
-    clearTimers();
-    socketRef.current?.close(code);
-  };
-
+  const sendMessage = useCallback((message: string) => {
+    const ws = socketRef.current;
+    if (ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(message);
+    return true;
+  }, []);
+  const closeConnection = useCallback(
+    (code = 1000) => socketRef.current?.close(code),
+    [],
+  );
   return {
-    incomingMessage,
+    incomingMessages,
     isConnected,
     sendMessage,
     closeConnection,
+    serverClockOffset,
   };
 };
 

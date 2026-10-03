@@ -25,7 +25,7 @@ export default function PlayerCard({
         </motion.span>
       )}
       <span className="text-base font-bold !text-white md:text-lg">
-        {player.name}
+        {player.animal} {player.name}
         {player.id === currentPlayerId && " (you!)"}
       </span>
     </div>

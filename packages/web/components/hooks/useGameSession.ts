@@ -1,103 +1,66 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useWebSocket from "./useWebsocket";
-
-const getSessionNameFromUrl = (url: string) =>
-  new URL(url).pathname.split("/").pop();
-
-const retrieveRedirectLocation = async (
-  url: string,
-  signal?: AbortSignal
-): Promise<string> =>
-  fetch(url, { method: "GET", redirect: "follow", signal }).then(
-    (response) => response.url
-  );
-
-const getStoredPlayerId = (sessionName: string): string | null => {
-  try {
-    return sessionStorage.getItem(`codenames:playerId:${sessionName}`);
-  } catch {
-    return null;
-  }
-};
-
-const storePlayerId = (sessionName: string, playerId: string) => {
-  try {
-    sessionStorage.setItem(`codenames:playerId:${sessionName}`, playerId);
-  } catch {
-    // sessionStorage unavailable
-  }
-};
+import { readProfile, roomPlayerId } from "./playerProfile";
 
 const useGameSession = (websocketEndpointUrl: string, skip: boolean) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const sessionSearchParam = searchParams?.get("session") ?? undefined;
+  const sessionName = searchParams?.get("session") || undefined;
+  const [sessionError, setSessionError] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
 
-  const [sessionName, setSessionName] = useState<string>();
+  // Allocate identity before connecting. Receiving state must never change this URL.
+  const wsUrl = useMemo(() => {
+    if (!sessionName || skip) return "";
+    const url = new URL(
+      `${websocketEndpointUrl}/${encodeURIComponent(sessionName)}`,
+    );
+    url.searchParams.set("playerId", roomPlayerId(sessionName));
+    return url.toString();
+  }, [sessionName, websocketEndpointUrl, skip]);
 
-  // Build WebSocket URL with playerId for reconnection
-  const wsUrl = (() => {
-    if (!sessionName) return "";
-    const base = `${websocketEndpointUrl}/${sessionName}`;
-    const storedPlayerId = getStoredPlayerId(sessionName);
-    if (storedPlayerId) {
-      return `${base}?playerId=${encodeURIComponent(storedPlayerId)}`;
-    }
-    return base;
-  })();
-
-  const { isConnected, incomingMessage, sendMessage, closeConnection } =
-    useWebSocket(wsUrl, sessionName === undefined);
-
-  // Persist playerId when we receive it from the server
-  const onPlayerIdReceived = useCallback(
-    (playerId: string) => {
-      if (sessionName) {
-        storePlayerId(sessionName, playerId);
-      }
-    },
-    [sessionName]
-  );
+  const resolveUrl = useCallback(() => {
+    const url = new URL(wsUrl);
+    const profile = readProfile();
+    if (profile.name) url.searchParams.set("name", profile.name);
+    url.searchParams.set("animal", profile.animal);
+    return url.toString();
+  }, [wsUrl]);
+  const connection = useWebSocket(wsUrl, skip || !sessionName, resolveUrl);
 
   useEffect(() => {
-    if (skip) return;
-    const abortController = new AbortController();
-
-    const setSessionNameFromRedirectLocation = async () => {
-      if (!sessionSearchParam) {
-        try {
-          const redirectUrl = await retrieveRedirectLocation(
-            new URL(websocketEndpointUrl.replace("ws", "http")).toString(),
-            abortController.signal
+    if (skip || sessionName) return;
+    const controller = new AbortController();
+    setSessionError(undefined);
+    (async () => {
+      try {
+        const endpoint = new URL(websocketEndpointUrl);
+        endpoint.protocol = endpoint.protocol === "wss:" ? "https:" : "http:";
+        const response = await fetch(endpoint, {
+          redirect: "follow",
+          signal: controller.signal,
+        });
+        const room = new URL(response.url).pathname.split("/").pop();
+        if (!room) throw new Error("No room returned");
+        if (!controller.signal.aborted)
+          router.replace(`${pathname}?session=${encodeURIComponent(room)}`);
+      } catch {
+        if (!controller.signal.aborted)
+          setSessionError(
+            "Could not create a room. Check your connection and try again.",
           );
-          if (abortController.signal.aborted) return;
-          const sessionName = getSessionNameFromUrl(redirectUrl);
-          if (sessionName) {
-            router.replace(`${pathname}?session=${sessionName}`);
-          }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === "AbortError") return;
-          console.error("Failed to get session redirect:", e);
-        }
       }
-    };
-    setSessionNameFromRedirectLocation();
-    if (sessionSearchParam) {
-      setSessionName(sessionSearchParam);
-    }
-
-    return () => abortController.abort();
-  }, [sessionSearchParam, pathname, router, websocketEndpointUrl, skip]);
+    })();
+    return () => controller.abort();
+  }, [sessionName, pathname, router, websocketEndpointUrl, skip, attempt]);
 
   return {
     sessionName,
-    isConnected,
-    incomingMessage,
-    sendMessage,
-    closeConnection,
-    onPlayerIdReceived,
+    ...connection,
+    sessionError,
+    retrySession: () => setAttempt((a) => a + 1),
   };
 };
 

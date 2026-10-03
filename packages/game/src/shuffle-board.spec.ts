@@ -22,7 +22,7 @@ describe("shuffleBoard", () => {
     const team0Words = board.filter((card) => card.team === 0);
     const team1Words = board.filter((card) => card.team === 1);
 
-    expect(team0Words).toHaveLength(8);
+    expect(team0Words).toHaveLength(9);
     expect(team1Words).toHaveLength(8);
   });
 
@@ -33,8 +33,8 @@ describe("shuffleBoard", () => {
     const assassinWords = board.filter((card) => card.isAssassin).length;
     const neutralWords = board.length - teamWords - assassinWords;
 
-    // 25 total - 16 team words - 1 assassin = 8 neutral
-    expect(neutralWords).toBe(8);
+    // 25 total - 17 team words - 1 assassin = 7 neutral
+    expect(neutralWords).toBe(7);
   });
 
   it("all words on the board are unique", () => {
@@ -55,7 +55,7 @@ describe("shuffleBoard", () => {
     const fewWords = ["a", "b", "c"];
 
     expect(() => shuffleBoard(defaultParameters, fewWords)).toThrow(
-      "Not enough words to create a board"
+      "Not enough words to create a board",
     );
   });
 
@@ -69,8 +69,35 @@ describe("shuffleBoard", () => {
     const team1 = board.filter((card) => card.team === 1);
     const team2 = board.filter((card) => card.team === 2);
 
-    expect(team0).toHaveLength(6);
+    expect(team0).toHaveLength(7);
     expect(team1).toHaveLength(6);
     expect(team2).toHaveLength(6);
   });
+});
+
+it("gives the selected starting team its traditional extra word", () => {
+  const board = shuffleBoard(defaultParameters, classicWordList, 1);
+  expect(board.filter((card) => card.team === 0)).toHaveLength(8);
+  expect(board.filter((card) => card.team === 1)).toHaveLength(9);
+});
+
+it("rejects lists with too few unique words rather than returning a truncated board", () => {
+  expect(() =>
+    shuffleBoard(defaultParameters, Array(25).fill("repeat")),
+  ).toThrow("Not enough words");
+});
+
+it("supports four teams without exceeding the board capacity", () => {
+  const board = shuffleBoard(
+    { ...defaultParameters, teamCount: 4 },
+    classicWordList,
+    2,
+  );
+  expect(board).toHaveLength(25);
+  for (let team = 0; team < 4; team++) {
+    expect(board.filter((card) => card.team === team)).toHaveLength(
+      team === 2 ? 6 : 5,
+    );
+  }
+  expect(board.filter((card) => card.isAssassin)).toHaveLength(1);
 });

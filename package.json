@@ -3,7 +3,8 @@
   "description": "The game of codenames for the browser.",
   "scripts": {
     "test": "pnpm -r test",
-    "upgrade-dependencies": "npx npm-check-updates -u --deep && pnpm install"
+    "upgrade-dependencies": "npx npm-check-updates -u --deep && pnpm install",
+    "test:integration": "pnpm --filter api test && pnpm --filter web test:e2e"
   },
   "license": "GPL-3.0-only"
 }

@@ -1,145 +1,127 @@
 import {
+  Animal,
   Command,
   gameEventSchema,
-  GameResult,
   GameStateForClient,
-  HintHistory,
-  Player,
-  Turn,
-  WordCard,
+  SharedEffect,
+  WordPackId,
 } from "schema";
 import useGameSession from "./useGameSession";
 import { useEffect, useRef, useState } from "react";
+import { saveProfile } from "./playerProfile";
 
-const useCodenames = (skip: boolean = false) => {
+const useCodenames = (skip = false) => {
   const [gameState, setGameState] = useState<GameStateForClient>();
   const [gameWon, setGameWon] = useState(false);
-  // "unset" = no message received yet, null = message received with no result, GameResult = message received with result
-  const prevResultRef = useRef<GameResult | null | "unset">("unset");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [board, setBoard] = useState<WordCard[]>();
-  const [turn, setTurn] = useState<Turn>();
-  const [hintHistory, setHintHistory] = useState<HintHistory>([]);
-  const [gameResult, setGameResult] = useState<GameResult>();
-  const [remainingWordsByTeam, setRemainingWordsByTeam] = useState<number[]>(
-    [],
-  );
-
-  const {
-    sessionName,
-    isConnected,
-    incomingMessage,
-    sendMessage,
-    closeConnection,
-    onPlayerIdReceived,
-  } = useGameSession(
-    isInDevMode ? "ws://localhost:8787" : "wss://api.codenam.es",
+  const [effects, setEffects] = useState<SharedEffect[]>([]);
+  const [commandError, setCommandError] = useState<string>();
+  const previousRef = useRef<GameStateForClient | undefined>(undefined);
+  const seenEffectsRef = useRef(new Set<string>());
+  const connection = useGameSession(
+    process.env.NEXT_PUBLIC_API_URL ??
+      (process.env.NODE_ENV === "development"
+        ? "ws://localhost:8787"
+        : "wss://api.codenam.es"),
     skip,
   );
 
   useEffect(() => {
-    if (!incomingMessage) {
-      return;
-    }
-    // check for gameState or commandStatus
-    let parsed;
-    try {
-      parsed = JSON.parse(incomingMessage);
-    } catch {
-      console.error("Failed to parse incoming message as JSON:", incomingMessage);
-      return;
-    }
-    const parseResult = gameEventSchema.safeParse(parsed);
-    if (!parseResult.success) {
-      console.error("Failed to parse incoming message:", parseResult.error);
-      return;
-    }
-    if (parseResult.data.type === "commandRejected") {
-      console.warn("Command rejected:", parseResult.data.reason);
-      return;
-    }
-    if (parseResult.data.type !== "gameStateUpdated") {
-      console.error("Unexpected message type:", parseResult);
-      return;
-    }
+    previousRef.current = undefined;
+    seenEffectsRef.current.clear();
+    setGameState(undefined);
+    setGameWon(false);
+    setEffects([]);
+    setCommandError(undefined);
+  }, [connection.sessionName]);
 
-    const gameState = parseResult.data.gameState;
-    setGameState(gameState);
-    onPlayerIdReceived(gameState.playerId);
-    const {
-      players,
-      board,
-      turn,
-      hintHistory,
-      remainingWordsByTeam,
-      gameResult,
-    } = gameState;
-    setPlayers(players);
-    setBoard(board);
-    setTurn(turn);
-    setHintHistory(hintHistory);
-    setRemainingWordsByTeam(remainingWordsByTeam);
-    setGameResult(gameResult);
-
-    // Confetti: only when transitioning from "no winner" to "winner"
-    // "unset" means we haven't received any message yet (page load) — never triggers
-    // null means last message had no gameResult (game in progress) — can trigger
-    const prev = prevResultRef.current;
-    if (
-      gameResult?.winningTeam !== undefined &&
-      prev !== "unset" &&
-      (prev === null || prev?.winningTeam === undefined)
-    ) {
-      setGameWon(true);
-    } else if (!gameResult) {
-      setGameWon(false);
+  useEffect(() => {
+    const newEffects: SharedEffect[] = [];
+    for (const message of connection.incomingMessages) {
+      let parsed;
+      try {
+        parsed = gameEventSchema.safeParse(JSON.parse(message));
+      } catch {
+        continue;
+      }
+      if (!parsed.success) continue;
+      if (parsed.data.type === "commandRejected") {
+        setCommandError(parsed.data.reason);
+        continue;
+      }
+      const state = parsed.data.gameState;
+      const previous = previousRef.current;
+      if (!state.gameResult) setGameWon(false);
+      else if (
+        state.gameResult.winningTeam !== undefined &&
+        previous &&
+        !previous.gameResult
+      )
+        setGameWon(true);
+      const player = state.players.find((p) => p.id === state.playerId);
+      if (player)
+        saveProfile({ name: player.name, animal: player.animal ?? "🦊" });
+      for (const effect of state.effects ?? []) {
+        if (!seenEffectsRef.current.has(effect.id)) {
+          seenEffectsRef.current.add(effect.id);
+          newEffects.push(effect);
+        }
+      }
+      if (seenEffectsRef.current.size > 1000) {
+        seenEffectsRef.current = new Set(
+          Array.from(seenEffectsRef.current).slice(-500),
+        );
+      }
+      previousRef.current = state;
+      setGameState(state);
+      setCommandError(undefined);
     }
-    prevResultRef.current = gameResult ?? null;
-  }, [incomingMessage, onPlayerIdReceived]);
+    if (newEffects.length) setEffects(newEffects);
+  }, [connection.incomingMessages]);
 
-  const sendCommand = (command: Command) =>
-    sendMessage(JSON.stringify(command));
+  const sendCommand = (command: Command) => {
+    if (!connection.sendMessage(JSON.stringify(command))) {
+      setCommandError("Reconnecting — please wait, then try again.");
+      return false;
+    }
+    setCommandError(undefined);
+    return true;
+  };
 
   return {
-    // Connection
-    sessionName,
-    isConnected,
-    incomingMessage,
-    sendMessage,
-    closeConnection,
-    // Gameplay
-    players,
-    turn,
-    hintHistory,
-    board,
-    remainingWordsByTeam,
-    gameResult,
+    ...connection,
+    commandError,
+    effects,
+    players: gameState?.players ?? [],
+    board: gameState?.board,
+    turn: gameState?.turn,
+    hintHistory: gameState?.hintHistory ?? [],
+    remainingWordsByTeam: gameState?.remainingWordsByTeam ?? [],
+    gameResult: gameState?.gameResult,
     gameCanBeStarted: gameState?.gameCanStart ?? false,
     currentPlayerId: gameState?.playerId ?? "",
     gameWon,
-    wordPack: (gameState?.wordPack ?? "classic") as "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet",
+    wordPack: (gameState?.wordPack ?? "classic") as WordPackId,
+    customWords: gameState?.customWords,
     teamCount: gameState?.teamCount ?? 2,
-    // Commands
+    setProfile: (name: string, animal: Animal) =>
+      sendCommand({ type: "setProfile", name, animal }),
     setName: (name: string) => sendCommand({ type: "setName", name }),
     randomizeName: () => sendCommand({ type: "randomizeName" }),
+    shuffleTeams: () => sendCommand({ type: "shuffleTeams" }),
     promoteToSpymaster: (playerId: string) =>
       sendCommand({ type: "promoteToSpymaster", playerId }),
     startGame: () => sendCommand({ type: "startGame" }),
-    setWordPack: (wordPack: "classic" | "movies" | "food" | "geography" | "science" | "tech" | "agile" | "design" | "startup" | "internet") =>
+    setWordPack: (wordPack: WordPackId) =>
       sendCommand({ type: "setWordPack", wordPack }),
+    setCustomWords: (words: string[]) =>
+      sendCommand({ type: "setCustomWords", words }),
     setTeamCount: (teamCount: number) =>
       sendCommand({ type: "setTeamCount", teamCount }),
     giveHint: (hint: string, count: number) =>
       sendCommand({ type: "giveHint", hint, count }),
     revealWord: (word: string) => sendCommand({ type: "revealWord", word }),
     endTurn: () => sendCommand({ type: "endTurn" }),
-    endGame: () => {
-      setGameWon(false);
-      sendCommand({ type: "endGame" });
-    },
+    endGame: () => sendCommand({ type: "endGame" }),
   };
 };
-
-const isInDevMode = !!process && process.env.NODE_ENV === "development";
-
 export default useCodenames;

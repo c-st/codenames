@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
@@ -13,7 +13,7 @@ import PracticeMode from "@/components/PracticeMode/PracticeMode";
 import Tutorial from "@/components/Tutorial/Tutorial";
 import useSoundEffects from "@/components/hooks/useSoundEffects";
 import Confetti from "@/components/Confetti";
-import { GameResult, WordCard } from "schema";
+import { MotionConfig } from "motion/react";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -29,7 +29,7 @@ export default function Home() {
     sessionName,
     isConnected,
     promoteToSpymaster,
-    setName,
+    setProfile,
     players,
     turn,
     hintHistory,
@@ -49,59 +49,28 @@ export default function Home() {
     setTeamCount,
     randomizeName,
     gameWon,
+    customWords,
+    setCustomWords,
+    shuffleTeams,
+    effects,
+    serverClockOffset,
+    commandError,
+    sessionError,
+    retrySession,
   } = useCodenames(skipConnection);
 
   const sound = useSoundEffects();
 
-  // Sound effects based on game state changes
-  const prevTurnTeamRef = useRef<number | undefined>(undefined);
-  const prevGameResultRef = useRef<GameResult | undefined>(undefined);
-  const prevBoardRef = useRef<WordCard[] | undefined>(undefined);
-
+  const { playSharedEffect } = sound;
   useEffect(() => {
-    // Detect turn change
-    if (
-      turn?.team !== undefined &&
-      prevTurnTeamRef.current !== undefined &&
-      turn.team !== prevTurnTeamRef.current
-    ) {
-      sound.turnChange();
+    for (const effect of effects) {
+      const delay = effect.playAt - (Date.now() + serverClockOffset);
+      // Joining/reconnecting never replays old cues. Muting never queues audio.
+      if (delay >= -1000) playSharedEffect(effect.type, delay / 1000);
     }
-    prevTurnTeamRef.current = turn?.team;
-
-    // Detect game result
-    if (gameResult && !prevGameResultRef.current) {
-      if (gameResult.losingTeam !== undefined && gameResult.winningTeam === undefined) {
-        sound.assassinReveal();
-      } else {
-        sound.gameWin();
-      }
-    }
-    prevGameResultRef.current = gameResult;
-
-    // Detect card reveals
-    if (board && prevBoardRef.current && board !== prevBoardRef.current) {
-      const prevRevealed = prevBoardRef.current.filter((c) => c.revealed).length;
-      const nowRevealed = board.filter((c) => c.revealed).length;
-      if (nowRevealed > prevRevealed) {
-        const newlyRevealed = board.find(
-          (c) =>
-            c.revealed &&
-            !prevBoardRef.current?.find((p) => p.word === c.word)?.revealed
-        );
-        if (newlyRevealed) {
-          if (newlyRevealed.isAssassin) {
-            // assassin sound handled by game result
-          } else if (newlyRevealed.team === turn?.team || newlyRevealed.team === prevTurnTeamRef.current) {
-            sound.correctGuess();
-          } else {
-            sound.wrongGuess();
-          }
-        }
-      }
-    }
-    prevBoardRef.current = board;
-  }, [board, turn?.team, gameResult, sound]);
+    // Only new authoritative events schedule playback; clock/mute changes do not replay them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effects]);
 
   // Show tutorial if requested
   if (showTutorial) {
@@ -124,76 +93,110 @@ export default function Home() {
         />
       );
     }
-    return null;
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface p-6 text-white"
+        role="status"
+      >
+        <Logo />
+        <p>{sessionError ?? "Connecting to your room…"}</p>
+        {sessionError && (
+          <button
+            className="rounded-xl bg-primary px-4 py-2"
+            onClick={retrySession}
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    );
   }
 
   const gameIsRunning = turn !== undefined;
 
   return (
-    <div className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]">
-      <header className="flex w-full max-w-4xl items-center justify-between">
-        <Logo />
-        <button
-          className="rounded-xl bg-surface px-2 py-1 text-lg"
-          onClick={sound.toggleMute}
-          title={sound.muted ? "Unmute" : "Mute"}
-        >
-          {sound.muted ? "🔇" : "🔊"}
-        </button>
-        <SessionStatus isConnected={isConnected} sessionName={sessionName} />
-      </header>
-      <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">
-        {turn === undefined ? (
-          <Lobby
-            players={players}
-            currentPlayerId={currentPlayerId}
-            promoteToSpymaster={promoteToSpymaster}
-            setName={setName}
-            randomizeName={randomizeName}
-            gameCanBeStarted={gameCanBeStarted}
-            startGame={startGame}
-            wordPack={wordPack}
-            teamCount={teamCount}
-            setWordPack={setWordPack}
-            setTeamCount={setTeamCount}
-            onBackToHome={() => {
-              window.location.href = window.location.pathname;
-            }}
-          />
-        ) : (
-          <Board
-            isConnected={isConnected}
-            players={players}
-            currentPlayerId={currentPlayerId}
-            words={board}
-            turn={turn}
-            hintHistory={hintHistory}
-            remainingWordsByTeam={remainingWordsByTeam}
-            gameResult={gameResult}
-            gameCanBeStarted={gameCanBeStarted}
-            startGame={startGame}
-            giveHint={giveHint}
-            revealWord={revealWord}
-            endTurn={endTurn}
-            endGame={endGame}
-          />
+    <MotionConfig reducedMotion="user">
+      <div className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]">
+        <header className="grid w-full max-w-4xl grid-cols-[1fr_auto] items-center gap-2 md:flex md:justify-between">
+          <Logo />
+          <button
+            className="rounded-xl bg-surface px-2 py-1 text-lg"
+            onClick={sound.toggleMute}
+            title={sound.muted ? "Unmute" : "Mute"}
+          >
+            {sound.muted ? "🔇" : "🔊"}
+          </button>
+          <SessionStatus isConnected={isConnected} sessionName={sessionName} />
+        </header>
+        {commandError && (
+          <p
+            role="alert"
+            className="rounded-xl bg-amber-900/40 px-4 py-2 text-amber-200"
+          >
+            {commandError}
+          </p>
         )}
-      </main>
-      <footer>
-        <GameControls
-          gameResult={gameResult}
-          gameIsRunning={gameIsRunning}
-          gameCanBeStarted={gameCanBeStarted}
-          currentPlayer={currentPlayer}
-          turn={turn}
-          players={players}
-          endGame={endGame}
-          startGame={startGame}
-          endTurn={endTurn}
-          promoteToSpymaster={promoteToSpymaster}
-        />
-      </footer>
-      <Confetti active={gameWon} />
-    </div>
+        <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">
+          {turn === undefined ? (
+            <fieldset disabled={!isConnected} className="w-full">
+              <Lobby
+                players={players}
+                currentPlayerId={currentPlayerId}
+                promoteToSpymaster={promoteToSpymaster}
+                setProfile={setProfile}
+                randomizeName={randomizeName}
+                gameCanBeStarted={gameCanBeStarted}
+                startGame={startGame}
+                customWords={customWords}
+                setCustomWords={setCustomWords}
+                shuffleTeams={shuffleTeams}
+                roomId={sessionName}
+                wordPack={wordPack}
+                teamCount={teamCount}
+                setWordPack={setWordPack}
+                setTeamCount={setTeamCount}
+                onBackToHome={() => {
+                  window.location.href = window.location.pathname;
+                }}
+              />
+            </fieldset>
+          ) : (
+            <Board
+              isConnected={isConnected}
+              players={players}
+              currentPlayerId={currentPlayerId}
+              words={board}
+              turn={turn}
+              hintHistory={hintHistory}
+              remainingWordsByTeam={remainingWordsByTeam}
+              gameResult={gameResult}
+              gameCanBeStarted={gameCanBeStarted}
+              startGame={startGame}
+              giveHint={giveHint}
+              revealWord={revealWord}
+              endTurn={endTurn}
+              endGame={endGame}
+            />
+          )}
+        </main>
+        <footer>
+          <fieldset disabled={!isConnected}>
+            <GameControls
+              gameResult={gameResult}
+              gameIsRunning={gameIsRunning}
+              gameCanBeStarted={gameCanBeStarted}
+              currentPlayer={currentPlayer}
+              turn={turn}
+              players={players}
+              endGame={endGame}
+              startGame={startGame}
+              endTurn={endTurn}
+              promoteToSpymaster={promoteToSpymaster}
+            />
+          </fieldset>
+        </footer>
+        <Confetti active={gameWon} />
+      </div>
+    </MotionConfig>
   );
 }

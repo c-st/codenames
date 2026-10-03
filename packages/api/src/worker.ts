@@ -10,7 +10,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
     const sessionName = url.pathname.split("/").at(1);
@@ -19,6 +19,8 @@ export default {
       env.WORKER_ENV === "local"
         ? { "Access-Control-Allow-Origin": "http://localhost:3000" }
         : { "Access-Control-Allow-Origin": "https://codenam.es" };
+
+    if (url.pathname === "/health") return new Response("OK", { headers });
 
     if (!sessionName) {
       // Redirect to a random session

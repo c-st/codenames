@@ -3,10 +3,11 @@ import { nanoid } from "nanoid";
 import {
   Command,
   commandSchema,
-  GameState,
   GameStateForClient,
   gameStateSchema,
   WordCard,
+  SharedEffect,
+  animalSchema,
 } from "schema";
 import { Env } from "./worker";
 import {
@@ -15,53 +16,78 @@ import {
   GameError,
   initialGameState,
 } from "game";
-import { classic, movies, food, geography, science, tech, agile, design, startup, internet, randomAnimalEmoji } from "words";
+import {
+  classic,
+  movies,
+  food,
+  geography,
+  science,
+  tech,
+  agile,
+  design,
+  startup,
+  internet,
+  randomAnimalEmoji,
+} from "words";
 
 const GAME_STATE = "gameState";
-const DISCONNECT_GRACE_MS = 15_000;
+const DISCONNECT_GRACE_MS = 60_000;
+const ROOM_SETTINGS = "roomSettings";
+const DISCONNECTED = "disconnected";
 
 export class CodenamesGame extends DurableObject {
-  /** Tracks pending removal timers for disconnected players */
-  private disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private selectedWordPack: string = "classic";
-  private selectedTeamCount: number = 2;
+  private disconnected: Record<string, number> = {};
+  private selectedWordPack = "classic";
+  private selectedTeamCount = 2;
+  private customWords: string[] = [];
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-
-    // Block incoming requests until stale player cleanup completes
     this.ctx.blockConcurrencyWhile(async () => {
+      const settings = await this.ctx.storage.get<{
+        wordPack: string;
+        teamCount: number;
+        customWords?: string[];
+      }>(ROOM_SETTINGS);
+      if (settings) {
+        this.selectedWordPack = settings.wordPack;
+        this.selectedTeamCount = settings.teamCount;
+        this.customWords = settings.customWords ?? [];
+      }
+      this.disconnected =
+        (await this.ctx.storage.get<Record<string, number>>(DISCONNECTED)) ??
+        {};
       const game = await this.getGameInstance();
-      const websockets = this.ctx.getWebSockets();
-      const connectedPlayerIds = new Set(
-        websockets.map((ws) => ws.deserializeAttachment()?.playerId)
+      const connectedIds = new Set(
+        this.ctx
+          .getWebSockets()
+          .filter((ws) => ws.readyState === 1)
+          .map((ws) => ws.deserializeAttachment()?.playerId),
       );
-
-      const stalePlayerIds = game
-        .getGameState()
-        .players.filter((p) => !connectedPlayerIds.has(p.id))
-        .map((p) => p.id);
-      for (const id of stalePlayerIds) {
-        game.removePlayer(id);
+      for (const player of game.getGameState().players) {
+        if (!connectedIds.has(player.id) && !this.disconnected[player.id]) {
+          this.disconnected[player.id] = Date.now() + DISCONNECT_GRACE_MS;
+        }
       }
-      if (stalePlayerIds.length > 0) {
-        await this.persistAndBroadcastGameState(game);
-      }
+      await this.persistAndBroadcastGameState(game);
     });
   }
 
   async getGameInstance(): Promise<Codenames> {
-    const onScheduleCallAdvanceTurn = (date: Date) => {
-      this.ctx.storage.setAlarm(date.getTime());
+    // One durable alarm serves both turn deadlines and reconnect grace periods.
+    const onScheduleCallAdvanceTurn = (_date: Date) => {};
+    const parameters = {
+      ...defaultParameters,
+      teamCount: this.selectedTeamCount,
     };
 
     const state = await this.ctx.storage.get<string>(GAME_STATE);
     if (!state) {
       return new Codenames(
-        initialGameState,
+        structuredClone(initialGameState),
         classic,
         onScheduleCallAdvanceTurn,
-        defaultParameters
+        parameters,
       );
     }
 
@@ -71,29 +97,37 @@ export class CodenamesGame extends DurableObject {
         gameState,
         classic,
         onScheduleCallAdvanceTurn,
-        defaultParameters
+        parameters,
       );
     } catch (error) {
       console.error(
         "Corrupted game state, resetting. Parse error:",
         error,
         "Raw state (first 500 chars):",
-        state.slice(0, 500)
+        state.slice(0, 500),
       );
       // Clear the corrupted state so it doesn't persist
       await this.ctx.storage.delete(GAME_STATE);
       return new Codenames(
-        initialGameState,
+        structuredClone(initialGameState),
         classic,
         onScheduleCallAdvanceTurn,
-        defaultParameters
+        parameters,
       );
     }
   }
 
   async fetch(request: Request): Promise<Response> {
+    return this.ctx.blockConcurrencyWhile(() => this.handleFetch(request));
+  }
+
+  private async handleFetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const requestedPlayerId = url.searchParams.get("playerId");
+    const candidateId = url.searchParams.get("playerId");
+    const requestedPlayerId =
+      candidateId && /^[a-zA-Z0-9_-]{21,64}$/.test(candidateId)
+        ? candidateId
+        : null;
 
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
@@ -113,18 +147,21 @@ export class CodenamesGame extends DurableObject {
 
     if (canReconnect) {
       playerId = requestedPlayerId;
-
-      // Cancel pending disconnect removal if any
-      const timer = this.disconnectTimers.get(playerId);
-      if (timer) {
-        clearTimeout(timer);
-        this.disconnectTimers.delete(playerId);
-        console.info(`Player ${playerId} reconnected, cancelled removal`);
-      }
     } else {
-      playerId = nanoid();
-      game.joinGame({ id: playerId, name: randomAnimalEmoji() });
+      playerId = requestedPlayerId ?? nanoid();
+      const name =
+        url.searchParams.get("name")?.trim().slice(0, 50) ||
+        randomAnimalEmoji().split(" ").slice(1).join(" ");
+      game.joinGame({ id: playerId, name });
+      const animal = animalSchema.safeParse(url.searchParams.get("animal"));
+      if (animal.success) {
+        const player = game
+          .getGameState()
+          .players.find((p) => p.id === playerId)!;
+        game.addOrUpdatePlayer({ ...player, animal: animal.data });
+      }
     }
+    delete this.disconnected[playerId];
 
     server.serializeAttachment({ playerId });
 
@@ -149,95 +186,137 @@ export class CodenamesGame extends DurableObject {
     // Handle ping
     if (parsedCommand.type === "ping") {
       try {
-        ws.send(JSON.stringify({ type: "pong" }));
+        ws.send(JSON.stringify({ type: "pong", serverTime: Date.now() }));
       } catch {
         // Client already gone
       }
       return;
     }
 
-    // Handle command
-    try {
-      await this.handleCommand(parsedCommand, ws);
-    } catch (error) {
-      if (error instanceof GameError) {
-        console.info("Command was rejected. Reason:", error.message);
-        const commandRejectedEvent = {
-          type: "commandRejected",
-          reason: error.message,
-        };
-        try {
-          ws.send(JSON.stringify(commandRejectedEvent));
-        } catch {
-          // Client already gone
+    // Catch expected rejections inside the concurrency block: an escaping error resets the object.
+    await this.ctx.blockConcurrencyWhile(async () => {
+      try {
+        await this.handleCommand(parsedCommand, ws);
+      } catch (error) {
+        if (error instanceof GameError) {
+          console.info("Command was rejected. Reason:", error.message);
+          const commandRejectedEvent = {
+            type: "commandRejected",
+            reason: error.message,
+          };
+          try {
+            ws.send(JSON.stringify(commandRejectedEvent));
+          } catch {
+            // Client already gone
+          }
+        } else {
+          console.error("Failed to handle command:", error);
         }
-      } else {
-        console.error("Failed to handle command:", error);
       }
-    }
+    });
   }
 
   async alarm() {
-    const game = await this.getGameInstance();
-    if (
-      game.getGameResult() === undefined &&
-      game.getGameState().players.length > 1
-    ) {
-      game.advanceTurn();
-    }
-    await this.persistAndBroadcastGameState(game);
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const game = await this.getGameInstance();
+      const now = Date.now();
+      const connectedIds = new Set(
+        this.ctx
+          .getWebSockets()
+          .filter((ws) => ws.readyState === 1)
+          .map((ws) => ws.deserializeAttachment()?.playerId),
+      );
+      for (const [id, deadline] of Object.entries(this.disconnected)) {
+        if (connectedIds.has(id)) delete this.disconnected[id];
+        else if (deadline <= now) {
+          game.removePlayer(id);
+          delete this.disconnected[id];
+        }
+      }
+      const turn = game.getGameState().turn;
+      let effects: SharedEffect[] = [];
+      if (turn && +turn.until <= now && !game.getGameResult()) {
+        game.advanceTurn();
+        effects = this.effects("turnChange");
+      }
+      await this.persistAndBroadcastGameState(game, undefined, effects);
+    });
   }
 
   async webSocketClose(
     ws: WebSocket,
     code: number,
     _reason: string,
-    _wasClean: boolean
+    _wasClean: boolean,
   ) {
-    const attachment = ws.deserializeAttachment();
-    const playerId = attachment?.playerId;
-
     try {
       ws.close(code, "Bye.");
     } catch {
-      // Already closed
+      /* Already closed */
     }
-
-    if (!playerId) return;
-
-    // Grace period: wait before removing the player to allow reconnection
-    this.disconnectTimers.set(
-      playerId,
-      setTimeout(async () => {
-        this.disconnectTimers.delete(playerId);
-
-        // Check if the player reconnected on a different socket
-        const websockets = this.ctx.getWebSockets();
-        const reconnected = websockets.some(
-          (s) => s.deserializeAttachment()?.playerId === playerId
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const playerId = ws.deserializeAttachment()?.playerId;
+      if (!playerId) return;
+      const stillConnected = this.ctx
+        .getWebSockets()
+        .some(
+          (s) =>
+            s !== ws &&
+            s.readyState === 1 &&
+            s.deserializeAttachment()?.playerId === playerId,
         );
-        if (reconnected) return;
+      if (stillConnected) return;
+      this.disconnected[playerId] = Date.now() + DISCONNECT_GRACE_MS;
+      await this.persistAndBroadcastGameState(await this.getGameInstance());
+    });
+  }
 
-        const game = await this.getGameInstance();
-        game.removePlayer(playerId);
-        await this.persistAndBroadcastGameState(game);
-        console.info(
-          `Player ${playerId} removed after disconnect grace period`
-        );
-      }, DISCONNECT_GRACE_MS)
-    );
+  async webSocketError(ws: WebSocket) {
+    await this.webSocketClose(ws, 1011, "Connection error", false);
+  }
+
+  private effects(...types: SharedEffect["type"][]): SharedEffect[] {
+    const playAt = Date.now() + 300;
+    return types.map((type, index) => ({
+      id: nanoid(),
+      type,
+      playAt: playAt + index * 450,
+    }));
+  }
+
+  private async scheduleAlarm(game: Codenames) {
+    const deadlines = Object.values(this.disconnected);
+    const turn = game.getGameState().turn;
+    if (turn && !game.getGameResult()) deadlines.push(+turn.until);
+    if (deadlines.length)
+      await this.ctx.storage.setAlarm(
+        Math.max(Date.now() + 1, Math.min(...deadlines)),
+      );
+    else await this.ctx.storage.deleteAlarm();
   }
 
   private async persistAndBroadcastGameState(
     game: Codenames,
-    exclude?: WebSocket
+    exclude?: WebSocket,
+    effects: SharedEffect[] = [],
   ): Promise<void> {
     const gameState = game.getGameState();
-    await this.ctx.storage.put(GAME_STATE, JSON.stringify(gameState));
+    await this.ctx.storage.put({
+      [GAME_STATE]: JSON.stringify(gameState),
+      [ROOM_SETTINGS]: {
+        wordPack: this.selectedWordPack,
+        teamCount: this.selectedTeamCount,
+        customWords: this.customWords,
+      },
+      [DISCONNECTED]: this.disconnected,
+    });
+    await this.scheduleAlarm(game);
 
     const websockets = this.ctx.getWebSockets();
     const promises = websockets
-      .filter((websocket) => websocket !== exclude)
+      .filter(
+        (websocket) => websocket !== exclude && websocket.readyState === 1,
+      )
       .map((ws) => {
         const attachment = ws.deserializeAttachment();
         const playerId = attachment?.playerId;
@@ -264,11 +343,14 @@ export class CodenamesGame extends DurableObject {
           playerId,
           gameCanStart: game.isReadyToStartGame(),
           remainingWordsByTeam: Array.from(
-            game.getRemainingWordsByTeam().values()
+            game.getRemainingWordsByTeam().values(),
           ),
           gameResult: game.getGameResult(),
           wordPack: this.selectedWordPack,
           teamCount: this.selectedTeamCount,
+          customWords: this.customWords,
+          serverTime: Date.now(),
+          effects,
         };
 
         const gameStateUpdatedEvent = {
@@ -299,6 +381,28 @@ export class CodenamesGame extends DurableObject {
     console.info(`${player.name}: ${JSON.stringify(command)}`);
 
     switch (command.type) {
+      case "setProfile": {
+        game.addOrUpdatePlayer({
+          ...player,
+          name: command.name,
+          animal: command.animal,
+        });
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+      case "shuffleTeams": {
+        game.shuffleTeams();
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
+      case "setCustomWords": {
+        if (game.getGameState().turn)
+          throw new GameError("Word lists can only change in the lobby");
+        this.customWords = command.words;
+        this.selectedWordPack = "custom";
+        await this.persistAndBroadcastGameState(game);
+        break;
+      }
       case "setName": {
         game.addOrUpdatePlayer({
           ...player,
@@ -313,13 +417,15 @@ export class CodenamesGame extends DurableObject {
         game.addOrUpdatePlayer({
           ...player,
           id: playerId,
-          name: randomAnimalEmoji(),
+          name: randomAnimalEmoji().split(" ").slice(1).join(" "),
         });
         await this.persistAndBroadcastGameState(game);
         break;
       }
 
       case "promoteToSpymaster": {
+        if (game.getGameState().turn && !game.getGameResult())
+          throw new GameError("Roles can only change before or after a game");
         const newSpymaster = game
           .getGameState()
           .players.find((p) => p.id === command.playerId);
@@ -334,11 +440,24 @@ export class CodenamesGame extends DurableObject {
       case "startGame": {
         if (game.isReadyToStartGame()) {
           const wordPacks: Record<string, string[]> = {
-            classic, movies, food, geography, science, tech, agile, design, startup, internet,
+            classic,
+            movies,
+            food,
+            geography,
+            science,
+            tech,
+            agile,
+            design,
+            startup,
+            internet,
           };
-          const pack = wordPacks[this.selectedWordPack] ?? classic;
+          const pack =
+            this.selectedWordPack === "custom"
+              ? this.customWords
+              : (wordPacks[this.selectedWordPack] ?? classic);
+          if (pack.length < 25)
+            throw new GameError("Add at least 25 custom words");
           game.setWords(pack);
-          game.setTeamCount(this.selectedTeamCount);
           game.startGame();
           await this.persistAndBroadcastGameState(game);
         }
@@ -365,7 +484,24 @@ export class CodenamesGame extends DurableObject {
           throw new GameError("Spymaster cannot reveal words");
         }
         game.revealWord(command.word);
-        await this.persistAndBroadcastGameState(game);
+        const card = game
+          .getGameState()
+          .board.find((c) => c.word === command.word)!;
+        const result = game.getGameResult();
+        const cue = card.isAssassin
+          ? "assassinReveal"
+          : card.team === card.revealed?.byTeam
+            ? "correctGuess"
+            : "wrongGuess";
+        await this.persistAndBroadcastGameState(
+          game,
+          undefined,
+          this.effects(
+            cue,
+            ...(result?.winningTeam !== undefined ? ["gameWin" as const] : []),
+          ),
+        );
+
         break;
       }
 
@@ -374,7 +510,11 @@ export class CodenamesGame extends DurableObject {
           throw new GameError("Not player's turn");
         }
         game.advanceTurn();
-        await this.persistAndBroadcastGameState(game);
+        await this.persistAndBroadcastGameState(
+          game,
+          undefined,
+          this.effects("turnChange"),
+        );
         break;
       }
 
@@ -386,12 +526,17 @@ export class CodenamesGame extends DurableObject {
       }
 
       case "setWordPack": {
+        if (game.getGameState().turn)
+          throw new GameError("Word packs can only change in the lobby");
+        if (command.wordPack === "custom" && this.customWords.length < 25)
+          throw new GameError("Save a custom list first");
         this.selectedWordPack = command.wordPack;
         await this.persistAndBroadcastGameState(game);
         break;
       }
 
       case "setTeamCount": {
+        game.setTeamCount(command.teamCount);
         this.selectedTeamCount = command.teamCount;
         await this.persistAndBroadcastGameState(game);
         break;

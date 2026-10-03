@@ -38,7 +38,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         initialGameState,
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.joinGame({ id: "player-1", name: "Alice" });
@@ -59,7 +59,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         initialGameState,
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
       game.addOrUpdatePlayer({
         id: "player-1",
@@ -94,7 +94,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.addOrUpdatePlayer({
@@ -111,7 +111,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.removePlayer("player-3");
@@ -124,13 +124,13 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.removePlayer("player-1");
 
       const hasRedSpymaster = updatedGameState.players.some(
-        (player) => player.team === 0 && player.role === "spymaster"
+        (player) => player.team === 0 && player.role === "spymaster",
       );
       expect(hasRedSpymaster).toBeTruthy();
     });
@@ -139,7 +139,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.removePlayer("player-1");
@@ -156,7 +156,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.addOrUpdatePlayer({
@@ -184,7 +184,7 @@ describe("game state updates", () => {
           hintHistory: [],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.startGame();
@@ -193,10 +193,15 @@ describe("game state updates", () => {
       expect(updatedGameState.board).toHaveLength(25);
       expect(updatedGameState.hintHistory).toHaveLength(0);
       expect(updatedGameState.turn).toEqual({
-        team: 0,
+        team: expect.any(Number),
         until: expect.any(Date),
         hint: undefined,
       });
+      expect(
+        updatedGameState.board.filter(
+          (card) => card.team === updatedGameState.turn?.team,
+        ),
+      ).toHaveLength(9);
       expect(onScheduleTurnCallback).toHaveBeenCalled();
     });
 
@@ -211,7 +216,7 @@ describe("game state updates", () => {
           ],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.startGame();
@@ -233,13 +238,13 @@ describe("game state updates", () => {
           ],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       expect(() => game.startGame()).toThrowError(
         new GameError(
-          "Each team needs at least one spymaster and one operative"
-        )
+          "Each team needs at least one spymaster and one operative",
+        ),
       );
     });
 
@@ -247,7 +252,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState(),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.advanceTurn();
@@ -296,7 +301,7 @@ describe("game state updates", () => {
         {
           ...defaultParameters,
           teamCount: 3,
-        }
+        },
       );
 
       const updatedGameState = game.advanceTurn();
@@ -318,7 +323,7 @@ describe("game state updates", () => {
           },
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const updatedGameState = game.giveHint({ hint: "juicy", count: 1 });
@@ -350,7 +355,7 @@ describe("game state updates", () => {
           ],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.revealWord("apple");
@@ -378,11 +383,11 @@ describe("game state updates", () => {
           },
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       expect(() => game.revealWord("apple")).toThrowError(
-        new GameError("Cannot reveal words without a hint")
+        new GameError("Cannot reveal words without a hint"),
       );
     });
 
@@ -399,12 +404,12 @@ describe("game state updates", () => {
           },
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.revealWord("apple");
       expect(() => game.advanceTurn()).toThrowError(
-        new GameError("Game is already over")
+        new GameError("Game is already over"),
       );
 
       const gameResult = game.getGameResult();
@@ -432,11 +437,11 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       expect(() => game.revealWord("apple")).toThrowError(
-        new GameError("Word already revealed")
+        new GameError("Word already revealed"),
       );
     });
 
@@ -463,14 +468,14 @@ describe("game state updates", () => {
           },
         }),
         [],
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const gameResult = game.getGameResult();
 
       expect(gameResult).toEqual({
         winningTeam: undefined,
-        losingTeam: 1,
+        losingTeam: 0,
       });
     });
 
@@ -493,7 +498,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "fruit", count: 2, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       // Reveal opponent's word — should auto-advance to team 1
@@ -520,7 +525,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "fruit", count: 2, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       // Reveal own team's word — turn should NOT advance
@@ -546,7 +551,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "explosive", count: 1, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.revealWord("bomb");
@@ -577,7 +582,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "vehicle", count: 1, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       // Reveal neutral word — should auto-advance
@@ -590,11 +595,11 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState({ turn: undefined }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       expect(() => game.giveHint({ hint: "test", count: 1 })).toThrowError(
-        new GameError("Game has not started yet")
+        new GameError("Game has not started yet"),
       );
     });
 
@@ -611,7 +616,7 @@ describe("game state updates", () => {
           ],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const remaining = game.getRemainingWordsByTeam();
@@ -635,7 +640,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const state = game.endGame();
@@ -653,7 +658,7 @@ describe("game state updates", () => {
           turn: { team: 0, until: new Date(), hint: undefined },
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const state = game.giveHint({ hint: "fruit", count: 2 });
@@ -667,7 +672,7 @@ describe("game state updates", () => {
           turn: { team: 0, until: new Date(), hint: undefined },
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       const state = game.giveHint({ hint: "fruit", count: 0 });
@@ -696,7 +701,7 @@ describe("game state updates", () => {
           hintHistory: [{ hint: "fruit", count: 1, team: 0, inTurn: 0 }],
         }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       // First correct guess: guessesRemaining 2 -> 1
@@ -713,7 +718,7 @@ describe("game state updates", () => {
       const game = new Codenames(
         buildExampleGameState({ turn: undefined, board: [], hintHistory: [] }),
         classicWordList,
-        onScheduleTurnCallback
+        onScheduleTurnCallback,
       );
 
       game.setWords(customWords);
@@ -742,7 +747,7 @@ describe("game state updates", () => {
         }),
         classicWordList,
         onScheduleTurnCallback,
-        { ...defaultParameters, teamCount: 2 }
+        { ...defaultParameters, teamCount: 2 },
       );
 
       game.setTeamCount(3);
@@ -756,5 +761,151 @@ describe("game state updates", () => {
       expect(team1.length).toBeGreaterThan(0);
       expect(team2.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("gameplay regression safeguards", () => {
+  const createGame = (state: Partial<GameState> = {}) =>
+    new Codenames(buildExampleGameState(state), classicWordList, vi.fn());
+
+  it("keeps a returning player's team and role without duplicate roster entries", () => {
+    const game = createGame();
+    game.joinGame({ id: "player-1", name: "Returning Alice" });
+    expect(game.getGameState().players).toHaveLength(4);
+    expect(
+      game.getGameState().players.find((p) => p.id === "player-1"),
+    ).toEqual({
+      id: "player-1",
+      name: "Returning Alice",
+      team: 0,
+      role: "spymaster",
+    });
+    expect(
+      game.getGameState().players.find((p) => p.id === "player-2")?.role,
+    ).toBe("operative");
+  });
+
+  it("does not clear a live game when the sole remaining player updates their profile", () => {
+    const game = createGame({
+      players: [{ id: "solo", name: "A", team: 0, role: "spymaster" }],
+    });
+    game.addOrUpdatePlayer({
+      id: "solo",
+      name: "B",
+      team: 0,
+      role: "spymaster",
+    });
+    expect(game.getGameState().board).toHaveLength(4);
+    expect(game.getGameState().turn).toBeDefined();
+  });
+
+  it("rejects a second clue without resetting the remaining guesses", () => {
+    const game = createGame();
+    game.giveHint({ hint: "fruit", count: 1 });
+    expect(() => game.giveHint({ hint: "vehicle", count: 3 })).toThrow(
+      "already been given",
+    );
+    expect(game.getGameState().turn?.guessesRemaining).toBe(2);
+    expect(game.getGameState().hintHistory).toHaveLength(1);
+  });
+
+  it("rejects hints and additional reveals after an assassin ends the game", () => {
+    const game = createGame();
+    game.giveHint({ hint: "explosive", count: 1 });
+    game.revealWord("bomb");
+    expect(() => game.giveHint({ hint: "fruit", count: 1 })).toThrow(
+      "already over",
+    );
+    expect(() => game.revealWord("apple")).toThrow("already over");
+    expect(
+      game.getGameState().board.find((c) => c.word === "apple")?.revealed,
+    ).toBeUndefined();
+  });
+
+  it("rejects empty or invalid clues", () => {
+    const game = createGame();
+    for (const hint of [
+      { hint: " ", count: 1 },
+      { hint: "fruit", count: -1 },
+      { hint: "fruit", count: 1.5 },
+    ]) {
+      expect(() => game.giveHint(hint)).toThrow("valid count");
+    }
+    expect(game.getGameState().hintHistory).toHaveLength(0);
+  });
+
+  it("rebalances the lobby across four teams with one spymaster per team", () => {
+    const players = Array.from({ length: 8 }, (_, index) => ({
+      id: `p${index}`,
+      name: `Player ${index}`,
+      team: index % 2,
+      role: "operative" as const,
+    }));
+    const game = createGame({ players, turn: undefined, board: [] });
+    game.setTeamCount(4);
+    expect(game.isReadyToStartGame()).toBe(true);
+    for (let team = 0; team < 4; team++) {
+      const teammates = game
+        .getGameState()
+        .players.filter((p) => p.team === team);
+      expect(teammates).toHaveLength(2);
+      expect(teammates.filter((p) => p.role === "spymaster")).toHaveLength(1);
+    }
+    const state = game.startGame();
+    expect(state.board).toHaveLength(25);
+    expect(state.board.filter((c) => c.team === state.turn?.team)).toHaveLength(
+      6,
+    );
+  });
+
+  it("randomly shuffles players into balanced teams and preserves profiles", () => {
+    const game = createGame({ turn: undefined, board: [] });
+    const originalIds = game
+      .getGameState()
+      .players.map((p) => p.id)
+      .sort();
+    game.shuffleTeams();
+    expect(
+      game
+        .getGameState()
+        .players.map((p) => p.id)
+        .sort(),
+    ).toEqual(originalIds);
+    for (let team = 0; team < 2; team++) {
+      const teammates = game
+        .getGameState()
+        .players.filter((p) => p.team === team);
+      expect(teammates).toHaveLength(2);
+      expect(teammates.filter((p) => p.role === "spymaster")).toHaveLength(1);
+    }
+  });
+
+  it.each([0, 1])(
+    "can randomly choose team %s to start and gives that team nine words",
+    (team) => {
+      const game = createGame({ turn: undefined, board: [] });
+      const random = vi
+        .spyOn(Math, "random")
+        .mockReturnValueOnce(team === 0 ? 0.1 : 0.9);
+      try {
+        const state = game.startGame();
+        expect(state.turn?.team).toBe(team);
+        expect(state.board.filter((card) => card.team === team)).toHaveLength(
+          9,
+        );
+        expect(
+          state.board.filter((card) => card.team === 1 - team),
+        ).toHaveLength(8);
+      } finally {
+        random.mockRestore();
+      }
+    },
+  );
+
+  it("prevents team changes and restarts from interrupting an active round", () => {
+    const game = createGame();
+    expect(() => game.setTeamCount(3)).toThrow("End the game");
+    expect(() => game.shuffleTeams()).toThrow("End the game");
+    expect(() => game.startGame()).toThrow("already in progress");
   });
 });

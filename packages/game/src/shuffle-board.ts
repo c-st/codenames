@@ -1,21 +1,45 @@
 import { getRandomIndices, getRandomWords } from "words";
 import { GameParameters } from "./game";
+import { GameError } from "./error";
 import { WordCard } from "../../schema/src/game";
 
 export const shuffleBoard = (
   parameters: GameParameters,
-  words: string[]
+  words: string[],
+  startingTeam = 0,
 ): WordCard[] => {
-  const { totalWordCount, teamCount, wordsToGuessCount } = parameters;
-
-  if (words.length < totalWordCount) {
-    throw new Error(
-      `Not enough words to create a board: ${words.length} < ${totalWordCount}`
+  const { totalWordCount, teamCount } = parameters;
+  if (
+    !Number.isInteger(totalWordCount) ||
+    !Number.isInteger(teamCount) ||
+    teamCount < 2 ||
+    teamCount > 4 ||
+    !Number.isInteger(parameters.wordsToGuessCount) ||
+    parameters.wordsToGuessCount < 1 ||
+    !Number.isInteger(startingTeam) ||
+    startingTeam < 0 ||
+    startingTeam >= teamCount
+  ) {
+    throw new GameError("Invalid board parameters");
+  }
+  // Reserve an assassin, one extra starting-team word, and at least one neutral.
+  const wordsToGuessCount = Math.min(
+    parameters.wordsToGuessCount,
+    Math.floor((totalWordCount - 3) / teamCount),
+  );
+  if (wordsToGuessCount < 1)
+    throw new GameError("Board is too small for the selected teams");
+  const uniqueWords = Array.from(
+    new Set(words.map((word) => word.trim()).filter(Boolean)),
+  );
+  if (uniqueWords.length < totalWordCount) {
+    throw new GameError(
+      `Not enough words to create a board: ${uniqueWords.length} < ${totalWordCount}`,
     );
   }
 
-  const shuffledWords = getRandomWords(words, totalWordCount);
-  const totalRandomIndices = teamCount * wordsToGuessCount + 1;
+  const shuffledWords = getRandomWords(uniqueWords, totalWordCount);
+  const totalRandomIndices = teamCount * wordsToGuessCount + 2;
   const randomIndices = getRandomIndices(totalRandomIndices, totalWordCount);
 
   // Assign assassin
@@ -29,7 +53,11 @@ export const shuffleBoard = (
 
   // Assign to teams
   for (let team = 0; team < teamCount; team++) {
-    for (let count = 0; count < wordsToGuessCount; count++) {
+    for (
+      let count = 0;
+      count < wordsToGuessCount + (team === startingTeam ? 1 : 0);
+      count++
+    ) {
       const wordIndex = randomIndices.pop();
       if (wordIndex !== undefined) {
         board[wordIndex].team = team;

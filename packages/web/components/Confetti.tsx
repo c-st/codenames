@@ -1,11 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "motion/react";
 
 const EMOJI_LIST = [
-  "🎉", "🎊", "✨", "⭐", "🌟", "💫", "🥳", "🏆", "👏", "🙌",
-  "🦊", "🦉", "🐱", "🐶", "🐼", "🐰", "🦝", "🐻",
-  "💜", "💚", "🎯", "🎪", "🎭", "🎨",
+  "🎉",
+  "🎊",
+  "✨",
+  "⭐",
+  "🌟",
+  "💫",
+  "🥳",
+  "🏆",
+  "👏",
+  "🙌",
+  "🦊",
+  "🦉",
+  "🐱",
+  "🐶",
+  "🐼",
+  "🐰",
+  "🦝",
+  "🐻",
+  "💜",
+  "💚",
+  "🎯",
+  "🎪",
+  "🎭",
+  "🎨",
 ];
 
 type Particle = {
@@ -19,10 +41,11 @@ type Particle = {
 };
 
 export default function Confetti({ active }: { active: boolean }) {
+  const reduceMotion = useReducedMotion();
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || reduceMotion) {
       setParticles([]);
       return;
     }
@@ -52,12 +75,15 @@ export default function Confetti({ active }: { active: boolean }) {
 
     const timer = setTimeout(() => setParticles([]), 7000);
     return () => clearTimeout(timer);
-  }, [active]);
+  }, [active, reduceMotion]);
 
-  if (particles.length === 0) return null;
+  if (!active || reduceMotion || particles.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
+    >
       {particles.map((p) => (
         <div
           key={p.id}

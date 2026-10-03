@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "wrangler pages deploy ./dist --project-name=codenames-web --commit-dirty=true"
+    "deploy": "wrangler pages deploy ./dist --project-name=codenames-web --commit-dirty=true",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "motion": "12.0.0-alpha.2",
@@ -17,6 +19,7 @@
     "schema": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

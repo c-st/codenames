@@ -2,7 +2,9 @@
   "name": "schema",
   "type": "module",
   "main": "src/index.ts",
-  "scripts": {},
+  "scripts": {
+    "test": "vitest --run"
+  },
   "dependencies": {
     "game": "workspace:*",
     "zod": "^3.23.8"

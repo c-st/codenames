@@ -4,3 +4,8 @@ node_modules
 packages/web/dist
 docs/superpowers/
 .superpowers/
+
+packages/web/.next-e2e
+packages/web/test-results
+packages/web/playwright-report
+*.tsbuildinfo

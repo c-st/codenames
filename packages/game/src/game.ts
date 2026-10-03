@@ -26,10 +26,10 @@ export const initialGameState: GameState = {
 
 export class Codenames {
   constructor(
-    private gameState: GameState = initialGameState,
+    private gameState: GameState = { board: [], players: [], hintHistory: [] },
     private words: string[],
     private onScheduleCallAdvanceTurn: (date: Date) => void,
-    private parameters: GameParameters = defaultParameters
+    private parameters: GameParameters = defaultParameters,
   ) {}
 
   public setWords(words: string[]): void {
@@ -37,27 +37,58 @@ export class Codenames {
   }
 
   public setTeamCount(teamCount: number): void {
+    if (!Number.isInteger(teamCount) || teamCount < 2 || teamCount > 4) {
+      throw new GameError("Team count must be between 2 and 4");
+    }
+    if (this.gameState.turn) {
+      throw new GameError("End the game before changing teams");
+    }
+    if (teamCount === this.parameters.teamCount) return;
     this.parameters = { ...this.parameters, teamCount };
+    this.shuffleTeams();
+  }
+
+  public shuffleTeams(): GameState {
+    if (this.gameState.turn) {
+      throw new GameError("End the game before shuffling teams");
+    }
+    const players = [...this.gameState.players];
+    for (let i = players.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [players[i], players[j]] = [players[j], players[i]];
+    }
+    this.gameState.players = players.map((player, index) => ({
+      ...player,
+      team: index % this.parameters.teamCount,
+      role: index < this.parameters.teamCount ? "spymaster" : "operative",
+    }));
+    return this.gameState;
   }
 
   public joinGame(player: Pick<Player, "id" | "name">): GameState {
-    // player gets randomly assigned to a team and a spymaster role
+    const existingPlayer = this.gameState.players.find(
+      (p) => p.id === player.id,
+    );
+    if (existingPlayer) {
+      return this.addOrUpdatePlayer({ ...existingPlayer, ...player });
+    }
+    // Assign new arrivals to the smallest team.
     const { teamCount } = this.parameters;
     const teams = Array.from({ length: teamCount }, (_, i) => i);
 
     // assign player to the team with the fewest players
     const team = teams.reduce((min, team) => {
       const teamPlayerCount = this.gameState.players.filter(
-        (player) => player.team === team
+        (player) => player.team === team,
       ).length;
       const minPlayerCount = this.gameState.players.filter(
-        (player) => player.team === min
+        (player) => player.team === min,
       ).length;
       return teamPlayerCount < minPlayerCount ? team : min;
     }, 0);
 
     const teamHasSpymaster = this.gameState.players.some(
-      (player) => player.team === team && player.role === "spymaster"
+      (player) => player.team === team && player.role === "spymaster",
     );
 
     return this.addOrUpdatePlayer({
@@ -68,19 +99,39 @@ export class Codenames {
   }
 
   public addOrUpdatePlayer(player: Player): GameState {
-    if (this.gameState.players.some((p) => p.id === player.id)) {
-      this.removePlayer(player.id);
+    if (
+      !Number.isInteger(player.team) ||
+      player.team < 0 ||
+      player.team >= this.parameters.teamCount
+    ) {
+      throw new GameError("Player team is invalid");
+    }
+    const previousPlayer = this.gameState.players.find(
+      (p) => p.id === player.id,
+    );
+    // Updating a profile must not run leave-game side effects.
+    const remainingPlayers = this.gameState.players.filter(
+      (p) => p.id !== player.id,
+    );
+    if (
+      previousPlayer?.role === "spymaster" &&
+      (player.team !== previousPlayer.team || player.role !== "spymaster")
+    ) {
+      const replacement = remainingPlayers.find(
+        (p) => p.team === previousPlayer.team,
+      );
+      if (replacement) replacement.role = "spymaster";
     }
     if (player.role === "spymaster") {
-      const spymaster = this.gameState.players.find(
-        (p) => p.team === player.team && p.role === "spymaster"
-      );
-      if (spymaster) {
-        spymaster.role = "operative";
-        this.updatePlayer(spymaster);
+      for (const teammate of remainingPlayers) {
+        if (teammate.team === player.team && teammate.role === "spymaster") {
+          teammate.role = "operative";
+        }
       }
     }
-    this.gameState.players.push(player);
+    this.gameState.players = previousPlayer
+      ? this.gameState.players.map((p) => (p.id === player.id ? player : p))
+      : [...remainingPlayers, player];
     return this.gameState;
   }
 
@@ -94,7 +145,8 @@ export class Codenames {
     if (playerToRemove.role === "spymaster") {
       const newSpymaster = this.gameState.players.find(
         (player) =>
-          player.team === playerToRemove.team && player.id !== playerToRemove.id
+          player.team === playerToRemove.team &&
+          player.id !== playerToRemove.id,
       );
       if (newSpymaster) {
         newSpymaster.role = "spymaster";
@@ -114,16 +166,21 @@ export class Codenames {
   public startGame(): GameState {
     if (!this.isReadyToStartGame()) {
       throw new GameError(
-        "Each team needs at least one spymaster and one operative"
+        "Each team needs at least one spymaster and one operative",
       );
     }
+    if (this.gameState.turn && !this.getGameResult()) {
+      throw new GameError("Game is already in progress");
+    }
+    const startingTeam = Math.floor(Math.random() * this.parameters.teamCount);
+    const board = shuffleBoard(this.parameters, this.words, startingTeam);
     this.gameState.hintHistory = [];
-    this.gameState.board = shuffleBoard(this.parameters, this.words);
+    this.gameState.board = board;
     this.gameState.turn = {
-      team: 0, // first team starts
+      team: startingTeam,
       until: advanceDateBySeconds(
         new Date(),
-        this.parameters.turnDurationSeconds
+        this.parameters.turnDurationSeconds,
       ),
     };
     this.onScheduleCallAdvanceTurn(this.gameState.turn.until);
@@ -147,7 +204,7 @@ export class Codenames {
       team: nextTeam,
       until: advanceDateBySeconds(
         new Date(),
-        this.parameters.turnDurationSeconds
+        this.parameters.turnDurationSeconds,
       ),
     };
 
@@ -160,6 +217,21 @@ export class Codenames {
     if (!this.gameState.turn) {
       throw new GameError("Game has not started yet");
     }
+    if (this.getGameResult()) {
+      throw new GameError("Game is already over");
+    }
+    if (this.gameState.turn.hint) {
+      throw new GameError("A hint has already been given this turn");
+    }
+    if (
+      !hint.hint.trim() ||
+      !Number.isInteger(hint.count) ||
+      hint.count < 0 ||
+      hint.count > this.parameters.totalWordCount
+    ) {
+      throw new GameError("Hint must contain text and a valid count");
+    }
+    hint = { ...hint, hint: hint.hint.trim() };
     this.gameState.turn = {
       ...this.gameState.turn,
       hint,
@@ -188,6 +260,9 @@ export class Codenames {
       throw new GameError("Word already revealed");
     }
 
+    if (this.getGameResult()) {
+      throw new GameError("Game is already over");
+    }
     if (!this.gameState.turn.hint) {
       throw new GameError("Cannot reveal words without a hint");
     }
@@ -232,8 +307,8 @@ export class Codenames {
         return teams;
       },
       new Map<number, number>(
-        Array.from({ length: teamCount }, (_, i) => [i, 0])
-      )
+        Array.from({ length: teamCount }, (_, i) => [i, 0]),
+      ),
     );
     return remainingWordsByTeam;
   }
@@ -246,13 +321,10 @@ export class Codenames {
       return undefined;
     }
 
-    const isAssassinRevealed = this.gameState.board.some(
-      (card) => card.isAssassin && card.revealed !== undefined
+    const assassin = this.gameState.board.find(
+      (card) => card.isAssassin && card.revealed !== undefined,
     );
-
-    const losingTeam = isAssassinRevealed
-      ? this.gameState.turn?.team
-      : undefined;
+    const losingTeam = assassin?.revealed?.byTeam;
 
     const remainingWordsByTeam = this.getRemainingWordsByTeam();
 
@@ -287,13 +359,13 @@ export class Codenames {
 
     const allTeamsHaveSpymaster = allTeams.every((_, team) => {
       return this.gameState.players.some(
-        (player) => player.team === team && player.role === "spymaster"
+        (player) => player.team === team && player.role === "spymaster",
       );
     });
 
     const allTeamsHaveOperative = allTeams.every((_, team) => {
       return this.gameState.players.some(
-        (player) => player.team === team && player.role === "operative"
+        (player) => player.team === team && player.role === "operative",
       );
     });
 
@@ -302,14 +374,14 @@ export class Codenames {
 
   private updatePlayer(player: Player): GameState {
     this.gameState.players = this.gameState.players.map((p) =>
-      p.id === player.id ? player : p
+      p.id === player.id ? player : p,
     );
     return this.gameState;
   }
 
   private updateCard(card: WordCard): GameState {
     this.gameState.board = this.gameState.board.map((c) =>
-      c.word === card.word ? card : c
+      c.word === card.word ? card : c,
     );
     return this.gameState;
   }
