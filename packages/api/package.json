@@ -4,7 +4,8 @@
   "scripts": {
     "test": "vitest --run",
     "dev": "wrangler dev --env=local",
-    "deploy": "wrangler deploy --minify"
+    "deploy": "wrangler deploy --minify",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "game": "workspace:*",
@@ -14,8 +15,9 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241205.0",
-    "vitest": "^2.1.9",
-    "wrangler": "^3.93.0"
+    "@cloudflare/workers-types": "^5.20261001.1",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.147.0",
+    "typescript": "^5.7.2"
   }
 }

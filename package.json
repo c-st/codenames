@@ -4,7 +4,8 @@
   "scripts": {
     "test": "pnpm -r test",
     "upgrade-dependencies": "npx npm-check-updates -u --deep && pnpm install",
-    "test:integration": "pnpm --filter api test && pnpm --filter web test:e2e"
+    "test:integration": "pnpm --filter api test && pnpm --filter web test:e2e",
+    "typecheck": "pnpm --filter api --filter web typecheck"
   },
   "license": "GPL-3.0-only"
 }
