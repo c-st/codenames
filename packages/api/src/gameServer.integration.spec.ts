@@ -542,6 +542,35 @@ describe("Durable Object room protocol", () => {
 });
 
 describe("idle room expiry", () => {
+  it("maintenance enrolls legacy rooms without players or extending deadlines, and skips live/empty rooms", async () => {
+    const legacy = new FakeContext();
+    legacy.storage.values.set("gameState", JSON.stringify(playingState()));
+    const { game } = await create(legacy);
+    const originalPlayers = storedState(legacy).players;
+    const deadline = Date.now() + RETENTION_MS;
+    expect(await game.enrollRoomExpiry()).toEqual({
+      status: "idle",
+      expiresAt: deadline,
+    });
+    vi.advanceTimersByTime(1_000);
+    expect(await game.enrollRoomExpiry()).toEqual({
+      status: "idle",
+      expiresAt: deadline,
+    });
+    expect(storedState(legacy).players).toEqual(originalPlayers);
+    const socket = await connect(game, legacy, id(1));
+    expect(await game.enrollRoomExpiry()).toEqual({ status: "active" });
+    expect(legacy.storage.values.get("roomExpiresAt")).toBeNull();
+    expect(socket.latest().players).toHaveLength(originalPlayers.length);
+    await game.webSocketClose(socket as unknown as WebSocket, 1000, "", true);
+    vi.advanceTimersByTime(RETENTION_MS);
+    expect(await game.enrollRoomExpiry()).toEqual({ status: "empty" });
+    expect(legacy.storage.values.size).toBe(0);
+    expect(legacy.storage.alarm).toBeUndefined();
+    const empty = await create();
+    expect(await empty.game.enrollRoomExpiry()).toEqual({ status: "empty" });
+    expect(empty.context.storage.values.size).toBe(0);
+  });
   const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
   it("deletes all room data and the alarm two weeks after the last socket disconnects", async () => {

@@ -4,6 +4,7 @@
   "scripts": {
     "test": "vitest --run",
     "dev": "wrangler dev --env=local",
+    "sweep:rooms": "node scripts/sweep-rooms.mjs",
     "deploy": "wrangler deploy --minify"
   },
   "dependencies": {

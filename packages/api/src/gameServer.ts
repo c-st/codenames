@@ -165,6 +165,24 @@ export class CodenamesGame extends DurableObject {
     return this.ctx.blockConcurrencyWhile(() => this.handleFetch(request));
   }
 
+  // Internal RPC for a one-time namespace sweep. Never creates a player or
+  // extends an existing deadline, and only already-expired rooms are removed.
+  async enrollRoomExpiry(): Promise<{
+    status: "empty" | "active" | "idle";
+    expiresAt?: number;
+  }> {
+    return this.ctx.blockConcurrencyWhile(async () => {
+      await this.deleteExpiredRoom();
+      if (!(await this.ctx.storage.get<string>(GAME_STATE)))
+        return { status: "empty" as const };
+      const game = await this.getGameInstance();
+      await this.persistAndBroadcastGameState(game);
+      return this.hasConnectedPlayers()
+        ? { status: "active" as const }
+        : { status: "idle" as const, expiresAt: this.roomExpiresAt };
+    });
+  }
+
   private async handleFetch(request: Request): Promise<Response> {
     await this.deleteExpiredRoom();
     const url = new URL(request.url);
