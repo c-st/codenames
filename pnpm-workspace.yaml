@@ -4,3 +4,8 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+# Match CI (pnpm 11+ default): never install packages published in the last 24h.
+minimumReleaseAge: 1440
+overrides:
+  # wrangler's optional peer otherwise resolves to the newest (too fresh) release.
+  "@cloudflare/workers-types": 5.20261001.1
