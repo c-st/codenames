@@ -89,7 +89,7 @@ export default function GameControls({
         )}
         {gameIsRunning && gameResult && gameCanBeStarted && (
           <MotionWrap key="new-game">
-            <Button title="Start new game" onClick={startGame} />
+            <Button title="🔁 Rematch" onClick={startGame} />
           </MotionWrap>
         )}
         {gameIsRunning && gameResult && gameCanBeStarted && (

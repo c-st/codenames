@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import useCodenames from "@/components/hooks/useCodenames";
@@ -14,6 +14,11 @@ import Tutorial from "@/components/Tutorial/Tutorial";
 import useSoundEffects from "@/components/hooks/useSoundEffects";
 import Confetti from "@/components/Confetti";
 import { MotionConfig } from "motion/react";
+import TurnBanner from "@/components/Fun/TurnBanner";
+import ScreenFlash from "@/components/Fun/ScreenFlash";
+import { FloatingReactions, ReactionBar } from "@/components/Fun/Reactions";
+import useVisualCues from "@/components/Fun/useVisualCues";
+import { getTeamColor } from "@/components/Game/Board/getTeamColor";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -48,7 +53,14 @@ export default function Home() {
     setWordPack,
     setTeamCount,
     randomizeName,
-    gameWon,
+    celebration,
+    marks,
+    markCard,
+    typingPlayerIds,
+    setTyping,
+    turnSeconds,
+    reactions,
+    react,
     customWords,
     setCustomWords,
     shuffleTeams,
@@ -66,11 +78,25 @@ export default function Home() {
     for (const effect of effects) {
       const delay = effect.playAt - (Date.now() + serverClockOffset);
       // Joining/reconnecting never replays old cues. Muting never queues audio.
-      if (delay >= -1000) playSharedEffect(effect.type, delay / 1000);
+      if (delay >= -1000) playSharedEffect(effect, delay / 1000);
     }
     // Only new authoritative events schedule playback; clock/mute changes do not replay them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effects]);
+
+  const { banner, flashId, shakeScope } = useVisualCues(
+    effects,
+    serverClockOffset,
+  );
+
+  // A little pop whenever someone's reaction floats in.
+  const { pop } = sound;
+  const lastReactionRef = useRef<string>(undefined);
+  useEffect(() => {
+    const latest = reactions.at(-1)?.id;
+    if (latest && latest !== lastReactionRef.current) pop();
+    lastReactionRef.current = latest;
+  }, [reactions, pop]);
 
   // Show tutorial if requested
   if (showTutorial) {
@@ -116,7 +142,10 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]">
+      <div
+        ref={shakeScope}
+        className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]"
+      >
         <header className="grid w-full max-w-4xl grid-cols-[1fr_auto] items-center gap-2 md:flex md:justify-between">
           <Logo />
           <button
@@ -170,16 +199,21 @@ export default function Home() {
               hintHistory={hintHistory}
               remainingWordsByTeam={remainingWordsByTeam}
               gameResult={gameResult}
-              gameCanBeStarted={gameCanBeStarted}
-              startGame={startGame}
               giveHint={giveHint}
               revealWord={revealWord}
-              endTurn={endTurn}
-              endGame={endGame}
+              marks={marks}
+              markCard={markCard}
+              typingPlayerIds={typingPlayerIds}
+              setTyping={setTyping}
+              turnSeconds={turnSeconds}
+              sound={sound}
             />
           )}
         </main>
-        <footer>
+        <footer className="flex flex-col items-center gap-4">
+          <fieldset disabled={!isConnected}>
+            <ReactionBar onReact={react} />
+          </fieldset>
           <fieldset disabled={!isConnected}>
             <GameControls
               gameResult={gameResult}
@@ -195,7 +229,13 @@ export default function Home() {
             />
           </fieldset>
         </footer>
-        <Confetti active={gameWon} />
+        <Confetti
+          celebration={celebration}
+          teamColor={getTeamColor(currentPlayer.team).hex}
+        />
+        <TurnBanner banner={banner} myTeam={currentPlayer.team} />
+        <ScreenFlash flashId={flashId} />
+        <FloatingReactions reactions={reactions} players={players} />
       </div>
     </MotionConfig>
   );

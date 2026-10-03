@@ -1,19 +1,39 @@
 import { motion } from "motion/react";
 import { TextInput } from "@/components/ui/TextInput";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const TYPING_REFRESH_MS = 2000;
 
 export default function HintInput({
   giveHint,
+  onTyping,
 }: {
   giveHint: (hint: string, count: number) => void;
+  onTyping?: (typing: boolean) => void;
 }) {
   const [hint, setHint] = useState("");
   const [count, setCount] = useState("2");
+  const lastTypingSignal = useRef(0);
+
+  // Tell the room the spymaster is thinking; refreshed while typing, cleared when done.
+  const updateHint = (value: string) => {
+    setHint(value);
+    const now = Date.now();
+    if (!value.trim()) {
+      lastTypingSignal.current = 0;
+      onTyping?.(false);
+    } else if (now - lastTypingSignal.current > TYPING_REFRESH_MS) {
+      lastTypingSignal.current = now;
+      onTyping?.(true);
+    }
+  };
+  useEffect(() => () => onTyping?.(false), [onTyping]);
 
   const submitHint = () => {
     if (hint.trim() !== "") {
       const num = Math.max(0, Math.min(9, parseInt(count) || 0));
       giveHint(hint, num);
+      lastTypingSignal.current = 0;
       setHint("");
       setCount("2");
     }
@@ -24,7 +44,7 @@ export default function HintInput({
       <TextInput
         value={hint}
         placeholder="Hint word"
-        onChange={setHint}
+        onChange={updateHint}
         onSubmit={submitHint}
       />
       <input

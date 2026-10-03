@@ -6,6 +6,9 @@ type TeamColor = {
   shadow: string;
   badgeFrom: string;
   badgeTo: string;
+  /** Raw colour for particles, glows and confetti. */
+  hex: string;
+  emoji: string;
 };
 
 const teamColors: TeamColor[] = [
@@ -17,6 +20,8 @@ const teamColors: TeamColor[] = [
     shadow: "card-shadow-purple",
     badgeFrom: "from-purple-800",
     badgeTo: "to-purple-600",
+    hex: "#a855f7",
+    emoji: "🟣",
   },
   {
     name: "emerald",
@@ -26,6 +31,8 @@ const teamColors: TeamColor[] = [
     shadow: "card-shadow-emerald",
     badgeFrom: "from-emerald-800",
     badgeTo: "to-emerald-600",
+    hex: "#10b981",
+    emoji: "🟢",
   },
   {
     name: "pink",
@@ -35,6 +42,8 @@ const teamColors: TeamColor[] = [
     shadow: "card-shadow-pink",
     badgeFrom: "from-pink-800",
     badgeTo: "to-pink-600",
+    hex: "#ec4899",
+    emoji: "🩷",
   },
   {
     name: "blue",
@@ -44,6 +53,8 @@ const teamColors: TeamColor[] = [
     shadow: "card-shadow-blue",
     badgeFrom: "from-blue-800",
     badgeTo: "to-blue-600",
+    hex: "#3b82f6",
+    emoji: "🔵",
   },
 ];
 

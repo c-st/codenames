@@ -3,6 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type OscillatorType = "sine" | "square" | "triangle" | "sawtooth";
 
+const TEAM_CHIMES: [number, number][] = [
+  [523, 659],
+  [440, 554],
+  [587, 740],
+  [392, 494],
+];
+
 const useSoundEffects = () => {
   const ctxRef = useRef<AudioContext | null>(null);
 
@@ -104,26 +111,92 @@ const useSoundEffects = () => {
     playTone(1047, 0.3, "sine", 0.3, 0.3);
   }, [playTone]);
 
-  const turnChange = useCallback(() => {
-    playTone(500, 0.15, "sine", 0.1);
-    playTone(600, 0.1, "sine", 0.08, 0.08);
+  // Each team gets its own two-note chime so you can hear whose turn it is.
+  const turnChange = useCallback(
+    (team = 0) => {
+      const [low, high] = TEAM_CHIMES[team % TEAM_CHIMES.length];
+      playTone(low, 0.15, "sine", 0.12);
+      playTone(high, 0.18, "sine", 0.1, 0.09);
+    },
+    [playTone],
+  );
+
+  // A quick riffle of cards being dealt, then a bright "let's go".
+  const gameStart = useCallback(() => {
+    for (let i = 0; i < 8; i++)
+      playTone(900 - i * 40, 0.035, "triangle", 0.08, i * 0.04);
+    playTone(523, 0.12, "sine", 0.2, 0.38);
+    playTone(784, 0.25, "sine", 0.22, 0.48);
   }, [playTone]);
+
+  const perfectClue = useCallback(() => {
+    [1047, 1319, 1568, 2093].forEach((freq, i) =>
+      playTone(freq, 0.18, "sine", 0.16, i * 0.07),
+    );
+  }, [playTone]);
+
+  // Heartbeat for the last seconds of a turn: lub-dub, getting a little louder.
+  const tick = useCallback(
+    (secondsLeft: number) => {
+      const urgency = Math.max(0, 10 - secondsLeft) / 10;
+      playTone(70, 0.09, "sine", 0.25 + urgency * 0.2);
+      playTone(60, 0.11, "sine", 0.18 + urgency * 0.15, 0.13);
+    },
+    [playTone],
+  );
+
+  const timeUp = useCallback(() => {
+    playTone(220, 0.18, "square", 0.08);
+    playTone(165, 0.3, "square", 0.08, 0.16);
+  }, [playTone]);
+
+  const pop = useCallback(() => {
+    playTone(1200, 0.05, "sine", 0.08);
+  }, [playTone]);
+
+  const haptic = useCallback(
+    (pattern: number | number[]) => {
+      if (muted) return;
+      try {
+        navigator.vibrate?.(pattern);
+      } catch {
+        /* Not supported */
+      }
+    },
+    [muted],
+  );
 
   const buttonClick = useCallback(() => {
     playTone(700, 0.05, "sine", 0.1);
   }, [playTone]);
 
   const playSharedEffect = useCallback(
-    (type: SharedEffect["type"], delaySeconds: number) => {
+    (effect: SharedEffect, delaySeconds: number) => {
       const ctx = ctxRef.current;
       if (muted || !ctx || ctx.state !== "running") return;
       scheduledAtRef.current = ctx.currentTime + Math.max(0, delaySeconds);
-      ({ correctGuess, wrongGuess, assassinReveal, gameWin, turnChange })[
-        type
-      ]();
+      const cues: Record<SharedEffect["type"], () => void> = {
+        correctGuess,
+        wrongGuess,
+        assassinReveal,
+        gameWin,
+        gameStart,
+        perfectClue,
+        turnChange: () => turnChange(effect.team),
+      };
+      cues[effect.type]();
       scheduledAtRef.current = null;
     },
-    [muted, correctGuess, wrongGuess, assassinReveal, gameWin, turnChange],
+    [
+      muted,
+      correctGuess,
+      wrongGuess,
+      assassinReveal,
+      gameWin,
+      turnChange,
+      gameStart,
+      perfectClue,
+    ],
   );
 
   return {
@@ -134,6 +207,12 @@ const useSoundEffects = () => {
     assassinReveal,
     gameWin,
     turnChange,
+    gameStart,
+    perfectClue,
+    tick,
+    timeUp,
+    pop,
+    haptic,
     buttonClick,
     muted,
     toggleMute,
@@ -141,3 +220,4 @@ const useSoundEffects = () => {
 };
 
 export default useSoundEffects;
+export type SoundEffects = ReturnType<typeof useSoundEffects>;

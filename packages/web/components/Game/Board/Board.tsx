@@ -1,15 +1,20 @@
-import { useEffect, useState } from "react";
-import { GameResult, HintHistory, Player, Turn, WordCard } from "schema";
+import { useEffect, useRef, useState } from "react";
+import { CardMark, GameResult, HintHistory, Player, Turn, WordCard } from "schema";
 import {
   AnimatePresence,
   MotionConfig,
   motion,
+  TargetAndTransition,
+  useAnimate,
   useReducedMotion,
 } from "motion/react";
 import { useWarnBeforeReloading } from "@/components/hooks/useWarnBeforeReloading";
+import type { SoundEffects } from "@/components/hooks/useSoundEffects";
+import Sparkles from "@/components/Fun/Sparkles";
 import HintInput from "./HintInput";
 import { getTeamColor, getTeamName } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
+import GameRecap from "./GameRecap";
 import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function Board({
@@ -23,6 +28,12 @@ export default function Board({
   gameResult,
   giveHint,
   revealWord,
+  marks,
+  markCard,
+  typingPlayerIds,
+  setTyping,
+  turnSeconds,
+  sound,
 }: {
   isConnected: boolean;
   players: Player[];
@@ -32,23 +43,23 @@ export default function Board({
   hintHistory: HintHistory;
   remainingWordsByTeam: number[];
   gameResult?: GameResult;
-  gameCanBeStarted: boolean;
-  startGame: () => void;
   giveHint: (hint: string, count: number) => void;
   revealWord: (word: string) => void;
-  endTurn: () => void;
-  endGame: () => void;
+  marks: CardMark[];
+  markCard: (word: string) => void;
+  typingPlayerIds: string[];
+  setTyping: (typing: boolean) => void;
+  turnSeconds: number;
+  sound: SoundEffects;
 }) {
   useWarnBeforeReloading(isConnected);
 
   const { until } = turn;
 
+  // The current clue is shown big; earlier ones (all teams, newest first) become chips.
   const previousHints = hintHistory
-    .filter((e) => e.team === turn.team)
-    .reverse()
-    .slice(turn.hint ? 1 : 0)
-    .map((e) => e.hint)
-    .join(", ");
+    .slice(0, turn.hint ? -1 : undefined)
+    .reverse();
 
   if (words === undefined) {
     return null;
@@ -59,12 +70,17 @@ export default function Board({
   }
 
   const isCurrentTurn = currentPlayer.team === turn.team;
+  const thinkingSpymaster = !turn.hint
+    ? players.find((p) => p.role === "spymaster" && p.team === turn.team && p.id !== currentPlayer.id && typingPlayerIds.includes(p.id))
+    : undefined;
 
   // Build status message
   const statusMessage = (() => {
     if (gameResult) return null;
     if (!isConnected)
       return "Reconnecting — guesses will resume when connected.";
+    if (thinkingSpymaster)
+      return `${thinkingSpymaster.animal ?? "🤔"} ${thinkingSpymaster.name} is cooking up a clue`;
     if (!isCurrentTurn) return "Waiting for the other team...";
     if (currentPlayer.role === "spymaster" && !turn.hint)
       return "Your turn — give a hint!";
@@ -73,6 +89,14 @@ export default function Board({
     if (turn.hint) return "Your turn — tap a word to guess!";
     return `Waiting for your ${getSpymasterTitle()}'s hint...`;
   })();
+
+  const canGuess =
+    isConnected &&
+    !gameResult &&
+    isCurrentTurn &&
+    currentPlayer.role === "operative" &&
+    !!turn.hint &&
+    (turn.guessesRemaining === undefined || turn.guessesRemaining > 0);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -98,6 +122,7 @@ export default function Board({
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             {statusMessage}
+            {thinkingSpymaster && <ThinkingDots />}
           </motion.div>
         )}
         <div className="flex items-start justify-between gap-3">
@@ -105,6 +130,7 @@ export default function Board({
             <Hint
               turn={turn}
               giveHint={giveHint}
+              setTyping={setTyping}
               isCurrentlySpymaster={
                 isConnected &&
                 currentPlayer.role === "spymaster" &&
@@ -114,31 +140,61 @@ export default function Board({
           )}
           {gameResult && <Result gameResult={gameResult} players={players} />}
           {gameResult === undefined && (
-            <Timer key={+new Date(until)} until={until} />
+            <Timer key={+new Date(until)} until={until} totalSeconds={turnSeconds} sound={sound} />
           )}
         </div>
         <WordMatrix
-          canGuess={
-            isConnected &&
-            !gameResult &&
-            isCurrentTurn &&
-            currentPlayer.role === "operative" &&
-            !!turn.hint &&
-            (turn.guessesRemaining === undefined || turn.guessesRemaining > 0)
-          }
+          canGuess={canGuess}
+          canMark={canGuess}
           isGameOver={!!gameResult}
           words={words}
           turn={turn}
+          players={players}
+          marks={marks}
           currentPlayer={currentPlayer}
           onRevealWord={revealWord}
+          onMarkWord={markCard}
+          sound={sound}
         />
-        {previousHints && (
-          <div className="rounded-xl bg-surface/50 px-4 py-2 font-mono text-base font-medium text-purple-300/60">
-            Previous: {previousHints}
+        {!gameResult && previousHints.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Previous clues">
+            <span className="text-sm font-semibold text-purple-300/60">Earlier:</span>
+            {previousHints.map((hint) => {
+              const color = getTeamColor(hint.team);
+              return (
+                <motion.span
+                  key={hint.inTurn}
+                  layout
+                  className={`rounded-full bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} px-3 py-1 font-mono text-sm font-bold !text-white/90`}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  {hint.hint} · {hint.count}
+                </motion.span>
+              );
+            })}
           </div>
         )}
+        {gameResult && <GameRecap board={words} hintHistory={hintHistory} players={players} />}
       </div>
     </MotionConfig>
+  );
+}
+
+function ThinkingDots() {
+  return (
+    <span aria-hidden="true" className="ml-1 inline-flex gap-0.5">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="inline-block"
+          animate={{ y: [0, -5, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+        >
+          .
+        </motion.span>
+      ))}
+    </span>
   );
 }
 
@@ -245,34 +301,43 @@ function Result({
   );
 }
 
+
 function Hint({
   turn,
   giveHint,
+  setTyping,
   isCurrentlySpymaster,
 }: {
   turn: Turn;
   giveHint: (hint: string, count: number) => void;
+  setTyping: (typing: boolean) => void;
   isCurrentlySpymaster: boolean;
 }) {
   return (
     <div>
       <AnimatePresence mode="wait">
         {turn.hint ? (
+          // The clue lands like a rubber stamp.
           <motion.div
             key={turn.hint.hint}
-            className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2"
-            initial={{ opacity: 0, scale: 0.8, y: 5 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="flex items-baseline gap-2"
+            initial={{ opacity: 0, scale: 2.4, rotate: -14 }}
+            animate={{ opacity: 1, scale: 1, rotate: -2 }}
+            transition={{ type: "spring", stiffness: 500, damping: 18 }}
           >
-            <span className="break-words font-mono text-lg font-bold sm:text-2xl">
-              {turn.hint.hint} ({turn.hint.count})
+            <span className="rounded-lg border-4 border-double border-amber-300/80 px-3 py-0.5 font-mono text-2xl font-black uppercase tracking-wide text-amber-200">
+              {turn.hint.hint} · {turn.hint.count}
             </span>
             {turn.guessesRemaining !== undefined && (
-              <span className="text-xs text-purple-400 sm:text-sm">
+              <motion.span
+                key={turn.guessesRemaining}
+                className="text-sm text-purple-400"
+                initial={{ scale: 1.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
                 {turn.guessesRemaining} guess
                 {turn.guessesRemaining !== 1 ? "es" : ""} left
-              </span>
+              </motion.span>
             )}
           </motion.div>
         ) : (
@@ -283,7 +348,7 @@ function Hint({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <HintInput giveHint={giveHint} />
+              <HintInput giveHint={giveHint} onTyping={setTyping} />
             </motion.div>
           )
         )}
@@ -292,11 +357,17 @@ function Hint({
   );
 }
 
-function Timer({ until }: { until: Date }) {
+const RING_RADIUS = 20;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+
+function Timer({ until, totalSeconds, sound }: { until: Date; totalSeconds: number; sound: SoundEffects }) {
   const deadline = +new Date(until);
   const [secondsLeft, setSecondsLeft] = useState(() =>
     Math.max(0, Math.ceil((deadline - Date.now()) / 1000)),
   );
+  const previousRef = useRef(secondsLeft);
+  const [scope, animate] = useAnimate();
+  const { tick, timeUp } = sound;
 
   useEffect(() => {
     const update = () =>
@@ -311,130 +382,328 @@ function Timer({ until }: { until: Date }) {
     };
   }, [deadline]);
 
+  // Heartbeat for the final ten seconds, a buzzer and a shake at zero.
+  useEffect(() => {
+    const previous = previousRef.current;
+    previousRef.current = secondsLeft;
+    if (secondsLeft === previous) return;
+    if (secondsLeft > 0 && secondsLeft <= 10) tick(secondsLeft);
+    if (secondsLeft === 0 && previous > 0) {
+      timeUp();
+      void animate(scope.current, { x: [0, -8, 8, -6, 6, -3, 0], rotate: [0, -6, 6, -4, 4, 0] }, { duration: 0.5 });
+    }
+  }, [secondsLeft, tick, timeUp, animate, scope]);
+
+  const fraction = Math.min(1, secondsLeft / Math.max(1, totalSeconds));
+  const urgent = secondsLeft <= 15;
+  const critical = secondsLeft <= 5;
+  const stroke = critical ? "#ef4444" : urgent ? "#fcd34d" : "#a070e0";
+
   return (
-    <div className="flex shrink-0 items-center">
+    <motion.div
+      ref={scope}
+      className="relative flex h-14 w-14 shrink-0 items-center justify-center"
+      animate={critical && secondsLeft > 0 ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+      transition={critical ? { duration: 0.5, repeat: Infinity } : undefined}
+    >
+      <svg aria-hidden="true" viewBox="0 0 48 48" className="absolute inset-0 -rotate-90">
+        <circle cx="24" cy="24" r={RING_RADIUS} fill="none" stroke="rgba(160,112,224,0.15)" strokeWidth="4" />
+        <circle
+          cx="24" cy="24" r={RING_RADIUS} fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round"
+          strokeDasharray={RING_LENGTH}
+          strokeDashoffset={RING_LENGTH * (1 - fraction)}
+          style={{ transition: "stroke-dashoffset 0.25s linear, stroke 0.3s" }}
+        />
+      </svg>
       <span
         role="timer"
         aria-label={`${secondsLeft} seconds remaining`}
-        className={`select-none font-mono text-2xl tabular-nums ${secondsLeft <= 15 ? "text-amber-300" : "text-purple-300"}`}
+        className={`select-none font-mono text-sm font-bold tabular-nums ${critical ? "text-red-400" : urgent ? "text-amber-300" : "text-purple-200"}`}
       >
-        {Math.floor(secondsLeft / 60)}:
-        {(secondsLeft % 60).toString().padStart(2, "0")}
+        {secondsLeft >= 60 ? `${Math.floor(secondsLeft / 60)}:${(secondsLeft % 60).toString().padStart(2, "0")}` : secondsLeft}
       </span>
-    </div>
+    </motion.div>
   );
 }
 
 function WordMatrix({
   canGuess,
+  canMark,
   isGameOver,
   words,
+  players,
+  marks,
   currentPlayer,
   turn,
   onRevealWord,
+  onMarkWord,
+  sound,
 }: {
   canGuess: boolean;
+  canMark: boolean;
   isGameOver: boolean;
   words: WordCard[];
+  players: Player[];
+  marks: CardMark[];
   currentPlayer: Player;
   turn: Turn;
   onRevealWord: (word: string) => void;
+  onMarkWord: (word: string) => void;
+  sound: SoundEffects;
 }) {
   const teamColor = getTeamColor(turn.team);
+  // A new board (new game) remounts the grid, so the cards get dealt again.
+  const dealKey = words.map((card) => card.word).join("|");
 
   return (
-    <div
-      className={`grid grid-cols-5 grid-rows-5 gap-2 rounded-2xl border-8 border-solid ${teamColor.border} p-2`}
+    <motion.div
+      key={dealKey}
+      className="grid grid-cols-5 grid-rows-5 gap-2 rounded-2xl border-8 border-solid p-2"
+      initial={{ borderColor: `${teamColor.hex}66` }}
+      animate={{
+        borderColor: `${teamColor.hex}${isGameOver ? "33" : "88"}`,
+        boxShadow: isGameOver ? "0 0 0 transparent" : `0 0 32px ${teamColor.hex}33`,
+      }}
+      transition={{ duration: 0.6 }}
     >
-      {words.map((wordCard) => (
+      {words.map((wordCard, index) => (
         <Word
+          index={index}
           canGuess={canGuess}
+          canMark={canMark}
           isGameOver={isGameOver}
           key={wordCard.word}
           wordCard={wordCard}
           currentPlayer={currentPlayer}
+          markers={marks
+            .filter((mark) => mark.word === wordCard.word)
+            .map((mark) => players.find((p) => p.id === mark.playerId))
+            .filter((p): p is Player => !!p)}
           onRevealWord={onRevealWord}
+          onMarkWord={onMarkWord}
+          sound={sound}
         />
       ))}
-    </div>
+    </motion.div>
   );
 }
 
+type Landing = "correct" | "wrong" | "assassin";
+
+const faceStyle = { backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" } as const;
+
 function Word({
+  index,
   canGuess,
+  canMark,
   isGameOver,
   wordCard,
   currentPlayer,
+  markers,
   onRevealWord,
+  onMarkWord,
+  sound,
 }: {
+  index: number;
   canGuess: boolean;
+  canMark: boolean;
   isGameOver: boolean;
   wordCard: WordCard;
   currentPlayer: Player;
+  markers: Player[];
   onRevealWord: (word: string) => void;
+  onMarkWord: (word: string) => void;
+  sound: SoundEffects;
 }) {
   const reduceMotion = useReducedMotion();
-  const isInteractive = canGuess && !wordCard.revealed;
+  const isRevealed = !!wordCard.revealed;
+  const isInteractive = canGuess && !isRevealed;
+  const isMarkable = canMark && !isRevealed;
   const isSpymaster = currentPlayer.role === "spymaster";
-  const showWord = !!wordCard.revealed || isSpymaster || isGameOver;
+  const showWord = isRevealed || isSpymaster || isGameOver;
+  const isMarkedByMe = markers.some((p) => p.id === currentPlayer.id);
 
-  let bgColor = "bg-[#f5f0ff] card-shadow-default";
-  let textColor = "!text-[#1a1530]";
+  // "Thinking" wiggle between the tap and the server's answer.
+  const [pending, setPending] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => setPending(false), 2500);
+    return () => clearTimeout(timer);
+  }, [pending]);
 
-  if (showWord) {
-    if (wordCard.isAssassin) {
-      bgColor =
-        "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin";
-      textColor = "!text-white";
-    } else if (wordCard.team !== undefined) {
-      const color = getTeamColor(wordCard.team);
-      bgColor = `bg-gradient-to-br ${color.from} ${color.to} ${color.shadow}`;
-      textColor = "!text-white";
-    } else {
-      bgColor = "bg-[#3a3550] card-shadow-neutral";
-      textColor = "!text-[#8078a0]";
+  // Play the landing only for reveals that happen while we watch, never on (re)connect.
+  const [landing, setLanding] = useState<Landing>();
+  const wasRevealed = useRef(isRevealed);
+  const { haptic } = sound;
+  useEffect(() => {
+    if (!isRevealed || wasRevealed.current) {
+      wasRevealed.current = isRevealed;
+      return;
     }
-  }
+    wasRevealed.current = true;
+    setPending(false);
+    const kind: Landing = wordCard.isAssassin
+      ? "assassin"
+      : wordCard.team === wordCard.revealed?.byTeam ? "correct" : "wrong";
+    setLanding(kind);
+    haptic(kind === "assassin" ? [80, 40, 160] : kind === "wrong" ? [30, 30, 30] : 20);
+    const timer = setTimeout(() => setLanding(undefined), 1600);
+    return () => clearTimeout(timer);
+    // Only the face-down → face-up transition matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRevealed]);
 
-  const opacity =
-    !wordCard.revealed && (isSpymaster || isGameOver) ? 0.5 : 0.95;
+  const front = (() => {
+    if (!showWord) return { bg: "bg-[#f5f0ff] card-shadow-default", text: "!text-[#1a1530]", dim: false };
+    return { ...revealedStyle(wordCard), dim: !isRevealed };
+  })();
+  const back = revealedStyle(wordCard);
+  const landingAnimation: Record<Landing, TargetAndTransition> = {
+    correct: { scale: [1, 1.14, 0.97, 1], rotate: 0 },
+    wrong: { scale: 1, rotate: [0, -7, 6, -4, 2, 0] },
+    assassin: { scale: [1, 1.4, 1.25, 1], rotate: [0, -4, 4, 0] },
+  };
+  const flipDelay = 0.32;
+
+  const toggleMark = () => {
+    if (!isMarkable) return;
+    sound.buttonClick();
+    sound.haptic(8);
+    onMarkWord(wordCard.word);
+  };
 
   return (
-    <motion.button
-      type="button"
-      disabled={!isInteractive}
-      aria-label={`${wordCard.word}${wordCard.revealed ? ", revealed" : ""}${showWord ? (wordCard.isAssassin ? ", assassin" : wordCard.team !== undefined ? `, Team ${getTeamName(wordCard.team)}` : ", neutral") : ""}`}
-      key={wordCard.word}
-      className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center rounded-[14px] p-1 sm:p-2 md:min-h-24 md:p-4 lg:p-6 ${isInteractive ? "cursor-pointer" : "cursor-default"} focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-accent ${bgColor}`}
-      onClick={() => {
-        if (isInteractive) onRevealWord(wordCard.word);
-      }}
-      whileHover={
-        isInteractive && !reduceMotion ? { scale: 1.025, y: -2 } : undefined
-      }
-      whileTap={isInteractive && !reduceMotion ? { scale: 0.98 } : undefined}
-      initial={false}
-      animate={{ opacity, scale: 1 }}
-      transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
+    // Outer layer: deal-in when the board appears.
+    <motion.div
+      className="relative min-w-0"
+      style={{ perspective: 800, zIndex: landing === "assassin" ? 20 : landing ? 10 : undefined }}
+      initial={reduceMotion ? false : { opacity: 0, y: -60, rotate: (index % 5 - 2) * 9, scale: 0.6 }}
+      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20, delay: reduceMotion ? 0 : 0.15 + index * 0.035 }}
     >
-      <AnimatePresence initial={false}>
-        {wordCard.revealed && (
-          <motion.span
-            aria-hidden="true"
-            className={`absolute right-1 top-0.5 text-xs md:right-2 md:top-1 ${textColor}`}
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.75 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.2 }}
-          >
-            {wordCard.isAssassin ? "☠" : "✓"}
-          </motion.span>
-        )}
-      </AnimatePresence>
-      <span
-        className={`text-xs font-extrabold leading-tight ${textColor} min-w-0 [overflow-wrap:anywhere] select-none text-center md:text-base lg:text-xl`}
+      {/* Middle layer: thinking wiggle and landing juice. */}
+      <motion.div
+        className="relative"
+        animate={
+          landing
+            ? { ...landingAnimation[landing], transition: { delay: flipDelay, duration: landing === "assassin" ? 0.7 : 0.5 } }
+            : pending
+              ? { rotate: [0, -2.5, 2.5, -1.5, 0], scale: 0.97, transition: { duration: 0.5, repeat: Infinity } }
+              : { rotate: 0, scale: 1 }
+        }
       >
-        {wordCard.word}
+        <motion.button
+          type="button"
+          disabled={!isInteractive}
+          aria-label={`${wordCard.word}${isRevealed ? ", revealed" : ""}${showWord ? (wordCard.isAssassin ? ", assassin" : wordCard.team !== undefined ? `, Team ${getTeamName(wordCard.team)}` : ", neutral") : ""}${markers.length ? `, marked by ${markers.map((p) => p.name).join(", ")}` : ""}`}
+          className={`relative grid min-h-14 w-full min-w-0 rounded-[14px] md:min-h-24 ${isInteractive ? "cursor-pointer" : "cursor-default"} focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+          style={{ transformStyle: "preserve-3d" }}
+          onClick={() => {
+            if (!isInteractive) return;
+            sound.cardTap();
+            sound.haptic(12);
+            setPending(true);
+            onRevealWord(wordCard.word);
+          }}
+          onContextMenu={(event) => {
+            if (!isMarkable) return;
+            event.preventDefault();
+            toggleMark();
+          }}
+          whileHover={isInteractive ? { y: -3, rotateX: 8 } : undefined}
+          whileTap={isInteractive ? { scale: 0.95 } : undefined}
+          initial={false}
+          animate={{ rotateY: isRevealed ? 180 : 0 }}
+          transition={{ rotateY: { duration: reduceMotion ? 0 : 0.6, ease: [0.3, 1.4, 0.5, 1] } }}
+        >
+          <CardFace className={`${front.bg} ${front.dim ? "opacity-50" : ""}`} textColor={front.text} word={wordCard.word} />
+          <CardFace className={back.bg} textColor={back.text} word={wordCard.word} flipped>
+            <span aria-hidden="true" className={`absolute right-1 top-0.5 text-xs md:right-2 md:top-1 ${back.text}`}>
+              {wordCard.isAssassin ? "☠" : "✓"}
+            </span>
+          </CardFace>
+        </motion.button>
+
+        {isMarkable && (
+          <motion.button
+            type="button"
+            aria-label={`${isMarkedByMe ? "Unmark" : "Mark"} ${wordCard.word}`}
+            aria-pressed={isMarkedByMe}
+            title="Mark as a maybe (right-click works too)"
+            className={`absolute -left-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full text-xs shadow-md md:h-7 md:w-7 ${isMarkedByMe ? "bg-amber-400" : "bg-elevated/90 opacity-70 hover:opacity-100"}`}
+            whileHover={{ scale: 1.2 }}
+            whileTap={{ scale: 0.85 }}
+            onClick={toggleMark}
+          >
+            📍
+          </motion.button>
+        )}
+
+        {/* Teammates' tentative picks. */}
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-2 left-1 z-20 flex -space-x-1.5">
+          <AnimatePresence>
+            {!isRevealed && markers.map((player) => (
+              <motion.span
+                key={player.id}
+                className="flex h-6 w-6 select-none items-center justify-center rounded-full bg-amber-300 text-sm shadow-md ring-2 ring-amber-100"
+                initial={{ scale: 0, y: 8 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0, y: 8 }}
+                transition={{ type: "spring", stiffness: 500, damping: 18 }}
+              >
+                {player.animal ?? "🐾"}
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {landing === "correct" && <Sparkles color={getTeamColor(wordCard.team ?? 0).hex} delay={flipDelay} />}
+        {landing === "assassin" && <Sparkles color="#ef4444" emoji="💥" count={8} delay={flipDelay} />}
+        <AnimatePresence>
+          {landing === "wrong" && (
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-20 text-center text-2xl"
+              initial={{ y: 0, opacity: 0 }}
+              animate={{ y: -36, opacity: [0, 1, 0] }}
+              transition={{ duration: 1.1, delay: flipDelay }}
+            >
+              {wordCard.team === undefined ? "😬" : "🙈"}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function revealedStyle(wordCard: WordCard) {
+  if (wordCard.isAssassin) {
+    return { bg: "bg-gradient-to-br from-red-600 to-red-400 card-shadow-assassin", text: "!text-white" };
+  }
+  if (wordCard.team !== undefined) {
+    const color = getTeamColor(wordCard.team);
+    return { bg: `bg-gradient-to-br ${color.from} ${color.to} ${color.shadow}`, text: "!text-white" };
+  }
+  return { bg: "bg-[#3a3550] card-shadow-neutral", text: "!text-[#8078a0]" };
+}
+
+function CardFace({ className, textColor, word, flipped, children }: {
+  className: string;
+  textColor: string;
+  word: string;
+  flipped?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`relative flex min-w-0 flex-col items-center justify-center rounded-[14px] p-1 [grid-area:1/1] sm:p-2 md:p-4 lg:p-6 ${className}`}
+      style={{ ...faceStyle, transform: flipped ? "rotateY(180deg)" : undefined }}
+    >
+      {children}
+      <span className={`min-w-0 select-none text-center text-xs font-extrabold leading-tight [overflow-wrap:anywhere] md:text-base lg:text-xl ${textColor}`}>
+        {word}
       </span>
-    </motion.button>
+    </span>
   );
 }

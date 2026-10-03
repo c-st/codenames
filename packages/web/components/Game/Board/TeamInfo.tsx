@@ -31,10 +31,27 @@ export default function TeamInfo({
         const isActive = turn.team === team;
         const remaining = remainingWordsByTeam[team] ?? 0;
         return (
-          <section
+          <motion.section
             key={teamId}
             aria-label={`Team ${getTeamName(team)}`}
-            className={`flex items-center gap-3 rounded-xl bg-surface/50 p-3 ${!isGameOver && !isActive ? "opacity-60" : ""}`}
+            className={`flex items-center gap-3 rounded-xl bg-surface/50 p-3 transition-opacity ${!isGameOver && !isActive ? "opacity-60" : ""}`}
+            // The active team's panel breathes in its colour.
+            animate={
+              isActive && !isGameOver
+                ? {
+                    boxShadow: [
+                      `0 0 0px ${color.hex}00`,
+                      `0 0 22px ${color.hex}99`,
+                      `0 0 0px ${color.hex}00`,
+                    ],
+                  }
+                : { boxShadow: `0 0 0px ${color.hex}00` }
+            }
+            transition={
+              isActive && !isGameOver
+                ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3 }
+            }
           >
             <div className="flex min-w-16 flex-col items-center gap-1">
               <span className="text-xs font-semibold text-purple-200">
@@ -44,9 +61,9 @@ export default function TeamInfo({
                 key={remaining}
                 aria-label={`${remaining} words remaining`}
                 className={`flex h-10 w-10 select-none items-center justify-center rounded-xl bg-gradient-to-br ${color.badgeFrom} ${color.badgeTo} text-xl font-black !text-white`}
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.18 }}
+                initial={{ scale: 1.6, rotate: -12 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 14 }}
               >
                 {remaining}
               </motion.span>
@@ -88,7 +105,7 @@ export default function TeamInfo({
                   </div>
                 ))}
             </div>
-          </section>
+          </motion.section>
         );
       })}
     </div>
