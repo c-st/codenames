@@ -14,7 +14,6 @@ import Sparkles from "@/components/Fun/Sparkles";
 import HintInput from "./HintInput";
 import { getTeamColor, getTeamName } from "./getTeamColor";
 import TeamInfo from "./TeamInfo";
-import GameRecap from "./GameRecap";
 import { getSpymasterTitle } from "../spymasterTitle";
 
 export default function Board({
@@ -175,7 +174,6 @@ export default function Board({
             })}
           </div>
         )}
-        {gameResult && <GameRecap board={words} hintHistory={hintHistory} players={players} />}
       </div>
     </MotionConfig>
   );

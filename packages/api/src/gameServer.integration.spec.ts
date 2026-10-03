@@ -629,10 +629,6 @@ describe("Durable Object room protocol", () => {
       "correctGuess",
       "perfectClue",
     ]);
-    expect(
-      storedState(context).board.find((card) => card.word === "apple")?.revealed
-        ?.byPlayer,
-    ).toBe(pid(2));
     await command(game, sockets[1], { type: "revealWord", word: "bomb" });
     await command(game, sockets[0], { type: "startGame" });
     const [deal] = sockets[2].latest().effects!;

@@ -94,8 +94,12 @@ export async function saveProfile(page: Page, name: string) {
 
 export type SoundStart = { frequency: number; wallTime: number };
 
-// A real Web Audio graph and clock with a silent sink make these tests independent
-// of CI/headless machines' physical speakers while preserving gesture gating.
+/**
+ * Replaces Web Audio with a silent mock that records every oscillator start, so tests
+ * check which tones the game schedules and when without touching the host audio stack
+ * (a stuck audio service can stall even a silent-sink AudioContext for ~20s per page).
+ * Like a real browser, contexts start suspended and only run once resumed by a gesture.
+ */
 export async function installSilentAudio(
   context: BrowserContext,
   recordTones = false,
@@ -103,37 +107,65 @@ export async function installSilentAudio(
   await context.addInitScript(
     ({ recordTones }) => {
       const recorded = window as typeof window & {
-        soundStarts: { frequency: number; wallTime: number }[];
-        audioContexts: AudioContext[];
+        soundStarts: SoundStart[];
+        audioContexts: unknown[];
       };
       recorded.soundStarts = [];
       recorded.audioContexts = [];
-      const NativeAudioContext = window.AudioContext;
-      window.AudioContext = class extends NativeAudioContext {
-        constructor(options?: AudioContextOptions) {
-          super({
-            ...options,
-            sinkId: { type: "none" },
-          } as AudioContextOptions);
+      const param = () => ({
+        value: 0,
+        setValueAtTime() {},
+        exponentialRampToValueAtTime() {},
+        linearRampToValueAtTime() {},
+      });
+      const node = () => ({ connect() {}, disconnect() {} });
+      class MockAudioContext {
+        state: AudioContextState = "suspended";
+        destination = node();
+        private readonly createdAt = performance.now();
+        constructor() {
           recorded.audioContexts.push(this);
         }
-      };
-      if (!recordTones) return;
-      const create = AudioContext.prototype.createOscillator;
-      AudioContext.prototype.createOscillator = function () {
-        const oscillator = create.call(this);
-        const start = oscillator.start.bind(oscillator);
-        const audioContext = this;
-        oscillator.start = (when = 0) => {
-          recorded.soundStarts.push({
-            frequency: oscillator.frequency.value,
-            wallTime:
-              Date.now() + Math.max(0, when - audioContext.currentTime) * 1000,
-          });
-          start(when);
-        };
-        return oscillator;
-      };
+        get currentTime() {
+          return (performance.now() - this.createdAt) / 1000;
+        }
+        resume() {
+          if (this.state !== "closed") this.state = "running";
+          return Promise.resolve();
+        }
+        suspend() {
+          if (this.state !== "closed") this.state = "suspended";
+          return Promise.resolve();
+        }
+        close() {
+          this.state = "closed";
+          return Promise.resolve();
+        }
+        createGain() {
+          return { ...node(), gain: param() };
+        }
+        createOscillator() {
+          const oscillator = {
+            ...node(),
+            type: "sine",
+            frequency: param(),
+            start: (when = 0) => {
+              if (!recordTones) return;
+              recorded.soundStarts.push({
+                frequency: oscillator.frequency.value,
+                wallTime:
+                  Date.now() + Math.max(0, when - this.currentTime) * 1000,
+              });
+            },
+            stop() {},
+          };
+          return oscillator;
+        }
+      }
+      Object.defineProperty(window, "AudioContext", {
+        value: MockAudioContext,
+        configurable: true,
+      });
     },
     { recordTones },
   );

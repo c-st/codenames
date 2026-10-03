@@ -822,7 +822,7 @@ describe("gameplay regression safeguards", () => {
     ).toBeUndefined();
   });
 
-  it("records who revealed a card and detects a perfectly solved clue", () => {
+  it("detects a perfectly solved clue", () => {
     const game = createGame({
       board: [
         { word: "apple", team: 0 },
@@ -834,14 +834,13 @@ describe("gameplay regression safeguards", () => {
       ],
     });
     game.giveHint({ hint: "fruit", count: 2 });
-    game.revealWord("apple", "player-2");
+    game.revealWord("apple");
     expect(game.isCurrentClueComplete()).toBe(false);
-    game.revealWord("pear", "player-2");
+    game.revealWord("pear");
     expect(game.isCurrentClueComplete()).toBe(true);
     expect(game.getGameState().board[0].revealed).toEqual({
       byTeam: 0,
       inTurn: 1,
-      byPlayer: "player-2",
     });
     game.revealWord("plum");
     expect(game.isCurrentClueComplete()).toBe(false);

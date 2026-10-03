@@ -227,7 +227,7 @@ test("reveals flip with juice, marks are shared, reactions float and banners ann
   }
 });
 
-test("the assassin flashes the screen, winners party, losers get rain, then recap and rematch", async ({
+test("the assassin flashes the screen, winners party, losers get rain, then history and rematch", async ({
   browser,
 }) => {
   const game = await startFourPlayerGame(browser);
@@ -257,14 +257,18 @@ test("the assassin flashes the screen, winners party, losers get rain, then reca
       }),
     );
 
-    // The recap lists the clue and what it led to, and hands out awards.
-    for (const page of pages) {
-      const recap = page.getByRole("region", { name: "Game recap" });
-      await expect(recap).toBeVisible();
-      await expect(recap.getByText("Danger · 1")).toBeVisible();
-      await expect(recap.getByText(`${assassin} 💀`)).toBeVisible();
-      await expect(recap.getByText("Found the assassin")).toBeVisible();
-      await expect(recap.getByText(NAMES[roles.op])).toBeVisible();
+    // The shared room history records the finished round and the fatal guess.
+    for (const state of states) {
+      await expect
+        .poll(() => state()?.sessionHistory?.rounds.at(-1)?.status)
+        .toBe("completed");
+      expect(state()!.sessionHistory!.rounds.at(-1)!.events).toContainEqual(
+        expect.objectContaining({
+          type: "guess",
+          word: assassin,
+          outcome: "assassin",
+        }),
+      );
     }
 
     // Rematch deals a fresh board for everyone.
@@ -298,9 +302,6 @@ test("the assassin flashes the screen, winners party, losers get rain, then reca
             .join(),
         )
         .not.toBe(previousBoard);
-      await expect(
-        pages[i].getByRole("region", { name: "Game recap" }),
-      ).toHaveCount(0);
     }
   } finally {
     await game.close();

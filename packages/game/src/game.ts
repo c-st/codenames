@@ -246,7 +246,7 @@ export class Codenames {
     return this.gameState;
   }
 
-  public revealWord(word: string, byPlayer?: string): GameState {
+  public revealWord(word: string): GameState {
     const wordCard = this.gameState.board.find((card) => card.word === word);
     if (!wordCard) {
       throw new GameError("Word not found on board");
@@ -270,7 +270,6 @@ export class Codenames {
     wordCard.revealed = {
       byTeam: this.gameState.turn.team,
       inTurn: this.gameState.hintHistory.length,
-      ...(byPlayer ? { byPlayer } : {}),
     };
 
     this.updateCard(wordCard);

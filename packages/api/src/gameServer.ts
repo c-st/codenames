@@ -735,7 +735,7 @@ export class CodenamesGame extends DurableObject {
             ? hintEvent.spymaster
             : undefined;
         const guessingTeam = player.team;
-        game.revealWord(command.word, playerId);
+        game.revealWord(command.word);
         const card = game
           .getGameState()
           .board.find((c) => c.word === command.word)!;

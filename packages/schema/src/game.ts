@@ -67,7 +67,6 @@ const wordCardSchema = z.object({
     .object({
       byTeam: z.number(),
       inTurn: z.number(),
-      byPlayer: z.string().optional(),
     })
     .optional(),
 });

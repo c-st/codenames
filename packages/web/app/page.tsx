@@ -142,105 +142,112 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div
-        ref={shakeScope}
-        className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]"
-      >
-        <header className="grid w-full max-w-4xl grid-cols-[1fr_auto] items-center gap-2 md:flex md:justify-between">
-          <Logo />
-          <button
-            className="rounded-xl bg-surface px-2 py-1 text-lg"
-            onClick={sound.toggleMute}
-            title={sound.muted ? "Unmute" : "Mute"}
-          >
-            {sound.muted ? "🔇" : "🔊"}
-          </button>
-          <SessionStatus isConnected={isConnected} sessionName={sessionName} />
-        </header>
-        {commandError && (
-          <p
-            role="alert"
-            className="rounded-xl bg-amber-900/40 px-4 py-2 text-amber-200"
-          >
-            {commandError}
-          </p>
-        )}
-        <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">
-          {turn === undefined ? (
-            <fieldset disabled={!isConnected} className="w-full">
-              <Lobby
+      {/* Sparkles, scaled cards and the assassin shake must never widen the page on phones. */}
+      <div className="overflow-x-clip">
+        <div
+          ref={shakeScope}
+          className="flex min-h-screen flex-col items-center gap-6 bg-[radial-gradient(ellipse_at_center,_#2a1f48_0%,_#0f0f1a_70%)] p-4 pt-6 font-[family-name:var(--font-geist-sans)]"
+        >
+          <header className="grid w-full max-w-4xl grid-cols-[1fr_auto] items-center gap-2 md:flex md:justify-between">
+            <Logo />
+            <button
+              className="rounded-xl bg-surface px-2 py-1 text-lg"
+              onClick={sound.toggleMute}
+              title={sound.muted ? "Unmute" : "Mute"}
+            >
+              {sound.muted ? "🔇" : "🔊"}
+            </button>
+            <SessionStatus
+              isConnected={isConnected}
+              sessionName={sessionName}
+            />
+          </header>
+          {commandError && (
+            <p
+              role="alert"
+              className="rounded-xl bg-amber-900/40 px-4 py-2 text-amber-200"
+            >
+              {commandError}
+            </p>
+          )}
+          <main className="flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6">
+            {turn === undefined ? (
+              <fieldset disabled={!isConnected} className="w-full">
+                <Lobby
+                  players={players}
+                  currentPlayerId={currentPlayerId}
+                  promoteToSpymaster={promoteToSpymaster}
+                  setProfile={setProfile}
+                  randomizeName={randomizeName}
+                  gameCanBeStarted={gameCanBeStarted}
+                  startGame={startGame}
+                  customWords={customWords}
+                  setCustomWords={setCustomWords}
+                  shuffleTeams={shuffleTeams}
+                  roomId={sessionName}
+                  wordPack={wordPack}
+                  teamCount={teamCount}
+                  setWordPack={setWordPack}
+                  setTeamCount={setTeamCount}
+                  onBackToHome={() => {
+                    window.location.href = window.location.pathname;
+                  }}
+                />
+              </fieldset>
+            ) : (
+              <Board
+                isConnected={isConnected}
                 players={players}
                 currentPlayerId={currentPlayerId}
-                promoteToSpymaster={promoteToSpymaster}
-                setProfile={setProfile}
-                randomizeName={randomizeName}
+                words={board}
+                turn={turn}
+                hintHistory={hintHistory}
+                remainingWordsByTeam={remainingWordsByTeam}
+                gameResult={gameResult}
+                giveHint={giveHint}
+                revealWord={revealWord}
+                marks={marks}
+                markCard={markCard}
+                typingPlayerIds={typingPlayerIds}
+                setTyping={setTyping}
+                turnSeconds={turnSeconds}
+                sound={sound}
+              />
+            )}
+            <SessionHistory history={sessionHistory} />
+          </main>
+          <footer className="flex w-full max-w-4xl flex-col items-center gap-4">
+            <fieldset disabled={!isConnected} className="min-w-0 max-w-full">
+              <ReactionBar onReact={react} />
+            </fieldset>
+            {/* min-w-0: fieldsets otherwise refuse to shrink below their content on phones. */}
+            <fieldset disabled={!isConnected} className="w-full min-w-0">
+              <GameControls
+                gameResult={gameResult}
+                gameIsRunning={gameIsRunning}
                 gameCanBeStarted={gameCanBeStarted}
+                currentPlayer={currentPlayer}
+                turn={turn}
+                players={players}
+                endGame={endGame}
                 startGame={startGame}
-                customWords={customWords}
-                setCustomWords={setCustomWords}
-                shuffleTeams={shuffleTeams}
-                roomId={sessionName}
-                wordPack={wordPack}
-                teamCount={teamCount}
-                setWordPack={setWordPack}
-                setTeamCount={setTeamCount}
-                onBackToHome={() => {
-                  window.location.href = window.location.pathname;
-                }}
+                endTurn={endTurn}
+                promoteToSpymaster={promoteToSpymaster}
               />
             </fieldset>
-          ) : (
-            <Board
-              isConnected={isConnected}
-              players={players}
-              currentPlayerId={currentPlayerId}
-              words={board}
-              turn={turn}
-              hintHistory={hintHistory}
-              remainingWordsByTeam={remainingWordsByTeam}
-              gameResult={gameResult}
-              giveHint={giveHint}
-              revealWord={revealWord}
-              marks={marks}
-              markCard={markCard}
-              typingPlayerIds={typingPlayerIds}
-              setTyping={setTyping}
-              turnSeconds={turnSeconds}
-              sound={sound}
-            />
-          )}
-          <SessionHistory history={sessionHistory} />
-        </main>
-        <footer className="flex flex-col items-center gap-4">
-          <fieldset disabled={!isConnected}>
-            <ReactionBar onReact={react} />
-          </fieldset>
-          <fieldset disabled={!isConnected}>
-            <GameControls
-              gameResult={gameResult}
-              gameIsRunning={gameIsRunning}
-              gameCanBeStarted={gameCanBeStarted}
-              currentPlayer={currentPlayer}
-              turn={turn}
-              players={players}
-              endGame={endGame}
-              startGame={startGame}
-              endTurn={endTurn}
-              promoteToSpymaster={promoteToSpymaster}
-            />
-          </fieldset>
-        </footer>
-        <Confetti
-          celebration={celebration}
-          teamColor={getTeamColor(currentPlayer.team).hex}
-        />
-        <TurnBanner
-          banner={banner}
-          lastBanner={lastBanner}
-          myTeam={currentPlayer.team}
-        />
-        <ScreenFlash flashId={flashId} lastFlashId={lastFlashId} />
-        <FloatingReactions reactions={reactions} players={players} />
+          </footer>
+          <Confetti
+            celebration={celebration}
+            teamColor={getTeamColor(currentPlayer.team).hex}
+          />
+          <TurnBanner
+            banner={banner}
+            lastBanner={lastBanner}
+            myTeam={currentPlayer.team}
+          />
+          <ScreenFlash flashId={flashId} lastFlashId={lastFlashId} />
+          <FloatingReactions reactions={reactions} players={players} />
+        </div>
       </div>
     </MotionConfig>
   );
