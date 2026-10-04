@@ -184,14 +184,13 @@ function ThinkingDots() {
   return (
     <span aria-hidden="true" className="ml-1 inline-flex gap-0.5">
       {[0, 1, 2].map((i) => (
-        <motion.span
+        <span
           key={i}
-          className="inline-block"
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+          className="animate-dot-bounce"
+          style={{ animationDelay: `${i * 0.15}s` }}
         >
           .
-        </motion.span>
+        </span>
       ))}
     </span>
   );

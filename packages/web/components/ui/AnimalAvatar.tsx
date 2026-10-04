@@ -1,10 +1,16 @@
-import { motion, useReducedMotion } from "motion/react";
-
 const sizes = {
   sm: { box: "h-8 w-8", emoji: "text-lg", crown: "-top-2.5 text-xs" },
   md: { box: "h-16 w-16", emoji: "text-4xl", crown: "-top-4 text-xl" },
-  lg: { box: "h-28 w-28 md:h-36 md:w-36", emoji: "text-6xl md:text-7xl", crown: "-top-6 text-3xl" },
-  xl: { box: "h-36 w-36 md:h-44 md:w-44", emoji: "text-7xl md:text-8xl", crown: "-top-7 text-4xl" },
+  lg: {
+    box: "h-28 w-28 md:h-36 md:w-36",
+    emoji: "text-6xl md:text-7xl",
+    crown: "-top-6 text-3xl",
+  },
+  xl: {
+    box: "h-36 w-36 md:h-44 md:w-44",
+    emoji: "text-7xl md:text-8xl",
+    crown: "-top-7 text-4xl",
+  },
 };
 
 /**
@@ -29,7 +35,6 @@ export default function AnimalAvatar({
   glowColor?: string;
   className?: string;
 }) {
-  const reduceMotion = useReducedMotion();
   const s = sizes[size];
   const ring = isYou
     ? `0 0 0 3px ${glowColor ?? "#a070e0"}99, 0 0 22px ${glowColor ?? "#a070e0"}88`
@@ -45,17 +50,17 @@ export default function AnimalAvatar({
         ...(glowColor ? { ["--halo" as string]: `${glowColor}99` } : {}),
       }}
     >
-      <span className={`relative z-[1] select-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)] ${s.emoji}`}>
+      <span
+        className={`relative z-[1] select-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)] ${s.emoji}`}
+      >
         {animal ?? "🐾"}
       </span>
       {crowned && (
-        <motion.span
-          className={`absolute z-[2] select-none drop-shadow ${s.crown}`}
-          animate={reduceMotion ? undefined : { y: [0, -3, 0], rotate: [0, -6, 0] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        <span
+          className={`animate-crown absolute z-[2] select-none drop-shadow ${s.crown}`}
         >
           👑
-        </motion.span>
+        </span>
       )}
     </span>
   );

@@ -332,7 +332,6 @@ function PlayerToken({
   teamHex: string;
   onClick: () => void;
 }) {
-  const reduceMotion = useReducedMotion();
   const isSpy = player.role === "spymaster";
   const action = isYou
     ? "edit your profile"
@@ -351,15 +350,9 @@ function PlayerToken({
       whileTap={!isSpy || isYou ? { scale: 0.94 } : undefined}
       onClick={onClick}
     >
-      <motion.span
-        className="relative"
-        animate={reduceMotion ? undefined : { y: [0, -5, 0] }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: (index % 3) * 1.3,
-        }}
+      <span
+        className="animate-float relative"
+        style={{ animationDelay: `${-(index % 3) * 1.3}s` }}
       >
         <AnimalAvatar
           animal={player.animal}
@@ -376,7 +369,7 @@ function PlayerToken({
             ✏️
           </span>
         )}
-      </motion.span>
+      </span>
       <span className="max-w-full truncate text-sm font-bold !text-white">
         {player.name}
       </span>
@@ -417,12 +410,10 @@ function Medallion({
       transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.15 }}
     >
       <div className="relative grid h-32 w-32 place-items-center md:h-36 md:w-36">
-        <motion.div
+        <div
           aria-hidden="true"
-          className="absolute -inset-3 rounded-full [mask:radial-gradient(circle,transparent_62%,#000_63%)]"
+          className="animate-turn-slow absolute -inset-3 rounded-full [mask:radial-gradient(circle,transparent_62%,#000_63%)]"
           style={{ background: ring }}
-          animate={reduceMotion ? undefined : { rotate: 360 }}
-          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
         />
         <div className="grid h-full w-full select-none place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,_#4a3580,_#1e1638_70%)] text-5xl font-black !text-white shadow-[0_0_60px_rgba(160,112,224,0.55),inset_0_-10px_30px_rgba(0,0,0,0.4)]">
           VS

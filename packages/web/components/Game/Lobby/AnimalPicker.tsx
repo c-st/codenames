@@ -63,7 +63,7 @@ export default function AnimalPicker({
             tabIndex={selected ? 0 : -1}
             className={`relative grid aspect-square place-items-center rounded-2xl border bg-gradient-to-br from-[#2f2452] to-[#1d1736] text-3xl transition-[box-shadow,border-color] duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               selected
-                ? "ring-spin border-transparent shadow-[0_0_22px_rgba(255,208,96,0.45),inset_0_0_18px_rgba(255,208,96,0.12)]"
+                ? "ring-gold border-transparent shadow-[0_0_22px_rgba(255,208,96,0.45),inset_0_0_18px_rgba(255,208,96,0.12)]"
                 : "border-purple-400/20 hover:border-purple-400/60 hover:shadow-[0_10px_24px_-6px_rgba(160,112,224,0.6)]"
             }`}
             animate={{ scale: selected ? 1.06 : 1 }}

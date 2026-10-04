@@ -126,7 +126,7 @@ export default function ShuffleCeremony({
               })}
             </motion.div>
 
-            <div className="ring-spin relative grid h-40 w-40 place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,_#4a3580,_#1e1638_70%)] shadow-[0_0_70px_rgba(160,112,224,0.65)]">
+            <div className="ring-gold ring-turn relative grid h-40 w-40 place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,_#4a3580,_#1e1638_70%)] shadow-[0_0_70px_rgba(160,112,224,0.65)]">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={revealing ? "done" : secondsLeft}

@@ -155,13 +155,13 @@
   }
 }
 
-/* Slowly rotating gold ring around the chosen thing. */
-@property --ring-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-.ring-spin::after {
+/*
+ * Every looping effect below animates only transform or opacity, so the browser
+ * runs it on the compositor and an idle room costs (almost) no main-thread work.
+ */
+
+/* Gold ring around the chosen thing; it breathes rather than repainting a moving gradient. */
+.ring-gold::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -169,7 +169,7 @@
   padding: 2px;
   pointer-events: none;
   background: conic-gradient(
-    from var(--ring-angle),
+    from 200deg,
     #ffd060,
     #a070e0,
     rgba(255, 255, 255, 0.4),
@@ -180,12 +180,25 @@
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: ring-spin 3s linear infinite;
+  animation: ring-breathe 2.4s ease-in-out infinite;
 }
-@keyframes ring-spin {
-  to {
-    --ring-angle: 360deg;
+@keyframes ring-breathe {
+  50% {
+    opacity: 0.55;
   }
+}
+/* Round things can turn the whole ring instead. */
+.ring-gold.ring-turn::after {
+  animation: turn 3s linear infinite;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-turn-slow {
+  animation: turn 5s linear infinite;
 }
 
 /* A light sweep across primary call-to-action buttons. */
@@ -196,10 +209,8 @@
 .sheen::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: -60%;
+  inset: 0;
   width: 40%;
-  height: 100%;
   pointer-events: none;
   background: linear-gradient(
     100deg,
@@ -207,22 +218,74 @@
     rgba(255, 255, 255, 0.35),
     transparent
   );
+  transform: translateX(-150%);
   animation: sheen 3.2s ease-in-out infinite;
 }
 @keyframes sheen {
   0%,
   60% {
-    left: -60%;
+    transform: translateX(-150%);
   }
   100% {
-    left: 130%;
+    transform: translateX(325%);
+  }
+}
+
+/* Gentle idle bob for tokens; stagger with animation-delay. */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-crown {
+  animation: crown 2.4s ease-in-out infinite;
+}
+@keyframes crown {
+  50% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+}
+
+/* A glow layer that fades in and out instead of animating box-shadow. */
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-dot-bounce {
+  display: inline-block;
+  animation: dot-bounce 0.6s ease-in-out infinite;
+}
+@keyframes dot-bounce {
+  50% {
+    transform: translateY(-5px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .halo::before,
-  .ring-spin::after,
-  .sheen::after {
+  .ring-gold::after,
+  .sheen::after,
+  .animate-turn-slow,
+  .animate-float,
+  .animate-crown,
+  .animate-glow-pulse,
+  .animate-dot-bounce {
     animation: none;
+  }
+  .animate-glow-pulse {
+    opacity: 0.5;
   }
 }

@@ -38,27 +38,24 @@ export default function TeamInfo({
             aria-label={`Team ${getTeamName(team)}`}
             className={`glass-panel glass-wash flex items-center gap-4 !rounded-2xl p-3 transition-opacity duration-500 ${!isGameOver && !isActive ? "opacity-55" : ""}`}
             style={{ ["--wash" as string]: color.hex }}
-            animate={
-              isActive
-                ? {
-                    boxShadow: [
-                      `0 0 0px ${color.hex}00`,
-                      `0 0 26px ${color.hex}aa`,
-                      `0 0 0px ${color.hex}00`,
-                    ],
-                  }
-                : { boxShadow: `0 0 0px ${color.hex}00` }
-            }
-            transition={
-              isActive
-                ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
-                : { duration: 0.3 }
-            }
           >
+            {/* The team whose turn it is breathes in its colour (opacity only, so it stays cheap). */}
+            {isActive && (
+              <span
+                aria-hidden="true"
+                className="animate-glow-pulse pointer-events-none absolute inset-0 rounded-[inherit]"
+                style={{
+                  boxShadow: `inset 0 0 0 1px ${color.hex}99, inset 0 0 30px ${color.hex}77`,
+                }}
+              />
+            )}
             <div className="relative flex min-w-16 flex-col items-center gap-0.5">
               <span
                 className="text-xs font-black uppercase tracking-[0.14em]"
-                style={{ color: color.hex, textShadow: `0 0 10px ${color.hex}` }}
+                style={{
+                  color: color.hex,
+                  textShadow: `0 0 10px ${color.hex}`,
+                }}
               >
                 {getTeamName(team)}
               </span>
